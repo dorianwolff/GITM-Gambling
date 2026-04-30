@@ -1,31 +1,40 @@
 /**
  * blackjack-api.js
- * Server-side resolved single-shot blackjack. The player picks a "stand at"
- * threshold (12..21) up-front; the server plays both hands and returns the
- * full result.
+ * Interactive blackjack RPC wrappers. Every action returns the full updated
+ * blackjack_hands row; the page re-renders from that state. Server is
+ * authoritative.
+ *
+ * Game state shape (mirrors public.blackjack_hands):
+ *   {
+ *     id, user_id, bet,
+ *     deck:           int[],   // remaining cards (do not show)
+ *     dealer_cards:   int[],   // index 1 is the hole card while status='active'
+ *     hands:          [{
+ *       cards: int[], bet: int, doubled: bool, done: bool,
+ *       surrendered: bool, blackjack: bool,
+ *       result?: 'win'|'lose'|'push'|'bust'|'blackjack'|'surrender',
+ *       payout?: int, total?: int,
+ *     }],
+ *     active_hand:        int,
+ *     insurance_bet:      int,
+ *     insurance_resolved: bool,
+ *     status:             'awaiting_insurance' | 'active' | 'done',
+ *     outcome_summary:    { dealer_total, total_payout } | null,
+ *   }
  */
 import { supabase } from '../../lib/supabase.js';
 
-export async function playBlackjack(amount, standAt) {
-  const { data, error } = await supabase.rpc('play_blackjack', {
-    p_amount: amount,
-    p_stand_at: standAt,
-  });
+async function call(fn, args) {
+  const { data, error } = await supabase.rpc(fn, args);
   if (error) throw error;
-  const row = Array.isArray(data) ? data[0] : data;
-  return {
-    newBalance: row.new_balance,
-    outcome: row.outcome, // 'blackjack' | 'win' | 'push' | 'lose' | 'bust'
-    playerTotal: row.player_total,
-    dealerTotal: row.dealer_total,
-    playerHand: row.player_hand,
-    dealerHand: row.dealer_hand,
-    payout: row.payout,
-  };
+  return Array.isArray(data) ? data[0] : data;
 }
 
-export function cardLabel(v) {
-  if (v === 1) return 'A';
-  if (v === 10) return '10';
-  return String(v);
-}
+export const bjStart      = (amount)  => call('bj_start',      { p_amount: amount });
+export const bjHit        = (handId)  => call('bj_hit',        { p_hand_id: handId });
+export const bjStand      = (handId)  => call('bj_stand',      { p_hand_id: handId });
+export const bjDouble     = (handId)  => call('bj_double',     { p_hand_id: handId });
+export const bjSplit      = (handId)  => call('bj_split',      { p_hand_id: handId });
+export const bjSurrender  = (handId)  => call('bj_surrender',  { p_hand_id: handId });
+export const bjInsurance  = (handId, take) =>
+  call('bj_insurance', { p_hand_id: handId, p_take: !!take });

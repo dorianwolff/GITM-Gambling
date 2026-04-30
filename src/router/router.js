@@ -84,6 +84,11 @@ export function createRouter(routes) {
       outlet.innerHTML = typeof result === 'string' ? result : result.html;
     }
     window.scrollTo({ top: 0 });
+    // Notify listeners (e.g. ambient overlays) that the route changed and
+    // a fresh page DOM is now mounted.
+    window.dispatchEvent(new CustomEvent('gitm:route', {
+      detail: { path: window.location.pathname },
+    }));
   }
 
   function navigate(to, { replace = false } = {}) {

@@ -1,6 +1,9 @@
 /**
  * emoji-hunt-service.js
- * Listen for active hunts and claim them.
+ * Listen for active hunts and claim them. Hunts are page-locked: each row
+ * carries a `page_path` (the route it lives on) and a `size_px` (the
+ * rendered emoji size). The ambient overlay decides which to render based
+ * on the current path; the table simply stores all active hunts.
  */
 import { supabase } from '../lib/supabase.js';
 
@@ -22,8 +25,16 @@ export async function claimHunt(huntId) {
   return { newBalance: row.new_balance, reward: row.reward };
 }
 
-export async function spawnHuntAsAdmin() {
-  const { data, error } = await supabase.rpc('spawn_emoji_hunt');
+/**
+ * @param {{page?: string|null, sizePx?: number|null}} [opts]
+ *   page    — explicit route to lock the hunt to, or null for server-random
+ *   sizePx  — explicit size in px (clamped 32..128), or null for server-random
+ */
+export async function spawnHuntAsAdmin(opts = {}) {
+  const { data, error } = await supabase.rpc('spawn_emoji_hunt', {
+    p_page:    opts.page    ?? null,
+    p_size_px: opts.sizePx  ?? null,
+  });
   if (error) throw error;
   return data;
 }

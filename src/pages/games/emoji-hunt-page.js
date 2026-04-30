@@ -38,9 +38,16 @@ export function renderEmojiHunt(ctx) {
             'div.flex.flex-col.gap-1',
             {},
             rows.map((r) =>
-              h('div.flex.items-center.justify-between.text-sm.glass.p-2', {}, [
-                h('span.text-2xl', {}, [r.emoji]),
-                h('span.text-muted', {}, [`spawned ${timeAgo(r.created_at)}`]),
+              h('div.flex.items-center.justify-between.gap-2.text-sm.glass.p-2', {}, [
+                h(
+                  'span',
+                  { style: { fontSize: Math.min(48, Math.max(20, r.size_px ?? 32)) + 'px' } },
+                  [r.emoji]
+                ),
+                h('div.flex.flex-col.flex-1.min-w-0', {}, [
+                  h('span.text-white/80.font-mono.truncate', {}, [r.page_path ?? 'anywhere']),
+                  h('span.text-[11px].text-muted', {}, [`spawned ${timeAgo(r.created_at)}`]),
+                ]),
                 h('span.text-accent-cyan.font-mono', {}, [`+${r.reward}`]),
               ])
             )
@@ -53,23 +60,82 @@ export function renderEmojiHunt(ctx) {
   const tick = setInterval(refresh, 5000);
   ctx.onCleanup(() => clearInterval(tick));
 
+  // Page picker: known routes the hunt can be locked to. 'random' lets
+  // the server pick. 'current' uses whatever path the admin is on.
+  const PAGES = [
+    { value: '__random',  label: 'Random page' },
+    { value: '__current', label: 'Current page' },
+    { value: '/dashboard',          label: '/dashboard' },
+    { value: '/events',             label: '/events' },
+    { value: '/leaderboard',        label: '/leaderboard' },
+    { value: '/history',            label: '/history' },
+    { value: '/games',              label: '/games' },
+    { value: '/games/coinflip',     label: '/games/coinflip' },
+    { value: '/games/dice',         label: '/games/dice' },
+    { value: '/games/roulette',     label: '/games/roulette' },
+    { value: '/games/blackjack',    label: '/games/blackjack' },
+    { value: '/games/crash',        label: '/games/crash' },
+    { value: '/games/emoji-hunt',   label: '/games/emoji-hunt' },
+  ];
+  const pageSelect = h(
+    'select.input',
+    {},
+    PAGES.map((p) => h('option', { value: p.value }, [p.label]))
+  );
+  const sizeSelect = h(
+    'select.input',
+    {},
+    [
+      { v: '',    l: 'Random size' },
+      { v: '32',  l: 'Tiny (32px)' },
+      { v: '48',  l: 'Small (48px)' },
+      { v: '72',  l: 'Medium (72px)' },
+      { v: '96',  l: 'Large (96px)' },
+      { v: '128', l: 'Huge (128px)' },
+    ].map((o) => h('option', { value: o.v }, [o.l]))
+  );
+
   const adminPanel = isAdmin
     ? h('div.glass.neon-border.p-5.flex.flex-col.gap-3', {}, [
-        h('h3.text-sm.text-muted.uppercase.tracking-widest', {}, ['Admin']),
+        h('h3.text-sm.text-muted.uppercase.tracking-widest', {}, ['Admin · spawn']),
+        h('div.flex.flex-col.gap-2', {}, [
+          h('label.text-[11px].text-muted.uppercase.tracking-widest', {}, ['Page']),
+          pageSelect,
+        ]),
+        h('div.flex.flex-col.gap-2', {}, [
+          h('label.text-[11px].text-muted.uppercase.tracking-widest', {}, ['Size']),
+          sizeSelect,
+        ]),
         h(
           'button.btn-primary.h-10',
           {
             onclick: async () => {
               try {
-                await spawnHuntAsAdmin();
-                toastSuccess('Hunt spawned for everyone');
+                let page = pageSelect.value;
+                if (page === '__random')  page = null;
+                if (page === '__current') page = window.location.pathname;
+                const sizePx = sizeSelect.value ? Number(sizeSelect.value) : null;
+                await spawnHuntAsAdmin({ page, sizePx });
+                toastSuccess(
+                  page
+                    ? `Hunt spawned on ${page}`
+                    : 'Hunt spawned on a random page'
+                );
                 refresh();
               } catch (e) {
                 toastError(e.message);
               }
             },
           },
-          ['✨ Spawn one now']
+          ['✨ Spawn']
+        ),
+        h(
+          'p.text-[11px].text-muted.leading-relaxed',
+          {},
+          [
+            'Each hunt lives on exactly one route for 45 seconds. Everyone ',
+            'currently on that page sees it; first click claims it.',
+          ]
         ),
       ])
     : null;
