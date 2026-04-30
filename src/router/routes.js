@@ -22,6 +22,9 @@ import { renderRoulette } from '../pages/games/roulette-page.js';
 import { renderBlackjack } from '../pages/games/blackjack-page.js';
 import { renderCrash } from '../pages/games/crash-page.js';
 import { renderEmojiHunt } from '../pages/games/emoji-hunt-page.js';
+import { renderCase } from '../pages/games/case-page.js';
+import { renderLobby } from '../pages/games/lobby-page.js';
+import { renderMpTtt } from '../pages/games/mp-ttt-page.js';
 
 export const routes = [
   { path: ROUTES.LOGIN, render: redirectIfAuthed(renderLogin) },
@@ -39,6 +42,9 @@ export const routes = [
   { path: ROUTES.BLACKJACK, render: requireAuth(renderBlackjack) },
   { path: ROUTES.CRASH, render: requireAuth(renderCrash) },
   { path: ROUTES.EMOJI_HUNT, render: requireAuth(renderEmojiHunt) },
+  { path: ROUTES.CASE, render: requireAuth(renderCase) },
+  { path: ROUTES.LOBBY, render: requireAuth(renderLobby) },
+  { path: ROUTES.MP_GAME, render: requireAuth(renderMpTtt) },
 
   { path: ROUTES.PROFILE, render: requireAuth(renderProfile) },
   { path: ROUTES.LEADERBOARD, render: requireAuth(renderLeaderboard) },

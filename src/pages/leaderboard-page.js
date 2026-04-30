@@ -66,6 +66,11 @@ function row(r, rank, isMe) {
       h('div.text-right', {}, [
         h('div.font-mono.text-accent-cyan.text-lg.tabular-nums', {}, [formatCredits(r.credits)]),
         h('div.text-[10px].text-muted.uppercase.tracking-widest', {}, ['credits']),
+        r.peak_credits != null
+          ? h('div.text-[10px].text-accent-amber.font-mono.mt-1', {}, [
+              `peak ${formatCredits(r.peak_credits)}`,
+            ])
+          : null,
       ]),
     ]
   );

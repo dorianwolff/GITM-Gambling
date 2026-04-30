@@ -59,8 +59,9 @@ export function renderProfile() {
       nameInput,
       h('div.flex.gap-2', {}, [saveBtn]),
     ]),
-    h('div.grid.grid-cols-3.gap-3.pt-4.border-t.border-white/5', {}, [
+    h('div.grid.grid-cols-2.sm:grid-cols-4.gap-3.pt-4.border-t.border-white/5', {}, [
       stat('Balance', formatCredits(p?.credits ?? 0), 'text-accent-cyan'),
+      stat('All-time peak', formatCredits(p?.peak_credits ?? p?.credits ?? 0), 'text-accent-amber'),
       stat('Total wagered', formatCredits(p?.total_wagered ?? 0)),
       stat('Total won', formatCredits(p?.total_won ?? 0), 'text-accent-lime'),
     ]),

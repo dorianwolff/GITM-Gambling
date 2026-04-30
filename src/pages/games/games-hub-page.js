@@ -49,6 +49,20 @@ const CARDS = [
     icon: '👀',
     grad: 'from-accent-cyan/40 to-accent-lime/40',
   },
+  {
+    to: ROUTES.CASE,
+    title: 'Cases',
+    desc: 'Bronze, silver, gold. Pity counter + golden keys.',
+    icon: '📦',
+    grad: 'from-accent-amber/40 to-accent-rose/40',
+  },
+  {
+    to: ROUTES.LOBBY,
+    title: 'Multiplayer',
+    desc: 'Chaos TTT, Fade TTT — ante up, winner takes 95%.',
+    icon: '⚔️',
+    grad: 'from-accent-violet/40 to-accent-cyan/40',
+  },
 ];
 
 export function renderGamesHub() {
