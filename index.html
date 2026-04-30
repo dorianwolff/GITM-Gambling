@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#05060b" />
+    <meta name="description" content="GITM — EPITA social credit-gambling. No real money. Bets, mini-games, emoji hunts." />
+    <title>GITM — Social Credit Gambling</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="font-display bg-bg-900 text-white antialiased min-h-screen">
+    <div id="app" class="relative min-h-screen"></div>
+    <div id="toast-root" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+    <div id="modal-root" class="fixed inset-0 z-[90] pointer-events-none"></div>
+    <div id="emoji-hunt-layer" class="fixed inset-0 z-[80] pointer-events-none"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

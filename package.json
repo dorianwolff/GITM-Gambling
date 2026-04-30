@@ -1,0 +1,23 @@
+{
+  "name": "gitm-gambling",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "EPITA social credit-gambling platform (no real money). Events, mini-games and realtime emoji hunts.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint \"src/**/*.js\""
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.12.0",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "vite": "^5.4.8"
+  }
+}
