@@ -1,213 +1,627 @@
 /**
  * roulette-page.js
- * European single-zero roulette. Stack chips on color/parity/range/dozen/column
- * or single numbers, then spin. Server-resolved.
+ * European single-zero roulette. Server is authoritative — the page
+ * collects bets, sends them as one RPC, then animates the wheel/ball
+ * landing on the server-decided number.
+ *
+ * Bets supported (matches play_roulette in schema.sql):
+ *   - 'number'  value=0..36         payout 36×
+ *   - 'red' / 'black'                              2×
+ *   - 'even' / 'odd'                               2×
+ *   - 'low' (1-18) / 'high' (19-36)                2×
+ *   - 'dozen'  value=1|2|3                         3×
+ *   - 'column' value=1|2|3                         3×
  */
 import { h, mount } from '../../utils/dom.js';
 import { appShell } from '../../ui/layout/app-shell.js';
-import { playRoulette, colorOf, WHEEL_ORDER, RED_NUMBERS } from '../../games/roulette/roulette-api.js';
+import { playRoulette, colorOf, WHEEL_ORDER } from '../../games/roulette/roulette-api.js';
 import { userStore, patchProfile } from '../../state/user-store.js';
 import { toastError, toastSuccess } from '../../ui/components/toast.js';
 import { formatCredits } from '../../utils/format.js';
 
+const CHIP_VALUES = [1, 5, 25, 100, 500];
+
 export function renderRoulette() {
-  /** @type {Array<{type:string,value:string|number,amount:number,label:string}>} */
+  /** @type {Array<{type:string,value:string|number,amount:number,id:string}>} */
   let bets = [];
-  let chipSize = 5;
+  /** @type {Array<{type:string,value:string|number,amount:number,id:string}>} */
+  let lastBets = [];
+  let chip = 25;
+  let busy = false;
+  /** @type {Array<{n:number, c:string}>} most-recent first */
+  const history = [];
+  /** @type {{n:number,c:string,breakdown:any[]}|null} */
+  let lastSpin = null;
 
-  const totalEl = h('span.font-mono.text-accent-cyan', {}, ['0']);
-  const betsList = h('div.flex.flex-col.gap-1.max-h-40.overflow-auto.text-xs', {}, []);
+  // Refs
+  const root = h('div.flex.flex-col.gap-4', {}, []);
 
-  const refreshBets = () => {
-    const tot = bets.reduce((s, b) => s + b.amount, 0);
-    totalEl.textContent = formatCredits(tot);
-    mount(
-      betsList,
-      bets.length === 0
-        ? h('div.text-muted', {}, ['No chips placed yet.'])
-        : h(
-            'div.flex.flex-col.gap-1',
-            {},
-            bets.map((b, i) =>
-              h('div.flex.items-center.justify-between.gap-2', {}, [
-                h('span.text-white/80', {}, [b.label]),
-                h('span.font-mono.text-accent-cyan', {}, [`${formatCredits(b.amount)} cr`]),
-                h(
-                  'button.text-accent-rose.text-xs',
-                  {
-                    onclick: () => {
-                      bets.splice(i, 1);
-                      refreshBets();
-                    },
-                  },
-                  ['×']
-                ),
-              ])
-            )
-          )
-    );
-  };
+  const redraw = () => mount(root, view());
 
-  const addBet = (type, value, label) => {
-    if (chipSize < 1) return;
+  // ---------- bet helpers ----------
+  const addBet = (type, value) => {
+    if (busy) return;
+    const amount = chip;
+    if (amount <= 0) return;
+    if (amount > (userStore.get().profile?.credits ?? 0) - currentWager()) {
+      return toastError('Not enough credits for that chip');
+    }
+    // merge with same bet
     const existing = bets.find((b) => b.type === type && String(b.value) === String(value));
-    if (existing) existing.amount += chipSize;
-    else bets.push({ type, value, amount: chipSize, label });
-    refreshBets();
+    if (existing) existing.amount += amount;
+    else bets.push({ type, value, amount, id: cryptoId() });
+    redraw();
   };
 
-  // Number grid
-  const grid = h('div.grid.grid-cols-13.gap-1', {}, []);
-  // 0
-  grid.appendChild(numberCell(0, addBet));
-  // 1..36 in 3 rows
-  for (let row = 2; row >= 0; row--) {
-    for (let col = 0; col < 12; col++) {
-      const n = row + 1 + col * 3;
-      grid.appendChild(numberCell(n, addBet));
+  const removeBet = (id) => {
+    bets = bets.filter((b) => b.id !== id);
+    redraw();
+  };
+
+  const clearBets = () => { bets = []; redraw(); };
+
+  const repeatLast = () => {
+    if (!lastBets.length) return;
+    bets = lastBets.map((b) => ({ ...b, id: cryptoId() }));
+    redraw();
+  };
+
+  const currentWager = () => bets.reduce((s, b) => s + b.amount, 0);
+
+  // ---------- spin ----------
+  async function spin() {
+    if (busy) return;
+    if (!bets.length) return toastError('Place at least one bet');
+    const wager = currentWager();
+    if (wager > (userStore.get().profile?.credits ?? 0)) {
+      return toastError('Not enough credits');
+    }
+
+    busy = true;
+    redraw();
+
+    try {
+      const r = await playRoulette(bets);
+      patchProfile({ credits: r.newBalance });
+
+      // Visual spin BEFORE revealing outcome
+      await spinWheel(r.roll);
+
+      lastSpin = { n: r.roll, c: r.color, breakdown: r.breakdown ?? [] };
+      history.unshift({ n: r.roll, c: r.color });
+      if (history.length > 18) history.pop();
+
+      lastBets = bets.map((b) => ({ ...b }));
+      bets = [];
+
+      const profit = r.totalPayout - r.totalWager;
+      if (profit > 0) toastSuccess(`+${formatCredits(profit)} cr · ${r.roll} ${r.color}`);
+      else if (r.totalPayout > 0) {
+        // partial win (rare — only if some hits)
+        toastSuccess(`Pushed back ${formatCredits(r.totalPayout)} cr`);
+      }
+    } catch (e) {
+      toastError(e.message);
+    } finally {
+      busy = false;
+      redraw();
     }
   }
-  grid.style.gridTemplateColumns = '40px repeat(12, minmax(0,1fr))';
 
-  // outside bets
-  const outside = h('div.grid.grid-cols-2.md:grid-cols-3.gap-2', {}, [
-    chipBtn('Red', () => addBet('red', '', 'Red'), 'bg-accent-rose/30'),
-    chipBtn('Black', () => addBet('black', '', 'Black'), 'bg-black/40'),
-    chipBtn('Even', () => addBet('even', '', 'Even')),
-    chipBtn('Odd', () => addBet('odd', '', 'Odd')),
-    chipBtn('1–18', () => addBet('low', '', '1–18')),
-    chipBtn('19–36', () => addBet('high', '', '19–36')),
-    chipBtn('1st 12', () => addBet('dozen', 1, '1st dozen')),
-    chipBtn('2nd 12', () => addBet('dozen', 2, '2nd dozen')),
-    chipBtn('3rd 12', () => addBet('dozen', 3, '3rd dozen')),
-  ]);
+  // The spinning element ref so we can animate it.
+  let wheelRef = null;
+  let ballRef = null;
 
-  const chips = [1, 5, 25, 100, 500].map((v) =>
-    h(
-      'button.btn.btn-ghost.h-9.text-xs.font-mono',
-      {
-        onclick: () => {
-          chipSize = v;
-          chipsRow
-            .querySelectorAll('button')
-            .forEach((b) =>
-              (b.className = (Number(b.textContent) === v ? 'btn-primary' : 'btn-ghost') + ' btn h-9 text-xs font-mono')
-            );
-        },
+  async function spinWheel(targetN) {
+    if (!wheelRef || !ballRef) return;
+    const idx = WHEEL_ORDER.indexOf(targetN);
+    if (idx < 0) return;
+    const slotAngle = 360 / WHEEL_ORDER.length;
+    // wheel spins one way, ball the other. Both end aligned so the ball
+    // sits in the target slot at top.
+    const wheelEnd = -(720 + idx * slotAngle); // 2 full turns + offset
+    const ballEnd  =  720;                     // 2 full turns the other way
+    wheelRef.style.transition = 'transform 3.2s cubic-bezier(0.18, 0.7, 0.2, 1)';
+    ballRef.style.transition  = 'transform 3.2s cubic-bezier(0.18, 0.7, 0.2, 1)';
+    wheelRef.style.transform = `rotate(${wheelEnd}deg)`;
+    ballRef.style.transform  = `rotate(${ballEnd}deg)`;
+    await sleep(3300);
+  }
+
+  // ---------- view ----------
+  function view() {
+    return h('div.flex.flex-col.gap-4', {}, [
+      h('div.flex.items-end.justify-between.gap-3.flex-wrap', {}, [
+        h('div', {}, [
+          h('h1.text-3xl.font-semibold.heading-grad', {}, ['Roulette']),
+          h('p.text-sm.text-muted', {}, [
+            'European single-zero. Place chips on numbers, dozens, columns or even-money lines, then spin.',
+          ]),
+        ]),
+        recentStrip(history),
+      ]),
+
+      h('div.grid.grid-cols-1.xl:grid-cols-3.gap-4', {}, [
+        // LEFT: wheel + result panel (2 cols)
+        h('div.xl:col-span-2.flex.flex-col.gap-4', {}, [
+          h(
+            'div.glass.neon-border.p-6.flex.flex-col.items-center.gap-4',
+            {},
+            [
+              wheelView((el, b) => { wheelRef = el; ballRef = b; }, lastSpin?.n ?? null),
+              resultPanel(lastSpin),
+            ]
+          ),
+          tableView({ bets, addBet, removeBet, lastWinning: lastSpin?.n ?? null }),
+        ]),
+
+        // RIGHT: bet slip + controls
+        h('div.flex.flex-col.gap-4', {}, [
+          chipPicker(chip, (v) => { chip = v; redraw(); }),
+          slipPanel(bets, removeBet, currentWager()),
+          h('div.grid.grid-cols-2.gap-2', {}, [
+            h(
+              'button.btn-ghost.h-10',
+              { onclick: clearBets, disabled: busy || !bets.length },
+              ['Clear']
+            ),
+            h(
+              'button.btn-ghost.h-10',
+              { onclick: repeatLast, disabled: busy || !lastBets.length },
+              ['Repeat last']
+            ),
+          ]),
+          h(
+            'button.btn-primary.h-12.w-full.text-base',
+            { onclick: spin, disabled: busy || !bets.length },
+            [busy ? 'Spinning…' : `Spin · ${formatCredits(currentWager())} cr`]
+          ),
+        ]),
+      ]),
+    ]);
+  }
+
+  redraw();
+  return appShell(root);
+}
+
+// ---------------------------------------------------------------------------
+// Wheel
+// ---------------------------------------------------------------------------
+
+function wheelView(captureRefs, lastN) {
+  const slotAngle = 360 / WHEEL_ORDER.length;
+
+  // Build slice nodes around the wheel.
+  const slices = WHEEL_ORDER.map((n, i) => {
+    const c = colorOf(n);
+    return h(
+      'div.absolute.inset-0.flex.justify-center',
+      { style: { transform: `rotate(${i * slotAngle}deg)` } },
+      [
+        h(
+          'div.absolute.top-[2px].w-[28px].h-[58px].rounded-b-full.flex.items-start.justify-center.pt-1.text-[10px].font-bold.font-mono',
+          {
+            style: {
+              background:
+                c === 'green' ? 'linear-gradient(180deg,#0d8f4f,#04572d)' :
+                c === 'red'   ? 'linear-gradient(180deg,#d72e3a,#7a0c14)' :
+                                'linear-gradient(180deg,#1a1a1a,#000)',
+              color: '#fff',
+              borderLeft: '1px solid rgba(255,255,255,0.08)',
+              borderRight: '1px solid rgba(0,0,0,0.5)',
+            },
+          },
+          [String(n)]
+        ),
+      ]
+    );
+  });
+
+  const wheel = h(
+    'div.absolute.inset-0.rounded-full.overflow-hidden.shadow-glow',
+    {
+      style: {
+        background:
+          'radial-gradient(circle at 50% 50%, #1a1a2e 30%, #2d1810 70%, #1a0a05 100%)',
+        border: '4px solid #b08040',
+        boxShadow: '0 0 40px rgba(255,179,71,0.35), inset 0 0 40px rgba(0,0,0,0.6)',
+        transformOrigin: 'center',
+        transform: 'rotate(0deg)',
       },
-      [String(v)]
-    )
-  );
-  const chipsRow = h('div.flex.gap-1', {}, chips);
-  chips[1].className = 'btn-primary btn h-9 text-xs font-mono'; // default 5
-
-  const wheelEl = h(
-    'div.relative.w-56.h-56.rounded-full.border.border-white/10.flex.items-center.justify-center.shadow-glow',
-    { style: { background: 'conic-gradient(from 0deg, #0e1120, #1a1f3a, #0e1120)' } },
+    },
     [
+      ...slices,
+      // Hub
       h(
-        'div.absolute.inset-2.rounded-full.flex.items-center.justify-center.text-5xl.font-mono.font-bold',
-        { style: { background: 'radial-gradient(circle at 30% 30%, #11142450, #0a0c16)' } },
-        ['—']
+        'div.absolute.left-1/2.top-1/2.-translate-x-1/2.-translate-y-1/2.w-16.h-16.rounded-full',
+        {
+          style: {
+            background: 'radial-gradient(circle at 30% 30%, #ffd96b, #8a5a13)',
+            boxShadow: '0 0 20px rgba(255,179,71,0.5), inset 0 0 12px rgba(0,0,0,0.3)',
+          },
+        },
+        []
       ),
     ]
   );
-  const wheelText = wheelEl.firstElementChild;
 
-  const spinBtn = h(
-    'button.btn-primary.h-12.w-full.text-base',
+  // Ball holder rotates around the rim.
+  const ball = h(
+    'div.absolute.inset-0.flex.justify-center',
+    { style: { transformOrigin: 'center', transform: 'rotate(0deg)' } },
+    [
+      h(
+        'div.absolute.top-[6px].w-3.h-3.rounded-full',
+        {
+          style: {
+            background: 'radial-gradient(circle at 30% 30%, #fff, #b8b8b8)',
+            boxShadow:
+              '0 0 6px rgba(255,255,255,0.9), 0 1px 2px rgba(0,0,0,0.6)',
+          },
+        },
+        []
+      ),
+    ]
+  );
+
+  // Pointer at top
+  const pointer = h(
+    'div.absolute.left-1/2.-translate-x-1/2.-top-1.w-0.h-0',
     {
-      onclick: async () => {
-        if (bets.length === 0) return toastError('Place at least one chip');
-        const tot = bets.reduce((s, b) => s + b.amount, 0);
-        if (tot > (userStore.get().profile?.credits ?? 0))
-          return toastError('Not enough credits');
-
-        spinBtn.disabled = true;
-        wheelEl.style.transition = 'transform 2.5s cubic-bezier(0.2, 0.7, 0.2, 1)';
-        wheelEl.style.transform = `rotate(${1080 + Math.random() * 720}deg)`;
-
-        try {
-          const r = await playRoulette(bets);
-          patchProfile({ credits: r.newBalance });
-          await new Promise((res) => setTimeout(res, 2400));
-
-          wheelText.textContent = String(r.roll);
-          wheelText.style.color =
-            r.color === 'red' ? '#ff4d6d' : r.color === 'green' ? '#a3ff3c' : '#ffffff';
-
-          const net = r.totalPayout - r.totalWager;
-          if (net > 0) toastSuccess(`+${formatCredits(net)} cr · ${r.roll} ${r.color}`);
-          else toastError(`${r.roll} ${r.color} · -${formatCredits(-net)}`);
-
-          bets = [];
-          refreshBets();
-        } catch (e) {
-          toastError(e.message);
-        } finally {
-          spinBtn.disabled = false;
-        }
+      style: {
+        borderLeft: '8px solid transparent',
+        borderRight: '8px solid transparent',
+        borderTop: '14px solid #ffd96b',
+        filter: 'drop-shadow(0 0 4px rgba(255,179,71,0.8))',
       },
     },
-    ['Spin']
+    []
   );
 
-  const clearBtn = h(
-    'button.btn-ghost.h-10.text-xs',
-    {
-      onclick: () => {
-        bets = [];
-        refreshBets();
-      },
-    },
-    ['Clear']
+  const container = h(
+    'div.relative.w-72.h-72',
+    {},
+    [wheel, ball, pointer]
   );
 
-  refreshBets();
-
-  return appShell(
-    h('div.flex.flex-col.gap-4', {}, [
-      h('h1.text-3xl.font-semibold.heading-grad', {}, ['Roulette']),
-      h('div.grid.grid-cols-1.xl:grid-cols-3.gap-6', {}, [
-        h('div.xl:col-span-2.flex.flex-col.gap-3', {}, [
-          h('div.glass.neon-border.p-4.overflow-auto', {}, [grid]),
-          outside,
-        ]),
-        h('div.flex.flex-col.gap-3', {}, [
-          h('div.glass.neon-border.p-6.flex.flex-col.items-center.gap-4', {}, [wheelEl]),
-          h('div.glass.neon-border.p-4.flex.flex-col.gap-3', {}, [
-            h('div.flex.items-center.justify-between', {}, [
-              h('span.text-xs.text-muted.uppercase.tracking-widest', {}, ['Chip size']),
-              chipsRow,
-            ]),
-            h('div.flex.items-center.justify-between', {}, [
-              h('span.text-xs.text-muted.uppercase.tracking-widest', {}, ['Total wager']),
-              totalEl,
-            ]),
-            betsList,
-            h('div.flex.gap-2', {}, [clearBtn, spinBtn]),
-          ]),
-        ]),
-      ]),
-    ])
-  );
+  // hand the refs back so the page can animate
+  queueMicrotask(() => captureRefs(wheel, ball));
+  return container;
 }
 
-function numberCell(n, addBet) {
-  const c = colorOf(n);
-  const bg =
-    c === 'red'
-      ? 'bg-accent-rose/30 hover:bg-accent-rose/50'
-      : c === 'black'
-        ? 'bg-black/40 hover:bg-black/60'
-        : 'bg-accent-lime/30 hover:bg-accent-lime/50';
+function resultPanel(spin) {
+  if (!spin) {
+    return h(
+      'div.text-muted.text-sm.h-9',
+      {},
+      ['No spin yet — place your bets and hit Spin.']
+    );
+  }
+  const profit = (spin.breakdown ?? []).reduce(
+    (s, b) => s + (b.win ? Number(b.amount) * (Number(b.mult) - 1) : -Number(b.amount)),
+    0
+  );
+  const colorBg =
+    spin.c === 'green' ? '#0d8f4f' :
+    spin.c === 'red'   ? '#d72e3a' : '#1a1a1a';
+
+  return h('div.flex.items-center.gap-4.h-10', {}, [
+    h(
+      'div.w-12.h-10.rounded-md.flex.items-center.justify-center.text-lg.font-mono.font-bold.text-white',
+      { style: { background: colorBg, boxShadow: 'inset 0 0 6px rgba(0,0,0,0.4)' } },
+      [String(spin.n)]
+    ),
+    h(
+      `div.text-xs.uppercase.tracking-widest.${
+        spin.c === 'red' ? 'text-accent-rose' : spin.c === 'green' ? 'text-accent-lime' : 'text-white/70'
+      }`,
+      {},
+      [spin.c]
+    ),
+    h(
+      `div.font-mono.${profit > 0 ? 'text-accent-lime' : profit < 0 ? 'text-accent-rose' : 'text-white/70'}`,
+      {},
+      [profit === 0 ? 'Even' : `${profit > 0 ? '+' : ''}${formatCredits(profit)} cr`]
+    ),
+  ]);
+}
+
+// ---------------------------------------------------------------------------
+// Betting table
+// ---------------------------------------------------------------------------
+
+function tableView({ bets, addBet, removeBet, lastWinning }) {
+  // Numbers grid: top row column-3 (3,6,..,36), middle column-2, bottom column-1.
+  const ROWS = [
+    [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36], // column 3 → top row
+    [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35], // column 2
+    [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34], // column 1
+  ];
+
+  const numCell = (n) => {
+    const c = colorOf(n);
+    const placed = bets
+      .filter((b) => b.type === 'number' && Number(b.value) === n)
+      .reduce((s, b) => s + b.amount, 0);
+    const hit = lastWinning === n;
+    return h(
+      'button.relative.h-12.text-base.font-mono.font-bold.text-white.transition-transform.hover:scale-105',
+      {
+        onclick: () => addBet('number', n),
+        style: {
+          background:
+            c === 'green' ? 'linear-gradient(180deg,#0d8f4f,#04572d)' :
+            c === 'red'   ? 'linear-gradient(180deg,#d72e3a,#7a0c14)' :
+                            'linear-gradient(180deg,#222,#000)',
+          border: hit ? '2px solid #ffd96b' : '1px solid rgba(255,255,255,0.06)',
+          boxShadow: hit ? '0 0 14px rgba(255,179,71,0.7)' : 'inset 0 0 6px rgba(0,0,0,0.3)',
+          borderRadius: 4,
+        },
+      },
+      [
+        String(n),
+        placed > 0 ? chipMark(placed) : null,
+      ]
+    );
+  };
+
+  const outsideCell = (label, type, value, sub) => {
+    const placed = bets
+      .filter((b) => b.type === type && String(b.value) === String(value ?? ''))
+      .reduce((s, b) => s + b.amount, 0);
+    return h(
+      'button.relative.h-10.text-xs.font-semibold.uppercase.tracking-widest.text-white.transition-transform.hover:scale-105',
+      {
+        onclick: () => addBet(type, value ?? ''),
+        style: {
+          background: 'linear-gradient(180deg, #102612, #0a1c0e)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 4,
+        },
+      },
+      [
+        h('div.flex.flex-col.items-center.justify-center.leading-tight', {}, [
+          h('span', {}, [label]),
+          sub ? h('span.text-[9px].text-muted.normal-case.tracking-normal', {}, [sub]) : null,
+        ]),
+        placed > 0 ? chipMark(placed) : null,
+      ]
+    );
+  };
+
+  const colCell = (col) => {
+    const placed = bets
+      .filter((b) => b.type === 'column' && Number(b.value) === col)
+      .reduce((s, b) => s + b.amount, 0);
+    return h(
+      'button.relative.h-12.text-xs.font-semibold.uppercase.tracking-widest.text-white.transition-transform.hover:scale-105',
+      {
+        onclick: () => addBet('column', col),
+        style: {
+          background: 'linear-gradient(180deg, #102612, #0a1c0e)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 4,
+        },
+      },
+      [
+        h('div.flex.flex-col.items-center.justify-center.leading-tight', {}, [
+          h('span', {}, ['2:1']),
+          h('span.text-[9px].text-muted.normal-case.tracking-normal', {}, [`Col ${col}`]),
+        ]),
+        placed > 0 ? chipMark(placed) : null,
+      ]
+    );
+  };
+
+  // Build grid with explicit columns:
+  //   [0 cell spanning 3 rows] [12 number cells] [column cell]
+  const grid = h(
+    'div.gap-1.p-3.glass.neon-border',
+    {
+      style: {
+        display: 'grid',
+        gridTemplateColumns: '52px repeat(12, minmax(0, 1fr)) 64px',
+        gridTemplateRows: 'repeat(3, auto)',
+      },
+    },
+    [
+      // Zero
+      h(
+        'button.relative.text-base.font-mono.font-bold.text-white.transition-transform.hover:scale-105',
+        {
+          onclick: () => addBet('number', 0),
+          style: {
+            gridColumn: '1 / span 1',
+            gridRow: '1 / span 3',
+            background: 'linear-gradient(180deg,#0d8f4f,#04572d)',
+            border: lastWinning === 0 ? '2px solid #ffd96b' : '1px solid rgba(255,255,255,0.08)',
+            boxShadow: lastWinning === 0 ? '0 0 14px rgba(255,179,71,0.7)' : 'inset 0 0 6px rgba(0,0,0,0.3)',
+            borderRadius: 4,
+          },
+        },
+        [
+          '0',
+          (() => {
+            const placed = bets
+              .filter((b) => b.type === 'number' && Number(b.value) === 0)
+              .reduce((s, b) => s + b.amount, 0);
+            return placed > 0 ? chipMark(placed) : null;
+          })(),
+        ]
+      ),
+      ...ROWS[0].map((n) => numCell(n)),
+      colCell(3),
+      ...ROWS[1].map((n) => numCell(n)),
+      colCell(2),
+      ...ROWS[2].map((n) => numCell(n)),
+      colCell(1),
+    ]
+  );
+
+  // Outside bets: dozens row, then even-money row.
+  const dozensRow = h('div.flex.gap-1.px-3', {}, [
+    h('div.w-[52px]', {}, []),
+    h('div.flex-1', {}, [outsideCell('1st 12', 'dozen', 1, 'Pays 2:1')]),
+    h('div.flex-1', {}, [outsideCell('2nd 12', 'dozen', 2, 'Pays 2:1')]),
+    h('div.flex-1', {}, [outsideCell('3rd 12', 'dozen', 3, 'Pays 2:1')]),
+    h('div.w-[64px]', {}, []),
+  ]);
+  const evensRow = h('div.flex.gap-1.px-3.pb-3', {}, [
+    h('div.w-[52px]', {}, []),
+    h('div.flex-1', {}, [outsideCell('1–18', 'low', '', 'Pays 1:1')]),
+    h('div.flex-1', {}, [outsideCell('Even', 'even', '', 'Pays 1:1')]),
+    h('div.flex-1', {}, [
+      outsideCell('Red', 'red', '', 'Pays 1:1'),
+    ]),
+    h('div.flex-1', {}, [
+      outsideCell('Black', 'black', '', 'Pays 1:1'),
+    ]),
+    h('div.flex-1', {}, [outsideCell('Odd', 'odd', '', 'Pays 1:1')]),
+    h('div.flex-1', {}, [outsideCell('19–36', 'high', '', 'Pays 1:1')]),
+    h('div.w-[64px]', {}, []),
+  ]);
+
+  return h('div.flex.flex-col.gap-1', {}, [grid, dozensRow, evensRow]);
+}
+
+function chipMark(amount) {
   return h(
-    `button.h-10.rounded-md.border.border-white/10.font-mono.text-sm.${bg}.transition`,
-    { onclick: () => addBet('number', n, '#' + n) },
-    [String(n)]
+    'span.absolute.right-1.top-1.bg-accent-amber.text-[#0a0a0a].text-[9px].font-bold.font-mono.rounded-full.px-1.5.py-0.5.shadow',
+    { style: { boxShadow: '0 0 6px rgba(255,179,71,0.6)' } },
+    [formatCredits(amount)]
   );
 }
 
-function chipBtn(label, onclick, extra = '') {
-  return h(`button.btn-ghost.h-10.text-sm.${extra}`, { onclick }, [label]);
+// ---------------------------------------------------------------------------
+// Side panel
+// ---------------------------------------------------------------------------
+
+function chipPicker(current, onPick) {
+  return h('div.glass.neon-border.p-4.flex.flex-col.gap-3', {}, [
+    h('h3.text-sm.text-muted.uppercase.tracking-widest', {}, ['Chip']),
+    h(
+      'div.grid.grid-cols-5.gap-2',
+      {},
+      CHIP_VALUES.map((v) => {
+        const sel = v === current;
+        return h(
+          'button.relative.h-12.rounded-full.text-xs.font-bold.font-mono.text-white.transition-transform.hover:scale-105',
+          {
+            onclick: () => onPick(v),
+            style: {
+              background: chipGradient(v),
+              border: sel ? '2px solid #22e1ff' : '2px dashed rgba(255,255,255,0.25)',
+              boxShadow: sel ? '0 0 12px rgba(34,225,255,0.6)' : 'inset 0 0 6px rgba(0,0,0,0.3)',
+            },
+          },
+          [String(v)]
+        );
+      })
+    ),
+  ]);
+}
+
+function chipGradient(v) {
+  if (v >= 500) return 'radial-gradient(circle at 30% 30%, #b86bff, #4a1380)';
+  if (v >= 100) return 'radial-gradient(circle at 30% 30%, #1a1a1a, #000)';
+  if (v >= 25)  return 'radial-gradient(circle at 30% 30%, #3ddc7e, #0c5a2e)';
+  if (v >= 5)   return 'radial-gradient(circle at 30% 30%, #ff3b6b, #7a0c2a)';
+  return                'radial-gradient(circle at 30% 30%, #7ad9ff, #0d4060)';
+}
+
+function slipPanel(bets, removeBet, totalWager) {
+  return h('div.glass.neon-border.p-4.flex.flex-col.gap-2', {}, [
+    h('div.flex.items-center.justify-between', {}, [
+      h('h3.text-sm.text-muted.uppercase.tracking-widest', {}, ['Bet slip']),
+      h('span.text-xs.text-muted.font-mono', {}, [
+        `${bets.length} ${bets.length === 1 ? 'bet' : 'bets'} · ${formatCredits(totalWager)} cr`,
+      ]),
+    ]),
+    bets.length === 0
+      ? h('div.text-xs.text-muted.py-4.text-center', {}, ['Click the table to place chips.'])
+      : h(
+          'div.flex.flex-col.gap-1.max-h-60.overflow-auto',
+          {},
+          bets.map((b) =>
+            h('div.flex.items-center.justify-between.text-xs.glass.p-2', {}, [
+              h('div.flex.flex-col.leading-tight', {}, [
+                h('span.font-mono.text-white', {}, [betLabel(b)]),
+                h('span.text-[10px].text-muted', {}, [`pays ${betPayout(b)}×`]),
+              ]),
+              h('div.flex.items-center.gap-2', {}, [
+                h('span.font-mono.text-accent-cyan', {}, [`${formatCredits(b.amount)}`]),
+                h(
+                  'button.text-muted.hover:text-accent-rose.text-base.leading-none',
+                  { onclick: () => removeBet(b.id) },
+                  ['×']
+                ),
+              ]),
+            ])
+          )
+        ),
+  ]);
+}
+
+function betLabel(b) {
+  switch (b.type) {
+    case 'number': return `Number ${b.value}`;
+    case 'red':    return 'Red';
+    case 'black':  return 'Black';
+    case 'even':   return 'Even';
+    case 'odd':    return 'Odd';
+    case 'low':    return '1–18';
+    case 'high':   return '19–36';
+    case 'dozen':  return `${ord(Number(b.value))} 12`;
+    case 'column': return `Column ${b.value}`;
+    default:       return b.type;
+  }
+}
+
+function betPayout(b) {
+  switch (b.type) {
+    case 'number': return 36;
+    case 'dozen':
+    case 'column': return 3;
+    default: return 2;
+  }
+}
+
+function ord(n) { return n === 1 ? '1st' : n === 2 ? '2nd' : '3rd'; }
+
+// ---------------------------------------------------------------------------
+// Misc
+// ---------------------------------------------------------------------------
+
+function recentStrip(history) {
+  if (!history.length) return null;
+  return h(
+    'div.flex.items-center.gap-1.flex-wrap.justify-end.max-w-[60%]',
+    {},
+    [
+      h('span.text-[10px].text-muted.uppercase.tracking-widest.mr-1', {}, ['Recent']),
+      ...history.slice(0, 14).map(({ n, c }) =>
+        h(
+          'span.w-7.h-7.rounded-md.flex.items-center.justify-center.text-xs.font-mono.font-bold.text-white',
+          {
+            style: {
+              background:
+                c === 'green' ? '#0d8f4f' :
+                c === 'red'   ? '#d72e3a' : '#1a1a1a',
+              border: '1px solid rgba(255,255,255,0.08)',
+            },
+          },
+          [String(n)]
+        )
+      ),
+    ]
+  );
+}
+
+function cryptoId() {
+  return (crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2));
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
 }

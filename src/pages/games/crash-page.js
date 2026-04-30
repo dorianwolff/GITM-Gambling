@@ -1,7 +1,10 @@
 /**
  * crash-page.js
- * Pre-commit cashout. Server resolves the crash point; we animate the curve
- * up to either the cashout or the actual crash point, whichever is lower.
+ * Pre-commit cashout. The server resolves the crash point first; we then
+ * animate the curve up to either the cashout (win) or the crash point
+ * (loss). Doing the RPC BEFORE the animation eliminates the race that
+ * used to make payouts silently disappear when the network round-trip
+ * outlasted the animation.
  */
 import { h } from '../../utils/dom.js';
 import { appShell } from '../../ui/layout/app-shell.js';
@@ -33,11 +36,27 @@ export function renderCrash() {
     ['1.00×']
   );
 
+  const status = h(
+    'div.h-5.text-xs.text-muted.text-center.font-mono',
+    {},
+    ['']
+  );
+
   const canvas = h('canvas.w-full.h-48.rounded-xl.bg-white/[0.02].border.border-white/5', {
     width: 600,
     height: 192,
   });
   const ctx = canvas.getContext('2d');
+
+  // Reset visuals to the idle state.
+  function resetVisual() {
+    display.textContent = '1.00×';
+    display.className =
+      'text-7xl font-mono font-bold text-accent-cyan h-32 flex items-center justify-center';
+    status.textContent = '';
+    drawCurve(ctx, canvas, 0, 1);
+  }
+  resetVisual();
 
   const launchBtn = h(
     'button.btn-primary.h-12.w-full.text-base',
@@ -47,53 +66,76 @@ export function renderCrash() {
         const err = validateBet(amount, userStore.get().profile?.credits);
         if (err) return toastError(err);
 
+        // Snapshot the cashout target the user committed to. Even if they
+        // edit the input mid-flight the round must use this value, since
+        // it's what we sent to the server.
+        const target = cashout;
+
         launchBtn.disabled = true;
-        display.textContent = '1.00×';
-        display.className =
-          'text-7xl font-mono font-bold text-accent-cyan h-32 flex items-center justify-center';
+        resetVisual();
+        status.textContent = 'Launching…';
 
+        // Resolve the round on the server FIRST. The animation comes
+        // after, with full knowledge of the outcome — so a slow RPC
+        // can never race the visual finish.
         let result;
-        const promise = playCrash(amount, cashout)
-          .then((r) => (result = r))
-          .catch((e) => toastError(e.message));
+        try {
+          result = await playCrash(amount, target);
+        } catch (e) {
+          toastError(e.message);
+          status.textContent = '';
+          launchBtn.disabled = false;
+          return;
+        }
 
-        // Animate optimistically up to user's cashout. We'll cut short if
-        // the server reveals an earlier crash.
+        // Force-patch the new balance immediately. Don't rely on realtime
+        // to deliver — if the websocket is dead, we still want the UI to
+        // reflect the authoritative payout the server just confirmed.
+        patchProfile({ credits: result.newBalance });
+
+        // Animate up to whichever multiplier landed: cashout (win) or
+        // crashPoint (loss). The animation duration is determined by the
+        // curve, so visually a 1.5× round finishes faster than a 5× one.
+        const finalMult = result.won ? target : result.crashPoint;
+        const stopAt = timeForMultiplier(finalMult);
         const startedAt = performance.now();
-        let stopAt = timeForMultiplier(cashout); // seconds
-        let crashed = false;
+        status.textContent = result.won
+          ? `Target ${formatMultiplier(target)} · cashing out…`
+          : 'Climbing…';
 
-        const tick = () => {
-          const t = (performance.now() - startedAt) / 1000;
-          if (result) {
-            stopAt = timeForMultiplier(Math.min(result.crashPoint, cashout));
-            crashed = !result.won;
-          }
-          if (t >= stopAt) {
-            const finalMult =
-              result?.won
-                ? cashout
-                : result?.crashPoint ?? Math.min(cashout, multiplierAt(t));
-            display.textContent = formatMultiplier(finalMult);
-            display.className =
-              'text-7xl font-mono font-bold h-32 flex items-center justify-center ' +
-              (result?.won ? 'text-accent-lime' : 'text-accent-rose');
-            if (result?.won)
-              toastSuccess(`Cashed out at ${formatMultiplier(cashout)} · +${formatCredits(result.payout - amount)}`);
-            else if (result) toastError(`Crashed at ${formatMultiplier(result.crashPoint)}`);
-            patchProfile({ credits: result?.newBalance ?? userStore.get().profile?.credits });
-            launchBtn.disabled = false;
-            drawCurve(ctx, canvas, t, finalMult);
-            return;
-          }
-          const m = multiplierAt(t);
-          display.textContent = formatMultiplier(m);
-          drawCurve(ctx, canvas, t, m);
+        await new Promise((resolveAnim) => {
+          const tick = () => {
+            const t = (performance.now() - startedAt) / 1000;
+            if (t >= stopAt) {
+              display.textContent = formatMultiplier(finalMult);
+              display.className =
+                'text-7xl font-mono font-bold h-32 flex items-center justify-center ' +
+                (result.won ? 'text-accent-lime' : 'text-accent-rose');
+              drawCurve(ctx, canvas, t, finalMult);
+              resolveAnim();
+              return;
+            }
+            const m = multiplierAt(t);
+            display.textContent = formatMultiplier(m);
+            drawCurve(ctx, canvas, t, m);
+            requestAnimationFrame(tick);
+          };
           requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
+        });
 
-        await promise;
+        // Settle the UI from authoritative result data.
+        if (result.won) {
+          const profit = result.payout - amount;
+          status.textContent = `Cashed out at ${formatMultiplier(target)} · +${formatCredits(profit)} cr`;
+          toastSuccess(`Cashed out · +${formatCredits(profit)} cr`);
+        } else {
+          status.textContent = `Crashed at ${formatMultiplier(result.crashPoint)} · -${formatCredits(amount)} cr`;
+          toastError(`Crashed at ${formatMultiplier(result.crashPoint)}`);
+        }
+
+        // Re-patch in case any racing realtime event briefly overwrote.
+        patchProfile({ credits: result.newBalance });
+        launchBtn.disabled = false;
       },
     },
     ['Launch']
@@ -108,6 +150,7 @@ export function renderCrash() {
       h('div.grid.grid-cols-1.lg:grid-cols-3.gap-4', {}, [
         h('div.lg:col-span-2.glass.neon-border.p-6.flex.flex-col.gap-4', {}, [
           display,
+          status,
           canvas,
         ]),
         h('div.glass.neon-border.p-6.flex.flex-col.gap-4', {}, [
