@@ -1,28 +1,58 @@
 /**
  * supabase.js
  * Single Supabase client instance for the whole app.
- * Only the public ANON key is shipped to the browser; all sensitive logic
- * (credit mutations, game resolution) lives in Postgres functions with RLS.
  *
- * --- Tab-switch hang hardening (v3) --------------------------------------
- * @supabase/supabase-js v2 uses `navigator.locks` to serialise auth session
- * reads/writes. That lock can get stuck across tab hides/sleeps/BFCache
- * resumes — the classic symptom is "after alt-tabbing away and back every
- * RPC hangs forever because `supabase.auth.getSession()` never resolves".
+ * ===========================================================================
+ * THE TAB-SWITCH HANG — WHAT IT IS AND WHY IT HAPPENS
+ * ===========================================================================
  *
- * Two independent safety nets:
+ * Every `supabase.from(...)` and `supabase.rpc(...)` call ultimately calls
+ * `supabase.auth.getSession()` under the hood (via the client's internal
+ * `_getAccessToken`) to inject the Bearer token into the request header.
  *
- *   1. `lock`: replace the default navigator.locks-based lock with a no-op.
- *      The server handles concurrent refresh requests idempotently, so the
- *      worst case of losing the lock is one extra refresh round-trip in a
- *      very rare race — infinitely preferable to the UI going dead.
+ * `getSession()` is serialised through an internal "auth lock". The lock has
+ * two separate gates:
  *
- *   2. `global.fetch`: wrap every outgoing request in an AbortController
- *      with a hard timeout. If *anything* hangs (dead socket, stuck auth,
- *      frozen DNS) the promise rejects and the user sees a toast instead
- *      of a permanently-disabled "Play" button.
+ *   1. The pluggable `lock` option (navigator.locks by default). We already
+ *      neutralise this with `noopLock` below.
  *
- * These two together mean the app can always recover without a page reload.
+ *   2. An internal boolean `lockAcquired` that supabase-js flips on *inside*
+ *      the lock callback and doesn't reset until the callback's promise
+ *      settles. While it is true, all other `getSession()` / `refreshSession`
+ *      calls are pushed onto a `pendingInLock` queue and await the current
+ *      holder's promise.
+ *
+ * When the tab returns to the foreground, supabase-js's own auto-refresh
+ * fires a `POST /auth/v1/token?grant_type=refresh_token` request. In Firefox
+ * on an HTTP/2 connection that is coalesced with a freshly-re-opened wss
+ * (the "__cf_bm cookie rejected" flood in the console), that POST can stall
+ * for a very long time without erroring. The `lockAcquired` flag stays true.
+ * Every page that now tries to fetch anything — leaderboards, profile,
+ * market, game state — is pushed onto `pendingInLock` and sits there
+ * forever from the user's point of view, showing a spinning "Loading…".
+ * A hard refresh constructs a fresh client, resetting the flag, and
+ * everything works again until the next tab switch.
+ *
+ * ===========================================================================
+ * THE FIX
+ * ===========================================================================
+ *
+ * Routine reads don't need the lock. The session is already in memory (and
+ * mirrored to localStorage). Reading it is a synchronous operation that
+ * cannot race with anything in a sensible way — at worst we return an
+ * access_token that is a few seconds stale, which the server will accept.
+ *
+ * We therefore replace `supabase.auth.getSession` with a tiny lock-free
+ * implementation right after client construction. Token refresh, sign-in,
+ * and sign-out still go through the original locked path (we don't touch
+ * `refreshSession` / `signIn*` / `signOut`), so session writes remain
+ * correctly serialised. But every page-level fetch now gets its auth header
+ * without ever touching `_acquireLock`, which means an in-flight refresh
+ * can never block a user click.
+ *
+ * The `noopLock` + `fetchWithTimeout` belts remain as a second line of
+ * defence for the write paths.
+ * ===========================================================================
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -39,9 +69,10 @@ function anySignal(signals) {
   return ctrl.signal;
 }
 
-// 20 s covers slow cold-start Postgres functions on the Supabase free tier
-// but is well below the "user thinks it's broken forever" threshold.
-const FETCH_TIMEOUT_MS = 20_000;
+// 12 s is long enough for a cold-start Postgres function on the free tier
+// but short enough that a genuinely stuck request self-heals before the
+// user reaches for Ctrl-R.
+const FETCH_TIMEOUT_MS = 12_000;
 
 function fetchWithTimeout(input, init = {}) {
   const ctrl = new AbortController();
@@ -76,3 +107,51 @@ export const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
     fetch: fetchWithTimeout,
   },
 });
+
+// ---------------------------------------------------------------------------
+// Lock-free `getSession` patch — the actual tab-switch-hang fix.
+//
+// The supabase-js localStorage key format is `sb-<ref>-auth-token`, where
+// <ref> is the subdomain of SUPABASE_URL (e.g. `fhybzjjrlhqolbvnugxx`).
+// We derive it once here so we don't depend on internal fields.
+// ---------------------------------------------------------------------------
+const SESSION_STORAGE_KEY = (() => {
+  try {
+    const host = new URL(env.SUPABASE_URL).hostname; // e.g. abc.supabase.co
+    const ref = host.split('.')[0];
+    return `sb-${ref}-auth-token`;
+  } catch {
+    return null;
+  }
+})();
+
+function readPersistedSession() {
+  if (!SESSION_STORAGE_KEY || typeof localStorage === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // supabase-js persists either the session object directly, or
+    // `{ currentSession, expiresAt }`. Handle both shapes defensively.
+    if (parsed?.access_token) return parsed;
+    if (parsed?.currentSession?.access_token) return parsed.currentSession;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Replace the locked getSession with a direct in-memory / storage read.
+// This is intentional: we never await anything here, so the auth lock can
+// never wedge a page fetch regardless of what the auto-refresh is doing.
+const authClient = supabase.auth;
+authClient.getSession = async function patchedGetSession() {
+  // `this` may be undefined when called via the bound reference supabase-js
+  // stashed in fetchWithAuth; fall back to `authClient`.
+  const self = this || authClient;
+  const inMem = self?.inMemorySession;
+  const session =
+    (inMem && inMem.access_token ? inMem : null) ||
+    readPersistedSession();
+  return { data: { session: session ?? null }, error: null };
+};
