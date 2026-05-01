@@ -1,0 +1,6 @@
+{
+  "//": "Tailwind uses @tailwind + @apply at-rules which the built-in CSS linter doesn't know about. Silencing both globally for this project is safer than per-line /* stylelint-disable */ annotations scattered through main.css.",
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+  "less.lint.unknownAtRules": "ignore"
+}

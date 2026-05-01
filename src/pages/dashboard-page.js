@@ -3,13 +3,15 @@
  * Landing page after sign-in: welcome, daily-claim, quick stats and feature
  * cards into events and games.
  */
-import { h } from '../utils/dom.js';
+import { h, mount } from '../utils/dom.js';
 import { appShell } from '../ui/layout/app-shell.js';
 import { userStore, patchProfile } from '../state/user-store.js';
 import { ROUTES } from '../config/constants.js';
 import { canClaimToday, claimDailyCredits } from '../services/daily-claim.js';
 import { toast, toastError, toastSuccess } from '../ui/components/toast.js';
 import { formatCredits, shortName } from '../utils/format.js';
+import { listEvents } from '../services/events-service.js';
+import { logger } from '../lib/logger.js';
 
 export function renderDashboard() {
   const profile = userStore.get().profile;
@@ -17,6 +19,7 @@ export function renderDashboard() {
 
   const claim = createClaimCard();
   const stats = createStatsCard();
+  const events = createRotatingEventsCard();
   const features = createFeatureGrid();
 
   const greeting = h('section.flex.flex-col.gap-1', {}, [
@@ -30,8 +33,121 @@ export function renderDashboard() {
     stats,
   ]);
 
-  const content = h('div.flex.flex-col.gap-8', {}, [greeting, top, features]);
+  const content = h('div.flex.flex-col.gap-8', {}, [greeting, top, events, features]);
   return appShell(content);
+}
+
+// ---------------------------------------------------------------------------
+// Rotating live-events card.
+//
+// Shows a 3-event slice of the currently-open events, cycling every
+// ROTATE_MS so the dashboard feels alive without spamming RPCs. The slice
+// is deterministic per clock bucket — every user sees the same three
+// events in the same 15-minute window, matching how the game rotation
+// behaves. No extra backend needed: we already have listEvents().
+// ---------------------------------------------------------------------------
+const EVENTS_VISIBLE = 3;
+const ROTATE_MS = 15 * 60 * 1000; // 15 minutes
+
+function createRotatingEventsCard() {
+  const card = h('section.glass.neon-border.p-6.flex.flex-col.gap-3', {}, []);
+  let events = [];
+  let timer = null;
+
+  const render = () => {
+    const bucket = Math.floor(Date.now() / ROTATE_MS);
+    const slice = pickRotatingSlice(events, EVENTS_VISIBLE, bucket);
+    const body = slice.length === 0
+      ? h('div.text-sm.text-muted', {}, ['No open events right now. Create one from the Events page.'])
+      : h('div.grid.grid-cols-1.md:grid-cols-3.gap-3', {}, slice.map(eventMiniCard));
+    // `mount` only accepts a single child node, so wrap the header + body
+    // in a fragment-like container div before handing it over.
+    mount(card, h('div.flex.flex-col.gap-3', {}, [
+      h('div.flex.items-end.justify-between.gap-3.flex-wrap', {}, [
+        h('div', {}, [
+          h('div.text-xs.text-muted.uppercase.tracking-widest', {}, ['Live events']),
+          h('div.text-lg.font-semibold', {}, ['Closing soon — place your bets']),
+        ]),
+        h('a.text-xs.text-accent-cyan.hover:underline',
+          { href: ROUTES.EVENTS, 'data-link': '' },
+          ['See all →']),
+      ]),
+      body,
+    ]));
+  };
+
+  render();
+  listEvents({ status: 'open', limit: 30 })
+    .then((rows) => {
+      // Only show events still in the open window: not cancelled, not
+      // resolved, and closes_at in the future.
+      const now = Date.now();
+      events = (rows ?? []).filter((e) =>
+        !e.cancelled && !e.resolved_at && new Date(e.closes_at).getTime() > now
+      );
+      render();
+      // Rotate on a plain interval instead of realignment math: the
+      // bucket key itself keeps the slice stable across clients; the
+      // interval is just a nudge to re-render when the bucket flips.
+      timer = setInterval(render, 30_000);
+    })
+    .catch((e) => logger.warn('dashboard events load failed', e));
+
+  // Dispose when the card detaches (see app-shell MutationObserver pattern).
+  const obs = new MutationObserver(() => {
+    if (!document.body.contains(card)) {
+      if (timer) clearInterval(timer);
+      obs.disconnect();
+    }
+  });
+  obs.observe(document.body, { childList: true, subtree: true });
+
+  return card;
+}
+
+function eventMiniCard(e) {
+  const closes = new Date(e.closes_at);
+  const msLeft = closes.getTime() - Date.now();
+  const label = msLeft <= 0
+    ? 'closed'
+    : msLeft < 60_000
+      ? `${Math.floor(msLeft / 1000)}s left`
+      : msLeft < 3_600_000
+        ? `${Math.floor(msLeft / 60_000)}m left`
+        : `${Math.floor(msLeft / 3_600_000)}h ${Math.floor((msLeft % 3_600_000) / 60_000)}m left`;
+  return h(
+    'a.glass.rounded-xl.p-4.flex.flex-col.gap-2.h-full.transition.hover:-translate-y-0.5.hover:shadow-glow',
+    { href: `${ROUTES.EVENTS}/${e.id}`, 'data-link': '' },
+    [
+      h('div.text-[10px].text-accent-cyan.uppercase.tracking-widest', {}, [label]),
+      h('div.font-semibold.text-sm.line-clamp-2', { style: 'min-height:2.6em' }, [e.title ?? 'Untitled event']),
+      h('div.text-[11px].text-muted.line-clamp-2', {}, [e.description ?? '']),
+    ]
+  );
+}
+
+// Deterministic shuffle + slice: same `bucket` → same slice for every
+// client. `mulberry32` is a 32-bit PRNG seeded by bucket so all users
+// permute the same pool identically.
+function pickRotatingSlice(pool, n, bucket) {
+  if (!pool.length) return [];
+  const seed = (bucket * 2654435761) >>> 0;
+  const rand = mulberry32(seed);
+  const arr = pool.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.slice(0, n);
+}
+
+function mulberry32(a) {
+  return function () {
+    let t = (a = (a + 0x6d2b79f5) | 0);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 function createClaimCard() {

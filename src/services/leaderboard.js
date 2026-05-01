@@ -98,6 +98,11 @@ export function boardById(id) {
  */
 export async function getLeaderboardByType(boardId, limit = 50) {
   const board = boardById(boardId);
+  // Fire-and-forget: advance the King-of-the-Hill reign clock so the
+  // current #1 on every board gets credit for another confirmation
+  // tick. Errors are ignored — the tick is purely a server-side
+  // bookkeeping RPC and must never block the UI.
+  supabase.rpc('leaderboard_tick').then(() => {}, () => {});
   const { data, error } = await supabase
     .from(board.view)
     .select('*')
