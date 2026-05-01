@@ -21,7 +21,6 @@ import { startEmojiHuntOverlay, stopEmojiHuntOverlay } from './games/emoji-hunt/
 import { setProfile } from './state/user-store.js';
 import { ROUTES } from './config/constants.js';
 import { logger } from './lib/logger.js';
-import { startConnectionWatchdog, refreshNow } from './lib/connection-watchdog.js';
 
 const app = document.getElementById('app');
 const router = createRouter(routes);
@@ -32,16 +31,13 @@ initSession()
   .catch((e) => logger.error('initSession failed', e))
   .finally(() => {
     router.start(app);
-    // Start the watchdog after the router so it can hook into route events
-    // and after auth so the first resync sees a real session.
-    startConnectionWatchdog();
   });
 
 // Live-mirror profile changes (credits, streak, etc.) into userStore.
-// We tear down + recreate the realtime subscription whenever the user id
-// changes (login/logout) AND whenever the watchdog asks for a reconnect
-// (custom 'gitm:realtime-reconnect' event), so that a dead websocket
-// after laptop sleep doesn't silently freeze the credit display.
+// The realtime subscription is torn down + recreated only when the user id
+// itself changes (login / logout). On tab switches we deliberately do
+// nothing — Phoenix's built-in heartbeat keeps the channel alive, and any
+// extra cycling we tried to do here was the cause of the tab-switch hang.
 let profileSub = null;
 let lastUserId = null;
 
@@ -71,18 +67,6 @@ userStore.subscribe(({ user }) => {
     }
   }
 });
-
-// When the watchdog forces a realtime reconnect, also recycle our profile
-// channel — Supabase will resubscribe with a fresh token.
-window.addEventListener('gitm:realtime-reconnect', () => {
-  const id = userStore.get().user?.id ?? null;
-  if (!id) return;
-  profileSub?.();
-  profileSub = subscribeToOwnProfile(id, (row) => setProfile(row));
-});
-
-// Expose the manual resync for debugging from the devtools console.
-if (import.meta.env?.DEV) window.__gitmRefresh = refreshNow;
 
 // Friendly global error boundary
 window.addEventListener('unhandledrejection', (e) => {
