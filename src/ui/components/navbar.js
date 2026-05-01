@@ -13,6 +13,7 @@ const LINKS = [
   { href: ROUTES.DASHBOARD, label: 'Dashboard' },
   { href: ROUTES.EVENTS, label: 'Events' },
   { href: ROUTES.GAMES, label: 'Games' },
+  { href: ROUTES.MARKET, label: 'Market' },
   { href: ROUTES.LEADERBOARD, label: 'Leaderboard' },
 ];
 

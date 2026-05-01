@@ -131,7 +131,7 @@ export function renderMpTtt(ctx) {
       h('div.grid.grid-cols-1.md:grid-cols-3.gap-3', {}, [
         playerPanel(game.x, 'X', game.turn === 0 && game.status === 'active', game.winner === 0),
         h('div.glass.neon-border.p-4.flex.flex-col.items-center.justify-center.gap-1', {}, [
-          h('span.text-[10px].text-muted.uppercase.tracking-widest', {}, ['Pot (winner 95%)']),
+          h('span.text-[10px].text-muted.uppercase.tracking-widest', {}, ['Pot · winner takes all']),
           h('span.text-2xl.font-mono.font-bold.text-accent-lime', {}, [
             `${formatCredits(game.ante * 2)} cr`,
           ]),
@@ -150,6 +150,11 @@ export function renderMpTtt(ctx) {
         ]),
         playerPanel(game.o, 'O', game.turn === 1 && game.status === 'active', game.winner === 1),
       ]),
+
+      // Chaos event banner (shown when a chaos event just happened this turn)
+      game.game_type === 'ttt_chaos' && game.status === 'active'
+        ? chaosEventBanner(game, seat)
+        : null,
 
       // Board
       boardView(board, locked, faded, canMove, doMove, game.game_type),
@@ -202,7 +207,7 @@ function announceOutcome(game, myId) {
   const seat = seatOf(game, myId);
   if (seat == null) return;
   if (game.winner === -1) toast('Draw — ante refunded', { type: 'info' });
-  else if (game.winner === seat) toastSuccess(`You won ${formatCredits(Math.floor((game.ante * 2 * 95) / 100))} cr`);
+  else if (game.winner === seat) toastSuccess(`You won ${formatCredits(game.ante * 2)} cr`);
   else toastError('You lost.');
 }
 
@@ -275,36 +280,43 @@ function cellView(i, value, isLocked, wasFaded, canMove, onCell, variant) {
   const color = value === 1 ? '#ff2bd6' : value === 2 ? '#22e1ff' : 'transparent';
 
   const bg = isLocked
-    ? 'repeating-linear-gradient(45deg, rgba(255,43,214,0.12) 0 8px, rgba(0,0,0,0) 8px 16px)'
+    ? 'repeating-linear-gradient(45deg, rgba(255,43,214,0.22) 0 10px, rgba(20,4,16,0.6) 10px 20px)'
     : 'linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))';
 
   return h(
-    'button.relative.rounded-xl.flex.items-center.justify-center.transition-transform',
+    'button.relative.rounded-xl.flex.items-center.justify-center.transition-transform.overflow-hidden',
     {
       onclick: playable ? () => onCell(i) : undefined,
       disabled: !playable,
       style: {
         background: bg,
-        border: `1px solid ${isLocked ? 'rgba(255,43,214,0.6)' : 'rgba(255,255,255,0.08)'}`,
-        boxShadow: isLocked ? 'inset 0 0 18px rgba(255,43,214,0.25)' : 'inset 0 0 10px rgba(0,0,0,0.4)',
+        border: `2px solid ${isLocked ? 'rgba(255,43,214,0.85)' : 'rgba(255,255,255,0.08)'}`,
+        boxShadow: isLocked
+          ? 'inset 0 0 20px rgba(255,43,214,0.45), 0 0 14px rgba(255,43,214,0.35)'
+          : 'inset 0 0 10px rgba(0,0,0,0.4)',
         cursor: playable ? 'pointer' : 'default',
-        opacity: playable || !empty ? 1 : 0.85,
+        opacity: playable || !empty || isLocked ? 1 : 0.85,
       },
     },
     [
-      h(
-        `span.text-6xl.font-mono.font-bold`,
-        { style: { color, textShadow: color !== 'transparent' ? `0 0 18px ${color}aa` : 'none' } },
-        [label]
-      ),
+      // Central mark / lock icon
       isLocked
-        ? h(
-            'span.absolute.bottom-1.right-2.text-[10px].text-accent-rose.uppercase.tracking-widest.font-bold',
-            {},
-            ['Locked']
-          )
-        : null,
-      wasFaded && empty
+        ? h('div.flex.flex-col.items-center.gap-1.pointer-events-none', {}, [
+            h('span.text-5xl', {
+              style: { filter: 'drop-shadow(0 0 8px rgba(255,43,214,0.8))' },
+            }, ['🔒']),
+            h(
+              'span.text-[10px].text-accent-rose.uppercase.tracking-widest.font-bold',
+              {},
+              ['Locked'],
+            ),
+          ])
+        : h(
+            `span.text-6xl.font-mono.font-bold`,
+            { style: { color, textShadow: color !== 'transparent' ? `0 0 18px ${color}aa` : 'none' } },
+            [label]
+          ),
+      wasFaded && empty && !isLocked
         ? h(
             'span.absolute.top-1.left-2.text-[10px].text-accent-amber.uppercase.tracking-widest',
             {},
@@ -337,9 +349,66 @@ function variantStatsView(game, board) {
     const locked = game.state?.locked;
     return h('div.flex.items-center.justify-center.gap-3.text-xs.text-muted', {}, [
       locked == null
-        ? h('span', {}, ['No cell locked'])
+        ? h('span', {}, ['No cell locked · anything goes this turn'])
         : h('span.text-accent-rose', {}, [`Cell ${locked + 1} locked this turn`]),
     ]);
   }
   return null;
+}
+
+// ----------------------------------------------------------------------------
+// Chaos per-turn event banner
+// ----------------------------------------------------------------------------
+function chaosEventBanner(game, mySeat) {
+  const ev = game.state?.event;
+  if (!ev || !ev.type || ev.type === 'nothing') return null;
+
+  const xName = game.x?.display_name ?? 'X';
+  const oName = game.o?.display_name ?? 'O';
+  const turnName = game.turn === 0 ? xName : oName;
+  const oppName  = game.turn === 0 ? oName : xName;
+  const isMyTurn = mySeat === game.turn;
+
+  let icon = '⚡'; let title = 'Chaos event'; let detail = ''; let tone = '#22e1ff';
+  switch (ev.type) {
+    case 'block':
+      icon = '🔒'; title = 'Cell locked';
+      detail = `Cell ${ev.cell + 1} is locked for ${isMyTurn ? 'you' : turnName} this turn.`;
+      tone = '#ff2bd6';
+      break;
+    case 'remove_own':
+      icon = '💥'; title = 'Piece removed';
+      detail = `${isMyTurn ? 'One of your own pieces' : turnName + "'s own piece"} (cell ${ev.cell + 1}) vanished.`;
+      tone = '#ff6d8a';
+      break;
+    case 'remove_opp':
+      icon = '🎯'; title = 'Opponent piece removed';
+      detail = `${isMyTurn ? 'An opponent piece' : oppName + "'s piece"} (cell ${ev.cell + 1}) was wiped from the board.`;
+      tone = '#3ddc7e';
+      break;
+    case 'swap':
+      icon = '🔀'; title = 'Swap';
+      detail = `Cells ${ev.own + 1} and ${ev.opp + 1} swapped owners.`;
+      tone = '#b06bff';
+      break;
+    default:
+      return null;
+  }
+
+  return h('div.glass.p-3.rounded-xl.flex.items-center.gap-3', {
+    style: {
+      border: `1px solid ${tone}55`,
+      boxShadow: `0 0 16px ${tone}33`,
+      background: `linear-gradient(90deg, ${tone}11, transparent)`,
+    },
+  }, [
+    h('span.text-2xl', {}, [icon]),
+    h('div.flex.flex-col.min-w-0.flex-1', {}, [
+      h('span.text-xs.uppercase.tracking-widest', { style: { color: tone } }, [title]),
+      h('span.text-sm.text-white', {}, [detail]),
+    ]),
+    h('span.text-[10px].text-muted.uppercase.tracking-widest', {}, [
+      isMyTurn ? 'Your turn' : `${turnName}'s turn`,
+    ]),
+  ]);
 }

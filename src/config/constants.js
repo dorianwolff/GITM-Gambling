@@ -23,8 +23,8 @@ export const LIMITS = Object.freeze({
 });
 
 export const GAMES = Object.freeze({
-  COINFLIP: { id: 'coinflip', name: 'Coinflip', payout: 1.95 },
-  DICE: { id: 'dice', name: 'Dice', housePayoutRtp: 0.97 },
+  COINFLIP: { id: 'coinflip', name: 'Coinflip', payout: 1.95, minBet: 10 },
+  DICE: { id: 'dice', name: 'Dice', housePayoutRtp: 0.97, minBet: 2 },
   ROULETTE: { id: 'roulette', name: 'Roulette' },
   BLACKJACK: { id: 'blackjack', name: 'Blackjack' },
   CRASH: { id: 'crash', name: 'Crash', maxMultiplier: 100 },
@@ -56,7 +56,11 @@ export const ROUTES = Object.freeze({
   LOBBY: '/games/lobby',
   MP_GAME: '/games/mp/:id',
   PROFILE: '/profile',
+  PLAYER_PROFILE: '/players/:id',
   LEADERBOARD: '/leaderboard',
   HISTORY: '/history',
+  MARKET: '/market',
+  INVENTORY: '/market/inventory',
+  LISTING_DETAIL: '/market/listing/:id',
   AUTH_CALLBACK: '/auth/callback',
 });

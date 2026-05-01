@@ -25,6 +25,8 @@ import { renderEmojiHunt } from '../pages/games/emoji-hunt-page.js';
 import { renderCase } from '../pages/games/case-page.js';
 import { renderLobby } from '../pages/games/lobby-page.js';
 import { renderMpTtt } from '../pages/games/mp-ttt-page.js';
+import { renderPublicProfile } from '../pages/public-profile-page.js';
+import { renderMarket } from '../pages/market-page.js';
 
 export const routes = [
   { path: ROUTES.LOGIN, render: redirectIfAuthed(renderLogin) },
@@ -47,6 +49,8 @@ export const routes = [
   { path: ROUTES.MP_GAME, render: requireAuth(renderMpTtt) },
 
   { path: ROUTES.PROFILE, render: requireAuth(renderProfile) },
+  { path: ROUTES.PLAYER_PROFILE, render: requireAuth(renderPublicProfile) },
   { path: ROUTES.LEADERBOARD, render: requireAuth(renderLeaderboard) },
   { path: ROUTES.HISTORY, render: requireAuth(renderHistory) },
+  { path: ROUTES.MARKET, render: requireAuth(renderMarket) },
 ];

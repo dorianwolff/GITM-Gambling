@@ -6,107 +6,127 @@
  *   - long-running idle (periodic poll)
  *   - SPA route changes (cheap belt-and-suspenders profile resync)
  *
- * Why this exists:
- *   Supabase's auto-refresh token pauses while the tab is hidden, so an
- *   inactive tab can wake up with an expired JWT and start failing RPCs
- *   ("JWT expired" 401) until the user reloads.
- *   Likewise the realtime websocket drops silently after long idle; the
- *   profile/events/hunts channels go quiet and the UI shows stale data
- *   until reload.
- *   This module forces a recovery on every wake/online/route event.
+ * -------------------- v3 architectural note -----------------------------
+ *
+ * Previous versions called `supabase.auth.refreshSession()` on every
+ * visibilitychange. That turned out to be the cause of the "tab-switch
+ * makes every game hang forever" bug: we were fighting the built-in
+ * `autoRefreshToken` handler for the same navigator.locks-guarded auth
+ * state and creating deadlocks that left `getSession()` — and therefore
+ * every RPC — waiting forever on a lock that would never release.
+ *
+ * The root cause is now fixed structurally in `supabase.js` via a no-op
+ * lock + global fetch timeout. This watchdog no longer touches auth.
+ *
+ * v3 responsibilities:
+ *   1. Cycle the realtime websocket on tab wake / network wake. The
+ *      websocket can silently die while the tab is hidden — the fetch-
+ *      based RPCs will recover on their own, but realtime subscriptions
+ *      need a deliberate kick.
+ *   2. Refetch the profile after long idle so the credits number is
+ *      consistent with the server before the user places their next bet.
+ *   3. Tell page-level subscribers to rebuild their channels via a custom
+ *      event, so pages that have live updates get a clean re-join.
+ *
+ * It deliberately does NOT:
+ *   - Call `auth.refreshSession()` / `auth.getSession()` on wake. The
+ *     supabase-js client already handles this correctly on its own and
+ *     double-driving it is what caused the original hang.
+ *   - Block the tab-wake path on anything that can fail. Every call is
+ *     wrapped so a broken step never stops later steps.
  *
  * Public API:
- *   startConnectionWatchdog()  — call once at app boot, after auth init.
- *   refreshNow()               — manually force a resync (e.g. after an
- *                                action you suspect raced with the socket).
+ *   startConnectionWatchdog()
+ *   refreshNow(reason?)     — soft: refetch profile, cycle socket if dead
+ *   hardReconnect(reason?)  — force a websocket cycle + profile refetch
  */
 import { supabase } from './supabase.js';
 import { logger } from './logger.js';
-import { userStore, setUser, setProfile } from '../state/user-store.js';
+import { userStore, setProfile } from '../state/user-store.js';
 import { refreshProfile } from '../services/profile-service.js';
 
 let started = false;
-let lastSync = 0;
+let lastRun = 0;
 let periodicId = null;
 
-const RESYNC_DEDUPE_MS = 1500;          // collapse rapid-fire calls
-const PERIODIC_RESYNC_MS = 4 * 60_000;  // 4 minutes — well below 1h JWT TTL
+const DEDUPE_MS = 1500;
+const PERIODIC_RESYNC_MS = 4 * 60_000;
 
 /**
- * Force a full session + profile + realtime resync.
- * Cheap: ~1 round trip when nothing is stale, ~3 when JWT needs refresh.
+ * Soft resync. Refetch profile; cycle socket only if it reports dead.
+ * Cheap — safe to spam on route changes.
  */
 export async function refreshNow(reason = 'manual') {
   const now = Date.now();
-  if (now - lastSync < RESYNC_DEDUPE_MS) return;
-  lastSync = now;
+  if (now - lastRun < DEDUPE_MS) return;
+  lastRun = now;
 
+  const uid = userStore.get().user?.id;
+  if (!uid) return;
+
+  // Fire-and-forget profile refetch. Don't await — if the network stalls
+  // we don't want this to block the rest of the wake path.
+  refreshProfile(uid)
+    .then((p) => p && setProfile(p))
+    .catch((e) => logger.warn('watchdog: profile refetch failed', e));
+
+  // Only cycle if clearly dead; otherwise trust the built-in heartbeat.
   try {
-    // 1. Pull the cached session, then force-refresh the JWT if it has
-    //    expired or is about to. `getSession()` does NOT refresh on its
-    //    own (it reads from local storage); we have to call
-    //    `refreshSession()` ourselves.
-    let { data: { session }, error } = await supabase.auth.getSession();
-    if (error) {
-      logger.warn('watchdog: getSession error', error);
-      return;
-    }
-    if (session) {
-      const expiresAt = (session.expires_at ?? 0) * 1000; // seconds → ms
-      const remaining = expiresAt - Date.now();
-      if (remaining < 60_000) {
-        // Less than a minute left (or already expired) → refresh now.
-        const refreshed = await supabase.auth.refreshSession();
-        if (refreshed.error) {
-          logger.warn('watchdog: refreshSession failed', refreshed.error);
-          return;
-        }
-        session = refreshed.data.session;
-      }
-    }
-    const user = session?.user ?? null;
-    if (!user) return; // signed out — nothing to do
+    const rt = supabase.realtime;
+    const isOpen = typeof rt?.isConnected === 'function' ? rt.isConnected() : true;
+    if (!isOpen) cycleSocket('soft-dead');
+  } catch (e) { logger.warn('watchdog: realtime probe failed', e); }
 
-    // Always update the user reference so any code reading userStore
-    // sees the freshest token-bound user object.
-    if (userStore.get().user?.id !== user.id) {
-      setUser(user);
-    } else {
-      // Same id but new session; userStore's user object can stay,
-      // we just need its token-bound state to be current. Touching
-      // setUser here forces subscribers (realtime sub recreator) to
-      // re-evaluate, but only when the id actually changed — which it
-      // won't on a token refresh, so we skip.
-    }
+  logger.debug('watchdog: soft resync', { reason });
+}
 
-    // 2. Re-fetch the profile row. Realtime might have missed an update
-    //    while the socket was dead.
-    try {
-      const profile = await refreshProfile(user.id);
-      setProfile(profile);
-    } catch (e) {
-      logger.warn('watchdog: profile refetch failed', e);
-    }
+/**
+ * Hard reconnect: always cycle the websocket + refetch profile. Used when
+ * we know the tab was hidden / the network flapped and passive recovery
+ * probably isn't enough.
+ *
+ * Still zero auth calls. The client auto-refreshes its own token on a
+ * timer and the no-op lock means no RPC can ever deadlock on `getSession`.
+ */
+export async function hardReconnect(reason = 'manual') {
+  const now = Date.now();
+  if (now - lastRun < DEDUPE_MS) return;
+  lastRun = now;
 
-    // 3. Nudge the realtime client to reconnect any dead channels.
-    //    `realtime.connect()` is a no-op if already connected; if the
-    //    socket is closed it will reopen.
-    try {
-      const rt = supabase.realtime;
-      const isOpen = typeof rt?.isConnected === 'function' ? rt.isConnected() : true;
-      if (!isOpen && typeof rt?.connect === 'function') {
-        rt.connect();
-        // Tell app code to recycle channels with a fresh token. Pages and
-        // services listen for this and re-subscribe.
-        window.dispatchEvent(new CustomEvent('gitm:realtime-reconnect'));
-      }
-    } catch (e) {
-      logger.warn('watchdog: realtime reconnect failed', e);
-    }
+  const uid = userStore.get().user?.id;
+  if (!uid) return;
 
-    logger.debug('watchdog: resynced', { reason });
+  cycleSocket(reason);
+
+  // Refetch profile non-blocking.
+  refreshProfile(uid)
+    .then((p) => p && setProfile(p))
+    .catch((e) => logger.warn('watchdog[hard]: profile refetch failed', e));
+
+  logger.debug('watchdog: hard resync', { reason });
+}
+
+/**
+ * Disconnect and reconnect the realtime socket. Every subscribed channel
+ * re-joins on its own. Pages with page-scoped channels also receive the
+ * `gitm:realtime-reconnect` custom event so they can rebuild if needed.
+ *
+ * All defensive — never throws.
+ */
+function cycleSocket(reason) {
+  try {
+    const rt = supabase.realtime;
+    if (!rt) return;
+    try { rt.disconnect?.(); } catch {}
+    // One tick so `connect()` doesn't race `disconnect()` internal state.
+    setTimeout(() => {
+      try { rt.connect?.(); } catch (e) { logger.warn('watchdog: connect threw', e); }
+      window.dispatchEvent(new CustomEvent('gitm:realtime-reconnect', {
+        detail: { reason },
+      }));
+    }, 50);
   } catch (e) {
-    logger.warn('watchdog: resync threw', e);
+    logger.warn('watchdog: cycle threw', e);
   }
 }
 
@@ -114,20 +134,35 @@ export function startConnectionWatchdog() {
   if (started) return;
   started = true;
 
-  // Tab visibility — fires when user returns to the tab.
+  // Tab came back into view. Don't touch auth; just refresh the socket
+  // and the profile. The current page also gets re-rendered by the router
+  // on the `gitm:tab-wake` event so stale UI state resyncs.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') refreshNow('visibility');
+    if (document.visibilityState === 'visible') {
+      hardReconnect('visibility');
+      window.dispatchEvent(new CustomEvent('gitm:tab-wake', { detail: { reason: 'visibility' } }));
+    }
   });
 
-  // Window focus — secondary trigger; some browsers fire focus without
-  // visibilitychange (e.g. switching app windows on macOS).
-  window.addEventListener('focus', () => refreshNow('focus'));
+  // macOS window focus without visibilitychange (alt-tabbing between app
+  // windows on the same desktop). Soft path to avoid double-cycling when
+  // both fire together.
+  window.addEventListener('focus', () => {
+    refreshNow('focus');
+  });
 
-  // Network came back.
-  window.addEventListener('online', () => refreshNow('online'));
+  // Network back online — the socket has probably died.
+  window.addEventListener('online', () => hardReconnect('online'));
 
-  // SPA route change — cheap resync on every navigation. Dedupe makes
-  // this near-free if the user navigates rapidly.
+  // BFCache restore. Supabase state is in memory but the socket is dead.
+  window.addEventListener('pageshow', (ev) => {
+    if (ev.persisted) {
+      hardReconnect('pageshow-bfcache');
+      window.dispatchEvent(new CustomEvent('gitm:tab-wake', { detail: { reason: 'bfcache' } }));
+    }
+  });
+
+  // SPA route change → cheap soft resync.
   window.addEventListener('gitm:route', () => refreshNow('route'));
 
   // Periodic safety net.
@@ -139,6 +174,4 @@ export function stopConnectionWatchdog() {
   if (periodicId) clearInterval(periodicId);
   periodicId = null;
   started = false;
-  // Listeners are bound to window/document for the app's lifetime; we
-  // don't bother removing them — there is at most one watchdog ever.
 }

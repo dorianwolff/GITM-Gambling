@@ -94,7 +94,9 @@ $$;
 revoke all on function public._apply_credit_delta(uuid,integer,text,jsonb) from public;
 
 -- Update the leaderboard view so peak_credits ships with it.
-create or replace view public.v_leaderboard as
+-- Must DROP then CREATE — CREATE OR REPLACE can't reorder/insert columns.
+drop view if exists public.v_leaderboard;
+create view public.v_leaderboard as
   select id, display_name, avatar_url, credits, peak_credits, total_wagered, total_won
     from public.profiles
    order by credits desc

@@ -102,6 +102,18 @@ export function createRouter(routes) {
     outlet = rootEl;
     window.addEventListener('popstate', render);
     document.addEventListener('click', interceptLinks);
+    // When the tab wakes up after long idle (connection-watchdog fires
+    // `gitm:tab-wake`), re-render the current route. Pages with their own
+    // page-scoped state then re-initialise cleanly, so the UI can never
+    // be left in a stuck "I was about to fetch something but the tab was
+    // hidden" state. This is the belt to the watchdog's braces — even if
+    // a specific page forgot to listen for realtime-reconnect, the full
+    // re-render guarantees it resets.
+    window.addEventListener('gitm:tab-wake', () => {
+      // Small delay so the socket has a moment to come back up before the
+      // page's new mount tries to subscribe.
+      setTimeout(() => render(), 80);
+    });
     render();
   }
 
