@@ -75,7 +75,7 @@ create table if not exists public.transactions (
   kind        text not null check (kind in (
     'daily_claim','signup_bonus',
     'bet_place','bet_payout',
-    'game_coinflip','game_dice','game_roulette','game_blackjack','game_crash',
+    'game_coinflip','game_dice','game_roulette','game_blackjack','game_crash','plinko',
     'emoji_hunt','admin_grant','admin_revoke'
   )),
   meta        jsonb not null default '{}'::jsonb,

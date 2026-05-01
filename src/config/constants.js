@@ -28,6 +28,7 @@ export const GAMES = Object.freeze({
   ROULETTE: { id: 'roulette', name: 'Roulette' },
   BLACKJACK: { id: 'blackjack', name: 'Blackjack' },
   CRASH: { id: 'crash', name: 'Crash', maxMultiplier: 100 },
+  PLINKO: { id: 'plinko', name: 'Plinko', minBet: 1 },
   EMOJI_HUNT: { id: 'emoji_hunt', name: 'Emoji Hunt', reward: 25 },
 });
 
@@ -51,6 +52,7 @@ export const ROUTES = Object.freeze({
   ROULETTE: '/games/roulette',
   BLACKJACK: '/games/blackjack',
   CRASH: '/games/crash',
+  PLINKO: '/games/plinko',
   EMOJI_HUNT: '/games/emoji-hunt',
   CASE: '/games/cases',
   GACHA: '/games/gacha',

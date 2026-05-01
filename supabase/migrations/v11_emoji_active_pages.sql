@@ -41,7 +41,8 @@ declare
     'cases',     '/games/cases',
     'gacha',     '/games/gacha',
     'mines',     '/games/mines',
-    'candy',     '/games/candy'
+    'candy',     '/games/candy',
+    'plinko',    '/games/plinko'
   );
   active_routes text[];
 begin

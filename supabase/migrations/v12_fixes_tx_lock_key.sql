@@ -49,6 +49,8 @@ alter table public.transactions
     'gacha_pull','gacha_payout',
     -- v9 mines + candy
     'mines_bet','mines_cashout','candy_bet','candy_payout',
+    -- v17 plinko
+    'plinko',
     -- v12+ reserved for forthcoming achievements (cheap to list now so
     -- we don't need another migration when king_of_the_hill ships)
     'achievement_award'

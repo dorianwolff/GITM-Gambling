@@ -23,6 +23,7 @@ export const GAME_ID_TO_ROUTE = Object.freeze({
   gacha:     ROUTES.GACHA,
   mines:     ROUTES.MINES,
   candy:     ROUTES.CANDY,
+  plinko:    ROUTES.PLINKO,
 });
 
 // Reverse lookup: route → game id, used by the route guard.

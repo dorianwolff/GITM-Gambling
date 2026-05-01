@@ -66,7 +66,7 @@ create or replace function public.game_pool()
 returns text[] language sql immutable as $$
   select array[
     'blackjack','candy','cases','coinflip','crash','dice',
-    'gacha','mines','roulette'
+    'gacha','mines','plinko','roulette'
   ]::text[];
 $$;
 grant execute on function public.game_pool() to authenticated;

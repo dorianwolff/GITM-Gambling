@@ -16,14 +16,51 @@ the site.
   depth).
 - 💰 **Daily credits** — 100 base + up to 100 streak bonus.
 - 🎯 **Custom events** — any student creates a betting event (1/day,
-  admins unlimited). Pari-mutuel pool with 5% house fee. Realtime updates
-  to all viewers.
-- 🪙🎲🎡🃏🚀 **Mini-games** — Coinflip, Dice, Roulette, Blackjack and
-  Crash, all server-resolved (the client cannot cheat).
-- 👀 **Emoji hunts** — admins (or random scheduled spawns you can wire up)
-  drop a glowing emoji at a random screen position. **First click wins**
-  — resolved atomically in Postgres.
-- 🏆 **Live leaderboard** & **transaction history**.
+  admins unlimited). Pari-mutuel pool with no house fee (fully
+  redistributed). Realtime updates to all viewers.
+- 🪙🎲🎡🃏🚀💣🍭🎰🎮🔴 **Ten mini-games** — all server-resolved, the client
+  cannot cheat. Six are active at any moment on a rotating schedule:
+  - **Coinflip** — pick heads or tails, 1.95× payout.
+  - **Dice** — roll over/under a target with dynamic multiplier.
+  - **Roulette** — European-style with server-spin.
+  - **Blackjack** — full interactive table: hit, stand, double, split,
+    surrender, and insurance. Multi-hand support after splits.
+  - **Crash** — watch the multiplier climb, cash out before it crashes.
+  - **Plinko** — drop a ball through a peg board (8–12 rows, low/medium/high risk) and land in multiplier slots. Pure RNG with escalating edge payouts.
+  - **Cases** — lootbox tiers (Bronze / Silver / Gold) with seven
+    rarities from Common to Ultra. Golden keys remove commons, pity
+    guarantees a Rare after ten consecutive duds, batch open up to 50 at
+    once, and a small chance to drop a cosmetic item.
+  - **Minesweeper** — 5×5 grid, choose 1–24 mines. Reveal safe tiles to
+    climb the multiplier, cash out anytime, or hit a mine and bust.
+  - **Candy Crush** — 6×6 match-3 cascade resolver. Up to 8 rounds of
+    gravity + refills with tiered payouts per cleared cluster.
+  - **Gacha Wheel** — 1 or 10 pulls for cosmetics. Rarities from Common
+    up to Mythic and genuine **One-of-One** trophies. Pity forces
+    Legendary+ on the 80th pull. One-of-one slots are consumed forever
+    once claimed.
+- 🎮 **Multiplayer Tic-Tac-Toe** — two variants with credit antes:
+  - **Chaos** — after every move a random event fires (blocked cell,
+    piece removal, or swap). The previously locked cell unlocks
+    immediately.
+  - **Fade** — each player may only have 3 pieces on the board. Placing a
+    4th fades the oldest piece. Winner takes the whole pot (no house fee).
+- 🛒 **Market & Auctions** — shop and player-driven economy for
+  cosmetics (badges, frames, titles, effects, trophies). List items for
+  timed auction (1–48 h), bid with escrowed funds, tiered seller fee
+  (12 % down to 2 %), and anti-sniping extension (last 2 min extends by
+  2 min). Equip cosmetics to show off on your profile.
+- 👀 **Emoji hunts** — auto-spawned across the site at a client-driven
+  cadence. First click wins, resolved atomically in Postgres. Spawns
+  only land on pages that are currently reachable (respecting the active
+  game rotation).
+- 🏆 **Six live leaderboards** — Credits, Peak Credits, Biggest Single
+  Win, Total Won, Total Wagered, Cases Opened, and Collection (unique
+  items owned). All backed by denormalised profile columns with real-time
+  triggers, capped at 100 entries each.
+- 👑 **King of the Hill achievements** — hold #1 on any leaderboard for
+  one continuous hour to unlock a permanent badge and a 5 000 credit
+  reward. Once per board, per user.
 - 🌌 **Modern UI** — glass cards, neon gradients, futuristic vibe (no
   table-skin casino kitsch).
 
@@ -48,7 +85,12 @@ the site.
 **Security model**: the browser only ever holds the public Supabase
 **anon** key. All credit-affecting writes go through SECURITY DEFINER
 Postgres functions (`play_coinflip`, `play_dice`, `play_roulette`,
-`play_blackjack`, `play_crash`, `place_event_bet`, `resolve_event`,
+`bj_start`, `bj_hit`, `bj_stand`, `bj_double`, `bj_split`, `bj_surrender`,
+`bj_insurance`, `play_crash`, `open_case`, `open_case_batch`, `gacha_pull`,
+`minesweeper_start`, `minesweeper_reveal`, `minesweeper_cashout`,
+`candy_spin`, `mp_create_game`, `mp_join_game`, `mp_make_move`,
+`mp_resign`, `mp_cancel_game`, `market_buy`, `market_list`, `market_bid`,
+`market_cancel`, `market_settle`, `place_event_bet`, `resolve_event`,
 `claim_daily_credits`, `claim_emoji_hunt`). The `credits` column of
 `profiles` is **not writable** from the client — RLS denies any update
 that would change it. All randomness for credit-affecting outcomes lives
@@ -72,7 +114,10 @@ src/
 ├── config/          ← env vars, constants (no magic numbers in code)
 ├── games/           ← per-game RPC wrappers + curve / wheel helpers
 │   ├── coinflip/   ├── dice/        ├── roulette/
-│   ├── blackjack/  ├── crash/       └── emoji-hunt/
+│   ├── blackjack/  ├── crash/       ├── cases/
+│   ├── mines/      ├── candy/        ├── gacha/
+│   ├── plinko/     ├── multiplayer/  └── market/
+│   └── emoji-hunt/
 ├── lib/             ← supabase client, logger
 ├── pages/           ← one page = one file (login, dashboard, events…)
 │   └── games/       ← one game page each
@@ -86,7 +131,23 @@ src/
 ├── utils/           ← dom, dates, format, random, validation
 └── main.js          ← entry point
 supabase/
-└── schema.sql       ← single SQL file: tables, RLS, RPCs, triggers
+├── schema.sql       ← base tables, RLS, RPCs, triggers
+└── migrations/      ← numbered migrations (v2–v16)
+│   ├── v2_interactive_blackjack_and_page_hunts.sql
+│   ├── v3_cases_multiplayer_peak.sql
+│   ├── v4_fixes_and_improvements.sql
+│   ├── v5_market_mp_chaos.sql
+│   ├── v6_leaderboards.sql
+│   ├── v7_autospawn_and_rotation.sql
+│   ├── v8_gacha.sql
+│   ├── v9_mines_candy.sql
+│   ├── v10_admin_bypass.sql
+│   ├── v11_emoji_active_pages.sql
+│   ├── v12_fixes_tx_lock_key.sql
+│   ├── v13_rotation_sync.sql
+│   ├── v14_king_of_hill.sql
+│   ├── v15_fix_v12_recursion.sql
+│   └── v16_rotation_ambig_fix.sql
 ```
 
 The "many small files" rule: every file owns one job. The biggest files
@@ -106,7 +167,6 @@ The "many small files" rule: every file owns one job. The biggest files
 ## Roadmap ideas
 
 - [ ] Provably-fair Crash (HMAC-based commitment + reveal)
-- [ ] Scheduled cron in Supabase Edge Function to auto-spawn emoji hunts
 - [ ] Discord/Slack webhook on big wins
 - [ ] Per-event chat with `realtime.broadcast`
 - [ ] Mobile bottom-tab nav
