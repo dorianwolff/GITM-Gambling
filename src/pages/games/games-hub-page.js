@@ -31,6 +31,7 @@ const ROTATING = {
   mines:     { title: 'Mines',     desc: 'Pick safe tiles, stack multiplier, cash out before the boom.', icon: '💣', grad: 'from-accent-rose/40 to-accent-amber/40' },
   candy:     { title: 'Candy',     desc: 'Match-3 cascades. Chain clears for runaway payouts.',         icon: '🍬', grad: 'from-accent-magenta/40 to-accent-lime/40' },
   plinko:    { title: 'Plinko',    desc: 'Drop through pegs, land in a multiplier. Pure tension.',      icon: '🔴', grad: 'from-accent-cyan/40 to-accent-rose/40' },
+  lottery:   { title: 'Neon Lotto', desc: 'Pick 5 lucky numbers. Match drawn balls for up to 8,000×.',   icon: '🎱', grad: 'from-accent-lime/40 to-accent-violet/40' },
 };
 
 // Always-on games (not part of the rotation), shown beneath the rotating row.

@@ -18,7 +18,7 @@ the site.
 - 🎯 **Custom events** — any student creates a betting event (1/day,
   admins unlimited). Pari-mutuel pool with no house fee (fully
   redistributed). Realtime updates to all viewers.
-- 🪙🎲🎡🃏🚀💣🍭🎰🎮🔴 **Ten mini-games** — all server-resolved, the client
+- 🪙🎲🎡🃏🚀💣🍭🎰🎮🔴🎱 **Eleven mini-games** — all server-resolved, the client
   cannot cheat. Six are active at any moment on a rotating schedule:
   - **Coinflip** — pick heads or tails, 1.95× payout.
   - **Dice** — roll over/under a target with dynamic multiplier.
@@ -27,6 +27,7 @@ the site.
     surrender, and insurance. Multi-hand support after splits.
   - **Crash** — watch the multiplier climb, cash out before it crashes.
   - **Plinko** — drop a ball through a peg board (8–12 rows, low/medium/high risk) and land in multiplier slots. Pure RNG with escalating edge payouts.
+  - **Neon Lotto** — pick 5 numbers from 1-36. Watch 5 numbered balls tumble out one by one. Match 2+ for payouts up to 8,000×. ~97% RTP.
   - **Cases** — lootbox tiers (Bronze / Silver / Gold) with seven
     rarities from Common to Ultra. Golden keys remove commons, pity
     guarantees a Rare after ten consecutive duds, batch open up to 50 at
@@ -116,7 +117,8 @@ src/
 │   ├── coinflip/   ├── dice/        ├── roulette/
 │   ├── blackjack/  ├── crash/       ├── cases/
 │   ├── mines/      ├── candy/        ├── gacha/
-│   ├── plinko/     ├── multiplayer/  └── market/
+│   ├── plinko/     ├── lottery/      └── market/
+│   ├── multiplayer/
 │   └── emoji-hunt/
 ├── lib/             ← supabase client, logger
 ├── pages/           ← one page = one file (login, dashboard, events…)
@@ -147,7 +149,9 @@ supabase/
 │   ├── v13_rotation_sync.sql
 │   ├── v14_king_of_hill.sql
 │   ├── v15_fix_v12_recursion.sql
-│   └── v16_rotation_ambig_fix.sql
+│   ├── v16_rotation_ambig_fix.sql
+│   ├── v17_plinko.sql
+│   └── v18_lottery.sql
 ```
 
 The "many small files" rule: every file owns one job. The biggest files

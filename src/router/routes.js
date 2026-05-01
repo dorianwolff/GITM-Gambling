@@ -22,6 +22,7 @@ import { renderRoulette } from '../pages/games/roulette-page.js';
 import { renderBlackjack } from '../pages/games/blackjack-page.js';
 import { renderCrash } from '../pages/games/crash-page.js';
 import { renderPlinko } from '../pages/games/plinko-page.js';
+import { renderLottery } from '../pages/games/lottery-page.js';
 import { renderEmojiHunt } from '../pages/games/emoji-hunt-page.js';
 import { renderCase } from '../pages/games/case-page.js';
 import { renderGacha } from '../pages/games/gacha-page.js';
@@ -56,6 +57,7 @@ export const routes = [
   { path: ROUTES.MINES,     render: requireActiveGame('mines',     renderMines) },
   { path: ROUTES.CANDY,     render: requireActiveGame('candy',     renderCandy) },
   { path: ROUTES.PLINKO,    render: requireActiveGame('plinko',    renderPlinko) },
+  { path: ROUTES.LOTTERY,   render: requireActiveGame('lottery',   renderLottery) },
   { path: ROUTES.EMOJI_HUNT, render: requireAuth(renderEmojiHunt) },
   { path: ROUTES.LOBBY,     render: requireAuth(renderLobby) },
   { path: ROUTES.MP_GAME,   render: requireAuth(renderMpTtt) },

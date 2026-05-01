@@ -42,7 +42,8 @@ declare
     'gacha',     '/games/gacha',
     'mines',     '/games/mines',
     'candy',     '/games/candy',
-    'plinko',    '/games/plinko'
+    'plinko',    '/games/plinko',
+    'lottery',   '/games/lottery'
   );
   active_routes text[];
 begin
