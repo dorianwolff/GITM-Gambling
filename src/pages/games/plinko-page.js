@@ -257,124 +257,161 @@ function drawBall(ctx, bx, by) {
   ctx.shadowBlur = 0;
 }
 
-/* ---------- choreographed peg-to-peg drop ---------- */
+/* ---------- projectile bounce drop with peg glows ---------- */
 
 async function animateDrop(ctx, w, h, rows, risk, path, finalBin) {
   const { pegs, nBins, padX, padTop, padBot } = getPegs(w, h, rows);
   const binW = (w - padX * 2) / nBins;
 
-  // Build exact waypoint sequence from server path
-  const waypoints = [];
+  // Build peg stop sequence from server path
+  const stops = [];
   let col = 0;
   const top = pegs.find(p => p.row === 0);
 
-  // 1. start above the top peg
-  waypoints.push({
-    x: top.x,
-    y: top.y - 24,
-    dur: 420,
-    arc: 0,
-    isBounce: false,
-  });
+  // start above top peg
+  stops.push({ x: top.x, y: top.y - 24, peg: null, col: 0, row: -1 });
+  // top peg itself
+  stops.push({ x: top.x, y: top.y, peg: top, col: 0, row: 0 });
 
-  // 2. hit the top peg
-  waypoints.push({
-    x: top.x,
-    y: top.y,
-    dur: 260,
-    arc: 0,
-    isBounce: false,
-  });
-
-  // 3. each subsequent peg from server's path
+  // each peg the server says we hit
   for (let row = 0; row < rows; row++) {
     if (path[row]) col += 1;
     const peg = pegs.find(p => p.row === row + 1 && p.col === col);
-    if (!peg) continue;
-
-    const prev = waypoints[waypoints.length - 1];
-    const dx = peg.x - prev.x;
-    const dy = peg.y - prev.y;
-    // sideways hops take slightly longer; big drops feel fast
-    const dur = 380 + Math.abs(dx) * 0.25;
-    // arc height: bigger for sideways bounces, small for straight drops
-    const arc = Math.abs(dx) * 0.55 + Math.max(0, -dy * 0.12) + 2;
-    // small random scatter so every drop feels slightly different
-    const arcVar = 1 + (Math.random() - 0.5) * 0.25;
-
-    waypoints.push({
-      x: peg.x,
-      y: peg.y,
-      dur: Math.round(dur),
-      arc: arc * arcVar,
-      isBounce: Math.abs(dx) > 0.5,
-    });
+    if (peg) stops.push({ x: peg.x, y: peg.y, peg, col, row: row + 1 });
   }
 
-  // 4. final drop into bin
+  // final bin
   const targetX = padX + finalBin * binW + binW / 2;
   const targetY = h - padBot + 6 + (padBot - 14) / 2;
-  waypoints.push({
-    x: targetX,
-    y: targetY,
-    dur: 550,
-    arc: 0,
-    isBounce: false,
-  });
+  stops.push({ x: targetX, y: targetY, peg: null, col: finalBin, row: rows + 1 });
 
-  // Animate through waypoints one by one
-  let from = waypoints[0];
-  for (let i = 1; i < waypoints.length; i++) {
-    const to = waypoints[i];
-    await tweenHop(ctx, w, h, rows, risk, from.x, from.y, to.x, to.y, to.dur, to.arc);
-    from = to;
+  const glows = [];
+  let prevDist = 0; // starts at centre (top peg)
+  const totalHops = stops.length - 1;
+
+  for (let i = 1; i < stops.length; i++) {
+    const from = stops[i - 1];
+    const to = stops[i];
+
+    // colour based on whether we're moving toward centre (bad = red)
+    // or toward edges (good = cyan/green)
+    let hitColor = null;
+    if (to.peg) {
+      const center = to.row / 2;
+      const dist = Math.abs(to.col - center);
+      if (dist < prevDist - 0.01) {
+        hitColor = '#ff3370'; // toward centre = lower multiplier
+      } else if (dist > prevDist + 0.01) {
+        hitColor = '#22c2ff'; // toward edge = higher multiplier
+      } else {
+        hitColor = '#ffd96b'; // neutral / same distance
+      }
+      prevDist = dist;
+    }
+
+    const isFinal = i === stops.length - 1;
+    const dur = isFinal ? 320 : 420;
+    await projectileHop(ctx, w, h, rows, risk, from.x, from.y, to.x, to.y, dur, glows, hitColor, i - 1, totalHops, isFinal);
   }
 
-  // highlight landing bin
+  // final highlight
   drawBoard(ctx, w, h, rows, risk, finalBin, 1.0);
+  drawGlows(ctx, glows);
   drawBall(ctx, targetX, targetY);
-  await sleep(500);
+  await sleep(600);
 }
 
 /**
- * Tween between two points with a parabolic bounce arc.
- * The ball follows a curve that arcs UP from the straight-line path,
- * creating a natural "bounce off the peg" look.
+ * Simulate a projectile arc under gravity from (x1,y1) to (x2,y2).
+ * The initial velocity is solved so the ball reaches the target in exactly
+ * `duration` ms. With correct gravity this produces a natural bounce arc:
+ * the ball launches upward from the peg, peaks, then falls to the next one.
  */
-function tweenHop(ctx, w, h, rows, risk, x1, y1, x2, y2, duration, arcHeight) {
+function projectileHop(ctx, w, h, rows, risk, x1, y1, x2, y2, duration, glows, hitColor, hopIdx, totalHops, isFinal) {
   return new Promise((resolve) => {
+    // shrink arcs progressively: later hops = higher gravity + shorter time
+    const progress = hopIdx / (totalHops || 1);
+    const arcScale = isFinal ? 0.35 : Math.max(0.55, 1 - progress * 0.45);
+    const gravityBoost = isFinal ? 3.0 : 1 + progress * 0.5;
+
+    const GRAVITY = 2600 * gravityBoost; // px/s^2 (downward)
+    const T = (duration * arcScale) / 1000;
+
+    // Solve initial velocity to land on target under gravity
+    const vx = (x2 - x1) / T;
+    const vy = (y2 - y1 - 0.5 * GRAVITY * T * T) / T;
+
     const t0 = performance.now();
+    let last = t0;
+    let spawned = false;
 
     function tick() {
-      const raw = Math.min(1, (performance.now() - t0) / duration);
+      const now = performance.now();
+      const t = Math.min(T, (now - t0) / 1000);
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
 
-      // ease-in-out for x: starts slow, moves, slows at peg
-      const p = raw < 0.5
-        ? 4 * raw * raw * raw
-        : 1 - Math.pow(-2 * raw + 2, 3) / 2;
+      const bx = x1 + vx * t;
+      const by = y1 + vy * t + 0.5 * GRAVITY * t * t;
 
-      const bx = x1 + (x2 - x1) * p;
+      // Update and fade glows
+      for (const g of glows) {
+        g.opacity -= 2.2 * dt;
+        g.radius += 32 * dt;
+      }
+      for (let i = glows.length - 1; i >= 0; i--) {
+        if (glows[i].opacity <= 0) glows.splice(i, 1);
+      }
 
-      // y: straight-line fall plus a parabolic arc that peaks at mid-point
-      // arc goes UP (smaller y value) to look like a bounce
-      const straightY = y1 + (y2 - y1) * p;
-      const arc = arcHeight * Math.sin(Math.PI * p) * (1 - p * 0.3);
-      const by = straightY - arc;
+      // Spawn glow when ball is very close to the peg
+      if (!spawned && hitColor) {
+        const dist = Math.hypot(bx - x2, by - y2);
+        if (dist < 6 || t >= T * 0.96) {
+          spawned = true;
+          glows.push({ x: x2, y: y2, color: hitColor, radius: 9, opacity: 0.92 });
+        }
+      }
 
       drawBoard(ctx, w, h, rows, risk, null, 0);
+      drawGlows(ctx, glows);
       drawBall(ctx, bx, by);
 
-      if (raw < 1) {
+      if (t < T) {
         requestAnimationFrame(tick);
       } else {
-        // snap to exact end position for clean stops
+        // snap to exact end
         drawBoard(ctx, w, h, rows, risk, null, 0);
+        drawGlows(ctx, glows);
         drawBall(ctx, x2, y2);
         resolve();
       }
     }
     requestAnimationFrame(tick);
   });
+}
+
+function drawGlows(ctx, glows) {
+  for (const g of glows) {
+    if (g.opacity <= 0) continue;
+
+    // soft outer halo
+    ctx.beginPath();
+    ctx.arc(g.x, g.y, g.radius, 0, Math.PI * 2);
+    ctx.fillStyle = hexToRgba(g.color, g.opacity * 0.22);
+    ctx.fill();
+
+    // mid ring
+    ctx.beginPath();
+    ctx.arc(g.x, g.y, g.radius * 0.55, 0, Math.PI * 2);
+    ctx.fillStyle = hexToRgba(g.color, g.opacity * 0.45);
+    ctx.fill();
+
+    // bright inner core
+    ctx.beginPath();
+    ctx.arc(g.x, g.y, g.radius * 0.22, 0, Math.PI * 2);
+    ctx.fillStyle = hexToRgba(g.color, g.opacity * 0.85);
+    ctx.fill();
+  }
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
