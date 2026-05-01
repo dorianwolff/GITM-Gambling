@@ -12,6 +12,7 @@ import { appShell } from '../ui/layout/app-shell.js';
 import { userStore, patchProfile } from '../state/user-store.js';
 import { updateDisplayName } from '../services/profile-service.js';
 import { toastError, toastSuccess } from '../ui/components/toast.js';
+import { promptModal } from '../ui/components/modal.js';
 import { signOut } from '../auth/auth-service.js';
 import { formatCredits, initials, shortName } from '../utils/format.js';
 import { spinner } from '../ui/components/spinner.js';
@@ -71,16 +72,35 @@ export function renderProfile() {
 
   async function doList(row) {
     const item = row.item;
-    const startStr = prompt(
-      `Starting price for 1× ${item.name}? (1..1,000,000)\n` +
-      `Seller fee tapers: ~${feePercent(1000)}% on mid-range, less on big sales.`,
-      '100'
-    );
-    if (!startStr) return;
+    const startStr = await promptModal({
+      title: `List ${item.name}`,
+      message:
+        `Starting price for 1× ${item.name} (1..1,000,000 cr). ` +
+        `Seller fee tapers: ~${feePercent(1000)}% on mid-range, less on big sales.`,
+      defaultValue: '100',
+      placeholder: 'e.g. 250',
+      type: 'number',
+      min: 1,
+      max: 1000000,
+      step: 1,
+      confirmLabel: 'Next',
+    });
+    if (startStr == null) return;
     const startPrice = parseInt(startStr, 10);
     if (!Number.isFinite(startPrice) || startPrice < 1) return toastError('Invalid price');
-    const durStr = prompt('Auction duration in hours? (1..48)', '24');
-    if (!durStr) return;
+
+    const durStr = await promptModal({
+      title: 'Auction duration',
+      message: 'How many hours should this auction run for? (1..48)',
+      defaultValue: '24',
+      placeholder: 'hours',
+      type: 'number',
+      min: 1,
+      max: 48,
+      step: 1,
+      confirmLabel: 'List for auction',
+    });
+    if (durStr == null) return;
     const hours = parseInt(durStr, 10);
     if (!Number.isFinite(hours) || hours < 1 || hours > 48) return toastError('Duration must be 1..48 hours');
     try {

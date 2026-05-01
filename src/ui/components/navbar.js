@@ -51,11 +51,14 @@ export function createNavbar() {
     { style: 'pointer-events:none; transform:scaleY(0); opacity:0;' },
     [
       h(
-        'nav.mx-4.glass.neon-border.p-2.flex.flex-col.gap-1',
+        // Opaque drawer: `glass` was too transparent on mobile — the page
+        // bled through the menu (see screenshot). Swap to a solid panel
+        // (bg-bg-900) + a subtle border and a backdrop-blur fallback.
+        'nav.mx-4.rounded-2xl.border.border-white/10.bg-bg-900.shadow-2xl.shadow-black/60.p-2.flex.flex-col.gap-1',
         {},
         LINKS.map((l) =>
           h(
-            'a.px-3.py-2.text-sm.font-medium.text-white/80.hover:text-white.rounded-lg.hover:bg-white/[0.08]',
+            'a.px-3.py-3.text-sm.font-medium.text-white/90.hover:text-white.rounded-lg.hover:bg-white/[0.08]',
             { href: l.href, 'data-link': '' },
             [l.label]
           )
@@ -87,7 +90,8 @@ export function createNavbar() {
     ['?']
   );
   const menu = h(
-    'div.absolute.right-0.top-12.w-56.glass.neon-border.p-2.hidden.flex.flex-col.gap-1.z-50',
+    // Avatar dropdown: also opaque so the page doesn't ghost through.
+    'div.absolute.right-0.top-12.w-56.rounded-2xl.border.border-white/10.bg-bg-900.shadow-2xl.shadow-black/60.p-2.hidden.flex.flex-col.gap-1.z-50',
     {},
     [
       h(

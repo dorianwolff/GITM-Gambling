@@ -19,6 +19,7 @@ import {
 import { userStore, patchProfile } from '../../state/user-store.js';
 import { refreshProfile } from '../../services/profile-service.js';
 import { toast, toastError, toastSuccess } from '../../ui/components/toast.js';
+import { confirmModal } from '../../ui/components/modal.js';
 import { formatCredits, initials, shortName } from '../../utils/format.js';
 import { logger } from '../../lib/logger.js';
 
@@ -86,7 +87,14 @@ export function renderMpTtt(ctx) {
 
   async function doResign() {
     if (busy || !game || game.status !== 'active') return;
-    if (!confirm('Resign? Your opponent takes the pot.')) return;
+    const ok = await confirmModal({
+      title: 'Resign match?',
+      message: 'Your opponent takes the pot. This cannot be undone.',
+      confirmLabel: 'Resign',
+      cancelLabel: 'Keep playing',
+      danger: true,
+    });
+    if (!ok) return;
     busy = true;
     try {
       await resign(gameId);

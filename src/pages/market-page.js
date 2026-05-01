@@ -18,6 +18,7 @@ import { userStore, patchProfile } from '../state/user-store.js';
 import { refreshProfile } from '../services/profile-service.js';
 import { toast, toastError, toastSuccess } from '../ui/components/toast.js';
 import { spinner } from '../ui/components/spinner.js';
+import { confirmModal, promptModal } from '../ui/components/modal.js';
 import { formatCredits } from '../utils/format.js';
 import { logger } from '../lib/logger.js';
 import {
@@ -131,7 +132,12 @@ export function renderMarket(ctx) {
     if ((userStore.get().profile?.credits ?? 0) < item.shop_price) {
       return toastError(`Not enough credits (need ${formatCredits(item.shop_price)})`);
     }
-    if (!confirm(`Buy ${item.name} for ${formatCredits(item.shop_price)} cr?`)) return;
+    const ok = await confirmModal({
+      title: 'Confirm purchase',
+      message: `Buy ${item.name} for ${formatCredits(item.shop_price)} cr?`,
+      confirmLabel: `Buy · ${formatCredits(item.shop_price)} cr`,
+    });
+    if (!ok) return;
     try {
       await buyItem(item.id);
       toastSuccess(`Bought ${item.name}`);
@@ -153,17 +159,35 @@ export function renderMarket(ctx) {
 
   async function doListForAuction(row) {
     const item = row.item;
-    const startStr = prompt(
-      `Starting price for 1× ${item.name}? (1..1,000,000)\n` +
-      `Seller fee: ~${feePercent(1000)}% on mid-range, less on big sales.`,
-      '100'
-    );
-    if (!startStr) return;
+    const startStr = await promptModal({
+      title: `List ${item.name}`,
+      message:
+        `Starting price for 1× ${item.name} (1..1,000,000 cr). ` +
+        `Seller fee tapers: ~${feePercent(1000)}% on mid-range, less on big sales.`,
+      defaultValue: '100',
+      placeholder: 'e.g. 250',
+      type: 'number',
+      min: 1,
+      max: 1000000,
+      step: 1,
+      confirmLabel: 'Next',
+    });
+    if (startStr == null) return;
     const startPrice = parseInt(startStr, 10);
     if (!Number.isFinite(startPrice) || startPrice < 1) return toastError('Invalid price');
 
-    const durStr = prompt('Auction duration in hours? (1..48)', '24');
-    if (!durStr) return;
+    const durStr = await promptModal({
+      title: 'Auction duration',
+      message: 'How many hours should this auction run for? (1..48)',
+      defaultValue: '24',
+      placeholder: 'hours',
+      type: 'number',
+      min: 1,
+      max: 48,
+      step: 1,
+      confirmLabel: 'List for auction',
+    });
+    if (durStr == null) return;
     const hours = parseInt(durStr, 10);
     if (!Number.isFinite(hours) || hours < 1 || hours > 48) return toastError('Duration must be 1..48 hours');
 
@@ -179,11 +203,31 @@ export function renderMarket(ctx) {
     const me = userStore.get().user;
     if (me?.id === listing.seller_id) return toastError('Cannot bid on your own auction');
     const min = minNextBid(listing);
-    const str = prompt(`Bid on ${listing.item?.name}? Minimum: ${formatCredits(min)} cr`, String(min));
-    if (!str) return;
+    const myCredits = userStore.get().profile?.credits ?? 0;
+    const str = await promptModal({
+      title: `Bid on ${listing.item?.name ?? 'this item'}`,
+      message:
+        `Minimum bid: ${formatCredits(min)} cr.` +
+        (myCredits < min ? ' — you do not have enough credits.' : ''),
+      defaultValue: String(min),
+      placeholder: `at least ${min}`,
+      type: 'number',
+      min,
+      max: Math.max(min, myCredits),
+      step: 1,
+      confirmLabel: 'Place bid',
+      validate: (raw) => {
+        const n = Number(raw);
+        if (!Number.isFinite(n)) return 'Must be a number.';
+        if (n < min) return `Must be at least ${formatCredits(min)} cr.`;
+        if (n > myCredits) return `You only have ${formatCredits(myCredits)} cr.`;
+        return null;
+      },
+    });
+    if (str == null) return;
     const amount = parseInt(str, 10);
     if (!Number.isFinite(amount) || amount < min) return toastError(`Bid must be at least ${min}`);
-    if ((userStore.get().profile?.credits ?? 0) < amount) return toastError('Not enough credits');
+    if (myCredits < amount) return toastError('Not enough credits');
 
     try {
       await placeBid(listing.id, amount);
@@ -195,7 +239,14 @@ export function renderMarket(ctx) {
   }
 
   async function doCancelListing(li) {
-    if (!confirm('Cancel this auction? You will get your item back.')) return;
+    const ok = await confirmModal({
+      title: 'Cancel auction?',
+      message: 'You will get your item back. Any active bids are refunded.',
+      confirmLabel: 'Cancel listing',
+      cancelLabel: 'Keep listed',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await cancelListing(li.id);
       toastSuccess('Listing cancelled');
