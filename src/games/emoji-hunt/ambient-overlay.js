@@ -11,12 +11,16 @@
  * The overlay also reacts to the router's `gitm:route` event so navigating
  * to a different page re-evaluates which hunts to show.
  */
-import { listActiveHunts, claimHunt, subscribeToHunts } from '../../services/emoji-hunt-service.js';
+import { listActiveHunts, claimHunt, subscribeToHunts, autoSpawnTick } from '../../services/emoji-hunt-service.js';
 import { userStore, patchProfile } from '../../state/user-store.js';
 import { toastError, toastSuccess } from '../../ui/components/toast.js';
 import { logger } from '../../lib/logger.js';
 
 const LAYER_ID = 'emoji-hunt-layer';
+// How often each tab nudges the global scheduler. The server is the
+// rate limiter: it only spawns when its own gap-timer says it's due, so
+// many tabs ticking concurrently cost nothing.
+const AUTOSPAWN_TICK_MS = 30_000;
 
 /** @type {Map<string, HTMLElement>} rendered hunts on the current page */
 const visible = new Map();
@@ -27,6 +31,7 @@ let started = false;
 let unsubRealtime = null;
 let gcInterval = null;
 let routeListener = null;
+let autoSpawnInterval = null;
 
 export function startEmojiHuntOverlay() {
   if (started) return;
@@ -70,6 +75,16 @@ export function startEmojiHuntOverlay() {
   // Re-render when the SPA router changes route.
   routeListener = () => renderForCurrentPage();
   window.addEventListener('gitm:route', routeListener);
+
+  // Auto-spawn ticker. The server holds the rate limit; this is just a
+  // nudge so the next-due timer keeps advancing as long as someone is
+  // looking at the site. Fire one immediately so a freshly opened tab
+  // can witness the very first emoji on a cold install.
+  autoSpawnTick().catch((e) => logger.warn('autospawn tick failed', e));
+  autoSpawnInterval = setInterval(() => {
+    if (document.hidden) return; // backgrounded tabs don't drive the cadence
+    autoSpawnTick().catch((e) => logger.warn('autospawn tick failed', e));
+  }, AUTOSPAWN_TICK_MS);
 }
 
 export function stopEmojiHuntOverlay() {
@@ -79,6 +94,8 @@ export function stopEmojiHuntOverlay() {
   gcInterval = null;
   if (routeListener) window.removeEventListener('gitm:route', routeListener);
   routeListener = null;
+  if (autoSpawnInterval) clearInterval(autoSpawnInterval);
+  autoSpawnInterval = null;
   for (const id of [...visible.keys()]) despawn(id);
   known.clear();
   started = false;

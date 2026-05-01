@@ -97,7 +97,7 @@ export function renderLobby(ctx) {
         h('div', {}, [
           h('h1.text-3xl.font-semibold.heading-grad', {}, ['Multiplayer lobby']),
           h('p.text-sm.text-muted', {}, [
-            'Pick a variant, set an ante, and wait for someone to join. 5% house fee on winnings.',
+            'Pick a variant, set an ante, and wait for someone to join. Winner takes all!',
           ]),
         ]),
       ]),
@@ -135,7 +135,7 @@ export function renderLobby(ctx) {
             ),
           ]),
           h('div.flex.flex-col.gap-1.items-end', {}, [
-            h('span.text-[10px].text-muted.uppercase.tracking-widest', {}, ['Pot (winner takes 95%)']),
+            h('span.text-[10px].text-muted.uppercase.tracking-widest', {}, ['Pot (winner takes all)']),
             h('span.text-lg.font-mono.font-bold.text-accent-lime', {}, [
               `${formatCredits(selectedAnte * 2)} cr`,
             ]),

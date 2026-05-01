@@ -1,20 +1,18 @@
 /**
  * emoji-hunt-page.js
- * Information page about the emoji hunt mini-game. The actual emojis float
- * in an ambient overlay (see src/games/emoji-hunt/ambient-overlay.js) on
- * every page once the user is signed in. Admins can manually spawn one
- * here to test or trigger an event.
+ * Info page for the always-on emoji-hunt overlay. Floating emojis appear
+ * automatically (server-driven, see v7 migration auto_spawn_emoji_hunt) on
+ * random pages every minute or two, but anyone can also nudge a manual
+ * spawn here for testing or for fun — the server rate-limits abuse.
  */
 import { h, mount } from '../../utils/dom.js';
 import { appShell } from '../../ui/layout/app-shell.js';
-import { listActiveHunts, spawnHuntAsAdmin } from '../../services/emoji-hunt-service.js';
-import { userStore } from '../../state/user-store.js';
+import { listActiveHunts, spawnHunt } from '../../services/emoji-hunt-service.js';
 import { toastError, toastSuccess } from '../../ui/components/toast.js';
 import { spinner } from '../../ui/components/spinner.js';
 import { timeAgo } from '../../utils/format.js';
 
 export function renderEmojiHunt(ctx) {
-  const isAdmin = !!userStore.get().profile?.is_admin;
 
   const listEl = h('div.flex.flex-col.gap-2', {}, [
     h('div.text-muted.flex.items-center.gap-3', {}, [spinner(), 'Loading…']),
@@ -61,20 +59,27 @@ export function renderEmojiHunt(ctx) {
   ctx.onCleanup(() => clearInterval(tick));
 
   // Page picker: known routes the hunt can be locked to. 'random' lets
-  // the server pick. 'current' uses whatever path the admin is on.
+  // the server pick. 'current' uses whatever path the user is on.
   const PAGES = [
     { value: '__random',  label: 'Random page' },
     { value: '__current', label: 'Current page' },
+    { value: '/',                   label: '/ (dashboard)' },
     { value: '/dashboard',          label: '/dashboard' },
     { value: '/events',             label: '/events' },
     { value: '/leaderboard',        label: '/leaderboard' },
     { value: '/history',            label: '/history' },
+    { value: '/profile',            label: '/profile' },
+    { value: '/market',             label: '/market' },
+    { value: '/market/inventory',   label: '/market/inventory' },
     { value: '/games',              label: '/games' },
     { value: '/games/coinflip',     label: '/games/coinflip' },
     { value: '/games/dice',         label: '/games/dice' },
     { value: '/games/roulette',     label: '/games/roulette' },
     { value: '/games/blackjack',    label: '/games/blackjack' },
     { value: '/games/crash',        label: '/games/crash' },
+    { value: '/games/cases',        label: '/games/cases' },
+    { value: '/games/gacha',        label: '/games/gacha' },
+    { value: '/games/lobby',        label: '/games/lobby' },
     { value: '/games/emoji-hunt',   label: '/games/emoji-hunt' },
   ];
   const pageSelect = h(
@@ -95,50 +100,47 @@ export function renderEmojiHunt(ctx) {
     ].map((o) => h('option', { value: o.v }, [o.l]))
   );
 
-  const adminPanel = isAdmin
-    ? h('div.glass.neon-border.p-5.flex.flex-col.gap-3', {}, [
-        h('h3.text-sm.text-muted.uppercase.tracking-widest', {}, ['Admin · spawn']),
-        h('div.flex.flex-col.gap-2', {}, [
-          h('label.text-[11px].text-muted.uppercase.tracking-widest', {}, ['Page']),
-          pageSelect,
-        ]),
-        h('div.flex.flex-col.gap-2', {}, [
-          h('label.text-[11px].text-muted.uppercase.tracking-widest', {}, ['Size']),
-          sizeSelect,
-        ]),
-        h(
-          'button.btn-primary.h-10',
-          {
-            onclick: async () => {
-              try {
-                let page = pageSelect.value;
-                if (page === '__random')  page = null;
-                if (page === '__current') page = window.location.pathname;
-                const sizePx = sizeSelect.value ? Number(sizeSelect.value) : null;
-                await spawnHuntAsAdmin({ page, sizePx });
-                toastSuccess(
-                  page
-                    ? `Hunt spawned on ${page}`
-                    : 'Hunt spawned on a random page'
-                );
-                refresh();
-              } catch (e) {
-                toastError(e.message);
-              }
-            },
-          },
-          ['✨ Spawn']
-        ),
-        h(
-          'p.text-[11px].text-muted.leading-relaxed',
-          {},
-          [
-            'Each hunt lives on exactly one route for 45 seconds. Everyone ',
-            'currently on that page sees it; first click claims it.',
-          ]
-        ),
-      ])
-    : null;
+  // Manual spawn is open to all signed-in users now — the auto-spawner
+  // is the primary source, this is just a "make one happen now" button
+  // for the impatient. Globally rate-limited server-side.
+  const spawnPanel = h('div.glass.neon-border.p-5.flex.flex-col.gap-3', {}, [
+    h('h3.text-sm.text-muted.uppercase.tracking-widest', {}, ['Spawn one now']),
+    h('div.flex.flex-col.gap-2', {}, [
+      h('label.text-[11px].text-muted.uppercase.tracking-widest', {}, ['Page']),
+      pageSelect,
+    ]),
+    h('div.flex.flex-col.gap-2', {}, [
+      h('label.text-[11px].text-muted.uppercase.tracking-widest', {}, ['Size']),
+      sizeSelect,
+    ]),
+    h(
+      'button.btn-primary.h-10',
+      {
+        onclick: async () => {
+          try {
+            let page = pageSelect.value;
+            if (page === '__random')  page = null;
+            if (page === '__current') page = window.location.pathname;
+            const sizePx = sizeSelect.value ? Number(sizeSelect.value) : null;
+            await spawnHunt({ page, sizePx });
+            toastSuccess(page ? `Hunt spawned on ${page}` : 'Hunt spawned on a random page');
+            refresh();
+          } catch (e) {
+            toastError(e.message);
+          }
+        },
+      },
+      ['✨ Spawn']
+    ),
+    h(
+      'p.text-[11px].text-muted.leading-relaxed',
+      {},
+      [
+        'Each hunt lives on exactly one route for 45 seconds. Everyone ',
+        'currently on that page sees it; first click claims it.',
+      ]
+    ),
+  ]);
 
   return appShell(
     h('div.flex.flex-col.gap-4', {}, [
@@ -153,7 +155,7 @@ export function renderEmojiHunt(ctx) {
           h('h2.text-sm.text-muted.uppercase.tracking-widest', {}, ['Active hunts']),
           listEl,
         ]),
-        adminPanel ?? h('div', {}, []),
+        spawnPanel,
       ]),
     ])
   );

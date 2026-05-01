@@ -21,6 +21,7 @@ import { toastError, toastSuccess } from '../../ui/components/toast.js';
 import { validateBet } from '../../utils/validation.js';
 import { formatCredits } from '../../utils/format.js';
 import { GAMES } from '../../config/constants.js';
+import { flashSuccessMajor, flashLoss } from '../../ui/fx/feedback-fx.js';
 
 const SPIN_VELOCITY_DEG = 1.6;   // deg/ms — ~580°/s, about 1.6 full spins/sec
 const MIN_SPIN_MS       = 900;   // minimum pre-landing duration
@@ -214,10 +215,12 @@ export function renderCoinflip() {
              { boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4), 0 0 60px rgba(255,179,71,0.3)' }],
             { duration: 900, easing: 'ease-out' }
           );
+          flashSuccessMajor({ label: r.result.toUpperCase() });
           toastSuccess(`Won ${formatCredits(r.payout)} cr`);
         } else {
           resultEl.textContent = `Lost ${formatCredits(amount)} · ${r.result.toUpperCase()}`;
           resultEl.className = 'text-2xl h-8 font-mono text-accent-rose font-bold';
+          flashLoss();
         }
 
         log.prepend(

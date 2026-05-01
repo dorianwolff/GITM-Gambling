@@ -14,11 +14,15 @@
  *   ♦ diamonds → light blue
  */
 
+// `color`       — used on the white card face (must be visible on white).
+// `colorOnDark` — used in legends, score chips, anywhere we render a suit
+//                 glyph or rank text on the app's dark UI surfaces. The
+//                 spades black is invisible on the app background otherwise.
 export const SUITS = [
-  { idx: 0, glyph: '♠', name: 'spades',   color: '#0a0a0a', glow: 'rgba(255,255,255,0.10)' },
-  { idx: 1, glyph: '♣', name: 'clubs',    color: '#3ddc7e', glow: 'rgba(61,220,126,0.40)' },
-  { idx: 2, glyph: '♥', name: 'hearts',   color: '#ff3b6b', glow: 'rgba(255,59,107,0.40)' },
-  { idx: 3, glyph: '♦', name: 'diamonds', color: '#7ad9ff', glow: 'rgba(122,217,255,0.45)' },
+  { idx: 0, glyph: '♠', name: 'spades',   color: '#0a0a0a', colorOnDark: '#e8ecf6', glow: 'rgba(255,255,255,0.10)' },
+  { idx: 1, glyph: '♣', name: 'clubs',    color: '#1f8f4d', colorOnDark: '#3ddc7e', glow: 'rgba(61,220,126,0.40)' },
+  { idx: 2, glyph: '♥', name: 'hearts',   color: '#cc1740', colorOnDark: '#ff3b6b', glow: 'rgba(255,59,107,0.40)' },
+  { idx: 3, glyph: '♦', name: 'diamonds', color: '#1c7fbf', colorOnDark: '#7ad9ff', glow: 'rgba(122,217,255,0.45)' },
 ];
 
 const RANK_LABELS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];

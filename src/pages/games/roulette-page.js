@@ -18,6 +18,7 @@ import { playRoulette, colorOf, WHEEL_ORDER } from '../../games/roulette/roulett
 import { userStore, patchProfile } from '../../state/user-store.js';
 import { toastError, toastSuccess } from '../../ui/components/toast.js';
 import { formatCredits } from '../../utils/format.js';
+import { flashSuccess, flashSuccessMajor, flashGold, flashLoss } from '../../ui/fx/feedback-fx.js';
 
 const CHIP_VALUES = [1, 5, 25, 100, 500];
 
@@ -95,10 +96,19 @@ export function renderRoulette() {
       bets = [];
 
       const profit = r.totalPayout - r.totalWager;
-      if (profit > 0) toastSuccess(`+${formatCredits(profit)} cr · ${r.roll} ${r.color}`);
-      else if (r.totalPayout > 0) {
-        // partial win (rare — only if some hits)
+      if (profit > 0) {
+        toastSuccess(`+${formatCredits(profit)} cr · ${r.roll} ${r.color}`);
+        const ratio = r.totalPayout / Math.max(1, r.totalWager);
+        // Straight-up number hits land at 36× wager, dozens at 3×, etc.
+        if (ratio >= 10)     flashGold({ label: `${r.roll} STRAIGHT UP` });
+        else if (ratio >= 3) flashSuccessMajor({ label: `+${formatCredits(profit)}` });
+        else                 flashSuccess();
+      } else if (r.totalPayout > 0) {
         toastSuccess(`Pushed back ${formatCredits(r.totalPayout)} cr`);
+        flashSuccess();
+      } else {
+        // Total wipe — light sting, the wheel itself already telegraphs it.
+        flashLoss();
       }
     } catch (e) {
       toastError(e.message);
@@ -133,8 +143,8 @@ export function renderRoulette() {
     return h('div.flex.flex-col.gap-4', {}, [
       h('div.flex.items-end.justify-between.gap-3.flex-wrap', {}, [
         h('div', {}, [
-          h('h1.text-3xl.font-semibold.heading-grad', {}, ['Roulette']),
-          h('p.text-sm.text-muted', {}, [
+          h('h1.text-2xl.sm:text-3xl.font-semibold.heading-grad', {}, ['Roulette']),
+          h('p.text-xs.sm:text-sm.text-muted', {}, [
             'European single-zero. Place chips on numbers, dozens, columns or even-money lines, then spin.',
           ]),
         ]),
@@ -145,7 +155,7 @@ export function renderRoulette() {
         // LEFT: wheel + result panel (2 cols)
         h('div.xl:col-span-2.flex.flex-col.gap-4', {}, [
           h(
-            'div.glass.neon-border.p-6.flex.flex-col.items-center.gap-4',
+            'div.glass.neon-border.p-3.sm:p-6.flex.flex-col.items-center.gap-4',
             {},
             [
               wheelView((el, b) => { wheelRef = el; ballRef = b; }, lastSpin?.n ?? null),
@@ -279,8 +289,11 @@ function wheelView(captureRefs, lastN) {
     []
   );
 
+  // The wheel sizes responsively: ~13 rem on phones, 18 rem on desktop.
+  // Slot numbers (rendered above with absolute positioning in pixels) stay
+  // legible on both because the slice math is angle-based, not px-based.
   const container = h(
-    'div.relative.w-72.h-72',
+    'div.relative.w-56.h-56.sm:w-64.sm:h-64.md:w-72.md:h-72',
     {},
     [wheel, ball, pointer]
   );
@@ -416,13 +429,18 @@ function tableView({ bets, addBet, removeBet, lastWinning }) {
 
   // Build grid with explicit columns:
   //   [0 cell spanning 3 rows] [12 number cells] [column cell]
+  // The 14-column layout doesn't fit a phone width, so we put the whole
+  // table in a horizontally-scrollable wrapper and give the inner grid a
+  // sensible min-width so columns stay legible. Touch users swipe; mouse
+  // users on a small window get a normal scrollbar.
   const grid = h(
     'div.gap-1.p-3.glass.neon-border',
     {
       style: {
         display: 'grid',
-        gridTemplateColumns: '52px repeat(12, minmax(0, 1fr)) 64px',
+        gridTemplateColumns: '46px repeat(12, minmax(36px, 1fr)) 56px',
         gridTemplateRows: 'repeat(3, auto)',
+        minWidth: '640px',
       },
     },
     [
@@ -459,30 +477,32 @@ function tableView({ bets, addBet, removeBet, lastWinning }) {
     ]
   );
 
-  // Outside bets: dozens row, then even-money row.
-  const dozensRow = h('div.flex.gap-1.px-3', {}, [
-    h('div.w-[52px]', {}, []),
+  // Outside bets: dozens row, then even-money row. Both rows share the
+  // same min-width as the grid above so they line up under it inside the
+  // horizontal scroller.
+  const dozensRow = h('div.flex.gap-1.px-3', { style: { minWidth: '640px' } }, [
+    h('div.w-[46px].shrink-0', {}, []),
     h('div.flex-1', {}, [outsideCell('1st 12', 'dozen', 1, 'Pays 2:1')]),
     h('div.flex-1', {}, [outsideCell('2nd 12', 'dozen', 2, 'Pays 2:1')]),
     h('div.flex-1', {}, [outsideCell('3rd 12', 'dozen', 3, 'Pays 2:1')]),
-    h('div.w-[64px]', {}, []),
+    h('div.w-[56px].shrink-0', {}, []),
   ]);
-  const evensRow = h('div.flex.gap-1.px-3.pb-3', {}, [
-    h('div.w-[52px]', {}, []),
+  const evensRow = h('div.flex.gap-1.px-3.pb-3', { style: { minWidth: '640px' } }, [
+    h('div.w-[46px].shrink-0', {}, []),
     h('div.flex-1', {}, [outsideCell('1–18', 'low', '', 'Pays 1:1')]),
     h('div.flex-1', {}, [outsideCell('Even', 'even', '', 'Pays 1:1')]),
-    h('div.flex-1', {}, [
-      outsideCell('Red', 'red', '', 'Pays 1:1'),
-    ]),
-    h('div.flex-1', {}, [
-      outsideCell('Black', 'black', '', 'Pays 1:1'),
-    ]),
+    h('div.flex-1', {}, [outsideCell('Red', 'red', '', 'Pays 1:1')]),
+    h('div.flex-1', {}, [outsideCell('Black', 'black', '', 'Pays 1:1')]),
     h('div.flex-1', {}, [outsideCell('Odd', 'odd', '', 'Pays 1:1')]),
     h('div.flex-1', {}, [outsideCell('19–36', 'high', '', 'Pays 1:1')]),
-    h('div.w-[64px]', {}, []),
+    h('div.w-[56px].shrink-0', {}, []),
   ]);
 
-  return h('div.flex.flex-col.gap-1', {}, [grid, dozensRow, evensRow]);
+  return h(
+    'div.overflow-x-auto.-mx-2.sm:mx-0.pb-1',
+    { style: { WebkitOverflowScrolling: 'touch' } },
+    [h('div.flex.flex-col.gap-1.min-w-max', {}, [grid, dozensRow, evensRow])]
+  );
 }
 
 function chipMark(amount) {

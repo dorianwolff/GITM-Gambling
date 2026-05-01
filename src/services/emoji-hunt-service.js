@@ -26,17 +26,33 @@ export async function claimHunt(huntId) {
 }
 
 /**
+ * Manual spawn (used by the emoji-hunt page UI). Server-side gating no
+ * longer requires admin; rate-limit lives in `auto_spawn_emoji_hunt`.
+ *
  * @param {{page?: string|null, sizePx?: number|null}} [opts]
  *   page    — explicit route to lock the hunt to, or null for server-random
  *   sizePx  — explicit size in px (clamped 32..128), or null for server-random
  */
-export async function spawnHuntAsAdmin(opts = {}) {
+export async function spawnHunt(opts = {}) {
   const { data, error } = await supabase.rpc('spawn_emoji_hunt', {
     p_page:    opts.page    ?? null,
     p_size_px: opts.sizePx  ?? null,
   });
   if (error) throw error;
   return data;
+}
+// Back-compat alias used by older callers.
+export const spawnHuntAsAdmin = spawnHunt;
+
+/**
+ * Tick the global auto-spawn scheduler. Idempotent and rate-limited
+ * server-side: every signed-in tab can call this freely. Returns the
+ * spawned hunt id, or null if no spawn happened on this tick.
+ */
+export async function autoSpawnTick() {
+  const { data, error } = await supabase.rpc('auto_spawn_emoji_hunt');
+  if (error) throw error;
+  return data ?? null;
 }
 
 export function subscribeToHunts({ onSpawn, onClaim }) {

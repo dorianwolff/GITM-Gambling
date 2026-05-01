@@ -4,7 +4,7 @@
  * applies the appropriate guard.
  */
 import { ROUTES } from '../config/constants.js';
-import { requireAuth, redirectIfAuthed } from '../auth/auth-guard.js';
+import { requireAuth, redirectIfAuthed, requireActiveGame } from '../auth/auth-guard.js';
 
 import { renderLogin } from '../pages/login-page.js';
 import { renderAuthCallback } from '../pages/auth-callback-page.js';
@@ -23,6 +23,9 @@ import { renderBlackjack } from '../pages/games/blackjack-page.js';
 import { renderCrash } from '../pages/games/crash-page.js';
 import { renderEmojiHunt } from '../pages/games/emoji-hunt-page.js';
 import { renderCase } from '../pages/games/case-page.js';
+import { renderGacha } from '../pages/games/gacha-page.js';
+import { renderMines } from '../pages/games/mines-page.js';
+import { renderCandy } from '../pages/games/candy-page.js';
 import { renderLobby } from '../pages/games/lobby-page.js';
 import { renderMpTtt } from '../pages/games/mp-ttt-page.js';
 import { renderPublicProfile } from '../pages/public-profile-page.js';
@@ -37,16 +40,23 @@ export const routes = [
   { path: ROUTES.CREATE_EVENT, render: requireAuth(renderCreateEvent) },
   { path: ROUTES.EVENT_DETAIL, render: requireAuth(renderEventDetail) },
 
+  // Hub + always-on routes (emoji hunt is meta, not in rotation; multiplayer
+  // is online-only). Rotated games go through `requireActiveGame`, which
+  // hard-replaces the URL to /games when the game isn't currently in the
+  // 6-game rotation, so even Back can't reopen it.
   { path: ROUTES.GAMES, render: requireAuth(renderGamesHub) },
-  { path: ROUTES.COINFLIP, render: requireAuth(renderCoinflip) },
-  { path: ROUTES.DICE, render: requireAuth(renderDice) },
-  { path: ROUTES.ROULETTE, render: requireAuth(renderRoulette) },
-  { path: ROUTES.BLACKJACK, render: requireAuth(renderBlackjack) },
-  { path: ROUTES.CRASH, render: requireAuth(renderCrash) },
+  { path: ROUTES.COINFLIP,  render: requireActiveGame('coinflip',  renderCoinflip) },
+  { path: ROUTES.DICE,      render: requireActiveGame('dice',      renderDice) },
+  { path: ROUTES.ROULETTE,  render: requireActiveGame('roulette',  renderRoulette) },
+  { path: ROUTES.BLACKJACK, render: requireActiveGame('blackjack', renderBlackjack) },
+  { path: ROUTES.CRASH,     render: requireActiveGame('crash',     renderCrash) },
+  { path: ROUTES.CASE,      render: requireActiveGame('cases',     renderCase) },
+  { path: ROUTES.GACHA,     render: requireActiveGame('gacha',     renderGacha) },
+  { path: ROUTES.MINES,     render: requireActiveGame('mines',     renderMines) },
+  { path: ROUTES.CANDY,     render: requireActiveGame('candy',     renderCandy) },
   { path: ROUTES.EMOJI_HUNT, render: requireAuth(renderEmojiHunt) },
-  { path: ROUTES.CASE, render: requireAuth(renderCase) },
-  { path: ROUTES.LOBBY, render: requireAuth(renderLobby) },
-  { path: ROUTES.MP_GAME, render: requireAuth(renderMpTtt) },
+  { path: ROUTES.LOBBY,     render: requireAuth(renderLobby) },
+  { path: ROUTES.MP_GAME,   render: requireAuth(renderMpTtt) },
 
   { path: ROUTES.PROFILE, render: requireAuth(renderProfile) },
   { path: ROUTES.PLAYER_PROFILE, render: requireAuth(renderPublicProfile) },

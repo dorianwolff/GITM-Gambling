@@ -14,6 +14,7 @@ import { userStore, patchProfile } from '../../state/user-store.js';
 import { toastError, toastSuccess } from '../../ui/components/toast.js';
 import { validateBet } from '../../utils/validation.js';
 import { formatCredits, formatMultiplier } from '../../utils/format.js';
+import { flashSuccess, flashSuccessMajor, flashGold, flashLoss, flashLossMajor } from '../../ui/fx/feedback-fx.js';
 
 export function renderCrash() {
   let cashout = 2.0;
@@ -128,9 +129,16 @@ export function renderCrash() {
           const profit = result.payout - amount;
           status.textContent = `Cashed out at ${formatMultiplier(target)} · +${formatCredits(profit)} cr`;
           toastSuccess(`Cashed out · +${formatCredits(profit)} cr`);
+          // Calibrate dopamine to the multiplier hit.
+          if (target >= 10)     flashGold({ label: `${formatMultiplier(target)} CASHOUT` });
+          else if (target >= 3) flashSuccessMajor({ label: 'CASHED OUT' });
+          else                  flashSuccess();
         } else {
           status.textContent = `Crashed at ${formatMultiplier(result.crashPoint)} · -${formatCredits(amount)} cr`;
           toastError(`Crashed at ${formatMultiplier(result.crashPoint)}`);
+          // Instabusts (very low crash point) earn the major-red treatment.
+          if (result.crashPoint < 1.3) flashLossMajor({ label: 'INSTABUST', intense: true });
+          else                          flashLoss();
         }
 
         // Re-patch in case any racing realtime event briefly overwrote.

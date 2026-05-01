@@ -35,6 +35,7 @@ import { userStore, patchProfile } from '../../state/user-store.js';
 import { toastError, toastSuccess } from '../../ui/components/toast.js';
 import { formatCredits } from '../../utils/format.js';
 import { logger } from '../../lib/logger.js';
+import { flashSuccess, flashSuccessMajor, flashGold, flashLoss } from '../../ui/fx/feedback-fx.js';
 
 // ---- Reel tuning ----------------------------------------------------------
 const TILE_WIDTH     = 96;      // px — width of one reel tile incl. gap
@@ -148,11 +149,25 @@ export function renderCase(ctx) {
   }
 
   function flashToast(profit, rarity) {
+    // Toast first.
     if (rarity === 'ultra')          toastSuccess(`🌌 ULTRA · +${formatCredits(profit)} cr`);
     else if (rarity === 'jackpot')   toastSuccess(`🎰 JACKPOT · +${formatCredits(profit)} cr`);
     else if (rarity === 'legendary') toastSuccess(`🔥 Legendary · +${formatCredits(profit)} cr`);
     else if (profit > 0)             toastSuccess(`+${formatCredits(profit)} cr`);
     else if (profit === 0)           toastSuccess('Refunded — break even');
+
+    // Full-screen dopamine layer, calibrated to the rarity ladder.
+    if (rarity === 'ultra' || rarity === 'jackpot') {
+      flashGold({ label: rarity === 'ultra' ? 'ULTRA' : 'JACKPOT' });
+    } else if (rarity === 'legendary') {
+      flashSuccessMajor({ label: 'LEGENDARY' });
+    } else if (rarity === 'epic') {
+      flashSuccessMajor({ label: 'EPIC' });
+    } else if (profit > 0) {
+      flashSuccess();
+    } else if (profit < 0) {
+      flashLoss();
+    }
   }
 
   async function announceItemDrop(itemId) {

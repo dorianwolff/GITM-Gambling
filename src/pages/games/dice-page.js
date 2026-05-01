@@ -17,6 +17,7 @@ import { toastError } from '../../ui/components/toast.js';
 import { validateBet } from '../../utils/validation.js';
 import { formatMultiplier, formatPct, formatCredits } from '../../utils/format.js';
 import { GAMES } from '../../config/constants.js';
+import { flashSuccess, flashSuccessMajor, flashGold, flashLoss } from '../../ui/fx/feedback-fx.js';
 
 export function renderDice() {
   let target = 50;
@@ -225,6 +226,16 @@ export function renderDice() {
           [{ transform: 'scale(0.9)' }, { transform: 'scale(1.15)' }, { transform: 'scale(1)' }],
           { duration: 500, easing: 'cubic-bezier(.2,1.3,.5,1)' }
         );
+        // Calibrate the dopamine to the multiplier:
+        //   ≥ 5×  → gold-tier (rare hit, jackpot vibes)
+        //   ≥ 2×  → green major
+        //   < 2×  → light green
+        const winMult = result.payout / amount;
+        if (winMult >= 5)      flashGold({ label: `${winMult.toFixed(2)}×` });
+        else if (winMult >= 2) flashSuccessMajor({ label: `+${formatCredits(result.payout - amount)}` });
+        else                   flashSuccess();
+      } else {
+        flashLoss();
       }
 
       history = [

@@ -19,11 +19,24 @@ import {
   SUITS, rankOf, suitOf, rankLabel, handTotal, isSoft,
   isBlackjack, sameRankForSplit,
 } from '../../utils/cards.js';
+import {
+  flashSuccess, flashSuccessMajor,
+  flashLoss, flashLossMajor,
+  flashGold, flashGoldSubtle,
+} from '../../ui/fx/feedback-fx.js';
 
 export function renderBlackjack() {
   /** @type {any|null} server-returned blackjack_hands row */
   let state = null;
   let busy = false;
+
+  // Per-page bookkeeping for animations:
+  //   `seen`     — cards we've already rendered face-up at least once, so we
+  //                don't replay the flip on every redraw.
+  //   `fxKey`    — last `state.id|status` we fired outcome FX for; ensures the
+  //                celebration plays exactly once per resolved round.
+  const seen = new Set();
+  let fxKey = null;
 
   const root = h('div.flex.flex-col.gap-4', {}, []);
   const bet = createBetInput({ value: 25 });
@@ -57,6 +70,9 @@ export function renderBlackjack() {
     const status = state?.status;
     const active = state?.active_hand ?? 0;
     const showHoleCard = status === 'done' || dealerMustReveal(state);
+
+    // Fire outcome animations once per resolved round.
+    queueMicrotask(() => maybeFireOutcomeFx(state));
 
     return h('div.flex.flex-col.gap-5', {}, [
       h('div.flex.items-end.justify-between.gap-3.flex-wrap', {}, [
@@ -98,6 +114,8 @@ export function renderBlackjack() {
                 total: showHoleCard ? handTotal(dealer) : dealer[0] != null ? handTotal([dealer[0]]) : null,
                 soft:  showHoleCard ? isSoft(dealer) : false,
                 hidden: !showHoleCard ? 1 : 0,
+                cardKeyPrefix: `${state?.id ?? 'pre'}|d`,
+                seen,
               }
             ),
 
@@ -126,6 +144,8 @@ export function renderBlackjack() {
                         payout: hand.payout,
                         doubled: hand.doubled,
                         surrendered: hand.surrendered,
+                        cardKeyPrefix: `${state.id}|p${idx}`,
+                        seen,
                       }
                     )
                   )
@@ -151,6 +171,55 @@ export function renderBlackjack() {
     ]);
   }
 
+  // Fire celebratory / commiserating FX exactly once per resolved round,
+  // tailored to the worst-or-best beat of the table.
+  function maybeFireOutcomeFx(s) {
+    if (!s || s.status !== 'done') return;
+    const key = `${s.id}|${s.status}`;
+    if (fxKey === key) return;
+    fxKey = key;
+
+    const dealer = s.dealer_cards ?? [];
+    const dealerTot = handTotal(dealer);
+    const dealerBust = dealerTot > 21;
+    const dealerHas21 = dealerTot === 21;
+
+    // Worst beat first: dealer makes 21 / blackjack — the strongest negative.
+    if (dealerHas21 && (s.hands ?? []).every((hd) => !['win', 'blackjack'].includes(hd.result))) {
+      flashLossMajor({ label: dealerTot === 21 && dealer.length === 2 ? 'DEALER BLACKJACK' : 'DEALER 21', intense: true });
+      return;
+    }
+
+    // Aggregate player results into one dominant beat. We pick the most
+    // impactful single hand: blackjack > win > push > bust > lose.
+    const order = { blackjack: 5, win: 4, push: 3, bust: 2, lose: 1, surrender: 0 };
+    const best = (s.hands ?? []).reduce((acc, hd) => {
+      const o = order[hd.result] ?? -1;
+      return o > (acc.o ?? -2) ? { o, hd } : acc;
+    }, {}).hd;
+    if (!best) return;
+
+    const playerTot = handTotal(best.cards ?? []);
+    if (best.result === 'blackjack' || (best.result === 'win' && playerTot === 21)) {
+      flashGold({ label: best.result === 'blackjack' ? 'BLACKJACK!' : '21!' });
+    } else if (best.result === 'win' && dealerBust) {
+      flashSuccessMajor({ label: 'DEALER BUSTS' });
+    } else if (best.result === 'win') {
+      flashSuccessMajor({ label: 'WIN' });
+    } else if (best.result === 'push') {
+      flashSuccess();
+    } else if (best.result === 'bust') {
+      flashLossMajor({ label: 'BUST', intense: true });
+    } else if (best.result === 'surrender') {
+      flashLoss();
+    } else if (best.result === 'lose') {
+      // Soft loss unless dealer cooked us — a 20 against dealer 21 already
+      // covered above. Plain lose just gets a light sting.
+      if (playerTot === 20) flashGoldSubtle({ label: 'CLOSE — 20' });
+      flashLoss();
+    }
+  }
+
   redraw();
   return appShell(root);
 }
@@ -159,15 +228,15 @@ export function renderBlackjack() {
 // View helpers
 // ---------------------------------------------------------------------------
 
-function dealerMustReveal(state) {
-  if (!state) return false;
-  if (state.status !== 'active') return false;
-  // All player hands are done (busted or otherwise) ⇒ server hasn't
-  // finalized yet but reveal won't hurt. Defensive: keep hidden.
+function dealerMustReveal(_state) {
+  // Reserved hook: server controls reveal via `status === 'done'`. Kept as a
+  // single source of truth in case we later want to pre-reveal on bust.
   return false;
 }
 
 function handBlock(name, cards, opts = {}) {
+  const prefix = opts.cardKeyPrefix ?? '';
+  const seen = opts.seen;
   return h('div.flex.flex-col.gap-2', {}, [
     h('div.flex.items-center.justify-between.gap-2', {}, [
       h('div.flex.items-center.gap-2', {}, [
@@ -198,7 +267,7 @@ function handBlock(name, cards, opts = {}) {
     h(
       'div.flex.gap-2.flex-wrap.min-h-[112px]',
       { class: opts.active ? 'ring-1 ring-accent-cyan/30 rounded-2xl p-2 -m-2' : '' },
-      cards.map((c) => (c == null ? cardBack() : cardFront(c)))
+      cards.map((c, i) => card3d(c, `${prefix}|${i}|${c ?? 'X'}`, seen))
     ),
     opts.result
       ? h(
@@ -214,12 +283,61 @@ function handBlock(name, cards, opts = {}) {
   ]);
 }
 
-function cardFront(card) {
-  const r = rankOf(card);
+/**
+ * Single card slot rendered as a 3D-flippable element. If `card` is null we
+ * show the back side (e.g. dealer hole card pre-reveal). When the card has
+ * never been seen face-up before in this round, we render it back-side-up
+ * and flip it on the next frame, producing a real flip animation.
+ *
+ * `seen` is a Set carried on the page closure so the flip animation plays
+ * exactly once per logical card; subsequent redraws (insurance, splits,
+ * outcome FX) leave already-revealed cards unchanged.
+ */
+function card3d(card, key, seen) {
+  const inner = h('div.card3d-inner', {}, [
+    h('div.card3d-face.card3d-back', {
+      style: {
+        background:
+          'repeating-linear-gradient(45deg, #1a2040, #1a2040 6px, #2a3070 6px, #2a3070 12px)',
+        boxShadow:
+          '0 4px 12px rgba(0,0,0,0.4), inset 0 0 12px rgba(34,225,255,0.25)',
+        border: '1px solid rgba(255,255,255,0.10)',
+      },
+    }, []),
+    h('div.card3d-face.card3d-front', {
+      style: { transformOrigin: 'center' },
+    }, card == null ? [] : [cardFaceContent(card)]),
+  ]);
+
+  const root = h('div.card3d', {}, [inner]);
+
+  if (card == null) {
+    // Pure back — no animation.
+    return root;
+  }
+
+  // We have a real card. Decide: flip-in animation or instant face-up?
+  if (seen && !seen.has(key)) {
+    seen.add(key);
+    // Start back-up, then flip on next frame so the transition runs.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => root.classList.add('flipped'));
+    });
+    root.classList.add('deal-in');
+  } else {
+    // Already seen on a previous redraw — render face-up immediately.
+    root.classList.add('flipped');
+  }
+  root.dataset.rank = String(rankOf(card));
+  root.dataset.suit = suitOf(card).name;
+  return root;
+}
+
+function cardFaceContent(card) {
   const suit = suitOf(card);
   const label = rankLabel(card);
-  const el = h(
-    'div.relative.w-16.h-24.rounded-xl.border.border-black/30.shadow-card.flex.flex-col.justify-between.p-1.5.font-bold',
+  return h(
+    'div.absolute.inset-0.rounded-xl.border.border-black/30.shadow-card.flex.flex-col.justify-between.p-1.5.font-bold',
     {
       style: {
         background:
@@ -237,7 +355,7 @@ function cardFront(card) {
         'div.absolute.inset-0.flex.items-center.justify-center.pointer-events-none',
         {},
         [
-          h('span.text-3xl', { style: { color: suit.color, opacity: 0.85 } }, [
+          h('span.text-3xl', { style: { color: suit.color, opacity: 0.9 } }, [
             suit.glyph,
           ]),
         ]
@@ -247,32 +365,6 @@ function cardFront(card) {
         h('span.text-base', { style: { color: suit.color } }, [suit.glyph]),
       ]),
     ]
-  );
-  el.animate(
-    [
-      { transform: 'translateY(-14px) rotate(-6deg)', opacity: 0 },
-      { transform: 'translateY(0) rotate(0)',          opacity: 1 },
-    ],
-    { duration: 280, easing: 'cubic-bezier(0.2,0.8,0.2,1)' }
-  );
-  // tag rank for testing / a11y
-  el.dataset.rank = String(r);
-  el.dataset.suit = suit.name;
-  return el;
-}
-
-function cardBack() {
-  return h(
-    'div.w-16.h-24.rounded-xl.border.border-white/10.shadow-card',
-    {
-      style: {
-        background:
-          'repeating-linear-gradient(45deg, #1a2040, #1a2040 6px, #2a3070 6px, #2a3070 12px)',
-        boxShadow:
-          '0 4px 12px rgba(0,0,0,0.4), inset 0 0 12px rgba(34,225,255,0.25)',
-      },
-    },
-    []
   );
 }
 
@@ -382,11 +474,13 @@ function btn(label, onclick, kind = 'btn-ghost', disabled = false) {
 }
 
 function legend() {
+  // Use `colorOnDark` so spades (and any other dark-on-light suit) stays
+  // legible against the app's dark glass surface.
   return h(
     'div.mt-2.pt-3.border-t.border-white/5.flex.items-center.justify-around.text-xs.font-mono',
     {},
     SUITS.map((s) =>
-      h('span.flex.items-center.gap-1', { style: { color: s.color } }, [
+      h('span.flex.items-center.gap-1', { style: { color: s.colorOnDark } }, [
         h('span.text-base', {}, [s.glyph]),
         h('span.text-[10px].opacity-70', {}, [s.name]),
       ])
