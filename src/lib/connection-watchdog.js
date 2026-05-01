@@ -48,9 +48,15 @@ import { refreshProfile } from '../services/profile-service.js';
 let started = false;
 let lastRun = 0;
 let periodicId = null;
+let hiddenAt = 0;       // ms timestamp of the last visibilitychange→hidden
 
 const DEDUPE_MS = 1500;
 const PERIODIC_RESYNC_MS = 4 * 60_000;
+// Only force-cycle the websocket if the tab was hidden longer than this.
+// Anything shorter and Phoenix's own heartbeat keeps the socket alive
+// without us doing anything — cycling on every brief alt-tab just creates
+// a flood of WSS reconnects and `__cf_bm` cookie warnings in the console.
+const HIDDEN_THRESHOLD_MS = 60_000;
 
 /**
  * Soft resync. Refetch profile; cycle socket only if it reports dead.
@@ -134,27 +140,42 @@ export function startConnectionWatchdog() {
   if (started) return;
   started = true;
 
-  // Tab came back into view. Don't touch auth; just refresh the socket
-  // and the profile. The current page also gets re-rendered by the router
-  // on the `gitm:tab-wake` event so stale UI state resyncs.
+  // Visibility transitions. We only act on returning-to-visible, and only
+  // hard-cycle the socket when the tab was hidden long enough that Phoenix's
+  // own heartbeat may have lapsed. Brief alt-tabs leave the socket alone
+  // (it is fine, Phoenix will keep it alive) so the console isn't flooded
+  // with new WSS connects every time the user glances at another tab.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      hardReconnect('visibility');
-      window.dispatchEvent(new CustomEvent('gitm:tab-wake', { detail: { reason: 'visibility' } }));
+    if (document.visibilityState === 'hidden') {
+      hiddenAt = Date.now();
+      return;
+    }
+    if (document.visibilityState !== 'visible') return;
+
+    const hiddenFor = hiddenAt > 0 ? Date.now() - hiddenAt : 0;
+    hiddenAt = 0;
+
+    if (hiddenFor >= HIDDEN_THRESHOLD_MS) {
+      // Long hide → socket likely dead, kick the page to remount too.
+      hardReconnect('visibility-long');
+      window.dispatchEvent(new CustomEvent('gitm:tab-wake', {
+        detail: { reason: 'visibility-long', hiddenFor },
+      }));
+    } else {
+      // Short hide → cheap profile refetch; only cycle if the socket
+      // self-reports dead (refreshNow checks before cycling).
+      refreshNow('visibility-short');
     }
   });
 
-  // macOS window focus without visibilitychange (alt-tabbing between app
-  // windows on the same desktop). Soft path to avoid double-cycling when
-  // both fire together.
-  window.addEventListener('focus', () => {
-    refreshNow('focus');
-  });
+  // Window focus on macOS fires without visibilitychange when alt-tabbing
+  // between app windows. Treat as a *soft* nudge only — never cycle.
+  window.addEventListener('focus', () => refreshNow('focus'));
 
-  // Network back online — the socket has probably died.
+  // Network back online — the socket is definitely toast, force a cycle.
   window.addEventListener('online', () => hardReconnect('online'));
 
-  // BFCache restore. Supabase state is in memory but the socket is dead.
+  // BFCache restore — page resumed from memory, socket is gone for sure.
   window.addEventListener('pageshow', (ev) => {
     if (ev.persisted) {
       hardReconnect('pageshow-bfcache');
