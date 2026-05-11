@@ -24,7 +24,7 @@ export function renderLeaderboard(ctx) {
   let currentId = (ctx?.query?.board && boardById(ctx.query.board).id) || 'credits';
   const cache = new Map(); // id → { rows | error }
 
-  const root = h('div.flex.flex-col.gap-4', {}, []);
+  const root = h('div.flex.flex-col.gap-3.sm:gap-4', {}, []);
   const redraw = () => mount(root, view());
 
   async function loadBoard(id) {
@@ -61,8 +61,8 @@ export function renderLeaderboard(ctx) {
     return h('div.flex.flex-col.gap-4', {}, [
       h('div.flex.items-end.justify-between.gap-3.flex-wrap', {}, [
         h('div', {}, [
-          h('h1.text-3xl.font-semibold.heading-grad', {}, ['Leaderboards']),
-          h('p.text-sm.text-muted', {}, [board.blurb]),
+          h('h1.text-2xl.sm:text-3xl.font-semibold.heading-grad', {}, ['Leaderboards']),
+          h('p.text-xs.sm:text-sm.text-muted.max-w-2xl', {}, [board.blurb]),
         ]),
       ]),
       tabBar(currentId, switchBoard),
@@ -86,10 +86,10 @@ export function renderLeaderboard(ctx) {
 
 function tabBar(current, onSwitch) {
   return h(
-    'div.flex.gap-2.overflow-x-auto.pb-1',
+    'div.grid.grid-cols-2.gap-2.sm:flex.sm:gap-2.sm:overflow-x-auto.pb-1.sm:pb-0',
     { style: { scrollbarWidth: 'thin' } },
     LEADERBOARDS.map((b) => h(
-      'button.px-4.h-10.rounded-lg.text-xs.font-semibold.whitespace-nowrap.transition-all.flex.items-center.gap-2',
+      'button.w-full.sm:w-auto.px-2.sm:px-4.py-2.sm:h-10.rounded-lg.text-[11px].sm:text-xs.font-semibold.leading-tight.text-center.whitespace-normal.sm:whitespace-nowrap.transition-all.flex.items-center.justify-center.gap-2.flex-1.sm:flex-none.sm:flex-shrink-0',
       {
         onclick: () => onSwitch(b.id),
         style: {
@@ -106,7 +106,7 @@ function tabBar(current, onSwitch) {
 
 function boardList(rows, board) {
   const meId = userStore.get().user?.id;
-  return h('div.flex.flex-col.gap-2', {},
+  return h('div.flex.flex-col.gap-2.sm:gap-3', {},
     rows.map((r, i) => row(r, r.rank ?? (i + 1), r.id === meId, board))
   );
 }
@@ -114,12 +114,12 @@ function boardList(rows, board) {
 function row(r, rank, isMe, board) {
   const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
   const rankEl = h(
-    `div.w-10.text-center.font-mono.text-lg.${rank <= 3 ? 'text-accent-amber' : 'text-muted'}`,
+    `div.w-8.text-center.font-mono.text-base.${rank <= 3 ? 'text-accent-amber' : 'text-muted'}`,
     {},
     [medal ?? '#' + rank]
   );
   const av = h(
-    'div.w-10.h-10.rounded-xl.bg-white/5.border.border-white/10.flex.items-center.justify-center.text-sm.font-bold.shrink-0',
+    'div.w-9.h-9.rounded-xl.bg-white/5.border.border-white/10.flex.items-center.justify-center.text-xs.font-bold.shrink-0',
     r.avatar_url
       ? { style: { background: `center/cover no-repeat url(${r.avatar_url})` } }
       : {},
@@ -127,31 +127,33 @@ function row(r, rank, isMe, board) {
   );
 
   return h(
-    `a.glass.p-3.flex.items-center.gap-4.transition-all.hover:-translate-y-0.5.hover:border-accent-cyan/40.${isMe ? 'border-accent-cyan/40' : ''}`,
+    `a.glass.p-2.sm:p-3.flex.items-center.gap-2.sm:gap-3.transition-all.hover:-translate-y-0.5.hover:border-accent-cyan/40.${isMe ? 'border-accent-cyan/40' : ''}`,
     {
       href: isMe ? '/profile' : `/players/${r.id}`,
       'data-link': '',
-      style: { cursor: 'pointer', textDecoration: 'none', color: 'inherit' },
+      style: { cursor: 'pointer', textDecoration: 'none', color: 'inherit', maxWidth: '100%', overflow: 'hidden' },
     },
     [
-      rankEl,
-      av,
-      h('div.flex-1.min-w-0', {}, [
-        h('div.font-medium.truncate.flex.items-center.gap-2', {}, [
-          h('span', {}, [r.display_name]),
-          isMe ? h('span.text-[10px].text-accent-cyan.uppercase.tracking-widest', {}, ['you']) : null,
+      h('div.flex.items-center.gap-2.sm:gap-3.w-full.min-w-0.flex-1', {}, [
+        rankEl,
+        av,
+        h('div.flex-1.min-w-0', {}, [
+          h('div.font-medium.truncate.flex.items-center.gap-2.text-[12px] sm:text-sm.leading-tight', {}, [
+            h('span', {}, [r.display_name]),
+            isMe ? h('span.text-[9px].text-accent-cyan.uppercase.tracking-widest', {}, ['you']) : null,
+          ]),
+          h('div.text-[9px].sm:text-xs.text-muted.truncate.leading-tight', {}, [secondaryLine(r, board)]),
         ]),
-        h('div.text-xs.text-muted.truncate', {}, [secondaryLine(r, board)]),
       ]),
-      h('div.text-right.shrink-0', {}, [
-        h('div.font-mono.text-lg.tabular-nums', {
+      h('div.text-right.shrink-0.w-auto.flex.flex-col.items-end.justify-center.gap-0.5.min-w-0', {}, [
+        h('div.font-mono.text-[12px].sm:text-lg.tabular-nums.whitespace-nowrap', {
           style: { color: board.accent },
         }, [
           formatValue(r.value, board.suffix),
         ]),
-        h('div.text-[10px].text-muted.uppercase.tracking-widest', {}, [board.suffix]),
+        h('div.text-[8px].sm:text-[9px].text-muted.uppercase.tracking-widest', {}, [board.suffix]),
       ]),
-      h('div.text-muted.opacity-50', { style: { fontSize: '14px' } }, ['›']),
+      h('div.text-muted.opacity-50.self-center.hidden.sm:block', { style: { fontSize: '14px' } }, ['›']),
     ]
   );
 }

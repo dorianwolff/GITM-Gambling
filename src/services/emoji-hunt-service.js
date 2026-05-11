@@ -6,6 +6,7 @@
  * on the current path; the table simply stores all active hunts.
  */
 import { supabase } from '../lib/supabase.js';
+import { isAdmin } from '../state/user-store.js';
 
 export async function listActiveHunts() {
   const { data, error } = await supabase
@@ -34,6 +35,9 @@ export async function claimHunt(huntId) {
  *   sizePx  — explicit size in px (clamped 32..128), or null for server-random
  */
 export async function spawnHunt(opts = {}) {
+  if (!isAdmin()) {
+    throw new Error('Admins only');
+  }
   const { data, error } = await supabase.rpc('spawn_emoji_hunt', {
     p_page:    opts.page    ?? null,
     p_size_px: opts.sizePx  ?? null,

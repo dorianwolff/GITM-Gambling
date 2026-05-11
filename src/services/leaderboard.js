@@ -93,16 +93,27 @@ export function boardById(id) {
   return LEADERBOARDS.find((b) => b.id === id) ?? LEADERBOARDS[0];
 }
 
+// Throttle the King-of-the-Hill tick: at most one call per session every
+// 5 minutes. The tick is pure server-side bookkeeping so under-calling
+// is fine — at worst a reign confirmation is delayed by a few minutes,
+// which is invisible against the 1-hour reign requirement.
+let _lastTickAt = 0;
+const _TICK_MIN_INTERVAL_MS = 5 * 60 * 1000;
+function _maybeTick() {
+  const now = Date.now();
+  if (now - _lastTickAt < _TICK_MIN_INTERVAL_MS) return;
+  _lastTickAt = now;
+  supabase.rpc('leaderboard_tick').then(() => {}, () => {
+    // Silent: a failing tick must never block the UI or spam the console.
+  });
+}
+
 /**
  * Fetch a specific leaderboard. Falls back to `credits` if the id is unknown.
  */
 export async function getLeaderboardByType(boardId, limit = 50) {
   const board = boardById(boardId);
-  // Fire-and-forget: advance the King-of-the-Hill reign clock so the
-  // current #1 on every board gets credit for another confirmation
-  // tick. Errors are ignored — the tick is purely a server-side
-  // bookkeeping RPC and must never block the UI.
-  supabase.rpc('leaderboard_tick').then(() => {}, () => {});
+  _maybeTick();
   const { data, error } = await supabase
     .from(board.view)
     .select('*')

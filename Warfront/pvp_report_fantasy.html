@@ -1,0 +1,1390 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<title>Warfront PvP — fantasy</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Pro:wght@300;400&display=swap');
+:root{--gold:#c9a84c;--stone:#1a1410;--stone-mid:#232018;--stone-light:#3d352f;--pc:#f0e8d0;--pcd:#c8b898;--gr:#5cb87a;--ye:#c8a840;--re:#c85050;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Crimson Pro',serif;background:var(--stone);color:var(--pc);min-height:100vh;}
+.sidebar{position:fixed;top:0;left:0;width:200px;height:100vh;background:#111008;border-right:1px solid var(--stone-light);padding:1.5rem 1rem;overflow-y:auto;z-index:10;}
+.sidebar h2{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);letter-spacing:3px;margin-bottom:1.2rem;}
+.nav-link{display:block;padding:6px 10px;font-size:13px;color:var(--pcd);text-decoration:none;border-radius:4px;margin-bottom:2px;cursor:pointer;}
+.nav-link:hover,.nav-link.active{background:var(--stone-mid);color:var(--gold);}
+.nav-section{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--stone-light);padding:8px 10px 3px;margin-top:.5rem;}
+.main{margin-left:200px;padding:2rem 2.5rem;max-width:1200px;}
+.page-hdr{text-align:center;margin-bottom:2.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--stone-light);}
+.page-hdr h1{font-family:'Cinzel',serif;font-size:30px;color:var(--gold);letter-spacing:5px;}
+.page-hdr p{color:var(--pcd);font-size:14px;font-style:italic;margin-top:.4rem;}
+.meta-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:1rem;}
+.meta-pill{background:var(--stone-mid);border:1px solid var(--stone-light);border-radius:6px;padding:5px 16px;font-size:12px;color:var(--pcd);}
+.meta-pill strong{color:var(--gold);}
+.section-title{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--stone-light);padding-bottom:.5rem;margin:2rem 0 1rem;}
+.podium{display:flex;gap:16px;justify-content:center;align-items:flex-end;flex-wrap:wrap;margin-bottom:2rem;}
+.pod-card{border-radius:10px;padding:18px 22px;min-width:200px;max-width:270px;text-align:center;border:1px solid var(--stone-light);background:var(--stone-mid);}
+.pod-card.gold{border-color:var(--gold);background:#251c08;order:-1;}
+.pod-card.silver{border-color:#9090a8;background:#1c1c28;}
+.pod-card.bronze{border-color:#9c6e40;background:#1c1208;}
+.pod-medal{font-size:26px;margin-bottom:4px;}
+.pod-wr{font-family:'Cinzel',serif;font-size:22px;font-weight:600;color:var(--gold);}
+.pod-rec{font-size:12px;color:var(--pcd);margin:3px 0;}
+.pod-cost{font-size:12px;color:var(--gold);margin-bottom:6px;}
+.pod-team{font-size:11px;color:var(--pc);line-height:1.8;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{font-family:'Cinzel',serif;font-size:10px;color:var(--pcd);text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;border-bottom:1px solid var(--stone-light);text-align:left;font-weight:400;}
+tbody td{padding:7px 10px;border-bottom:1px solid #1e1a16;}
+tbody tr:hover td{background:#262018;}
+.rk{font-family:'Cinzel',serif;color:var(--gold);width:44px;font-size:14px;}
+.fw-cell{font-weight:600;} .gc{color:var(--gold);width:40px;} .rec{color:var(--pcd);font-size:11px;}
+.team-cell{font-family:'Crimson Pro',serif;} .dim{color:var(--pcd);} .mono{font-family:monospace;font-size:11px;}
+.gr{color:var(--gr);} .ye{color:var(--ye);} .re{color:var(--re);}
+/* Unit profiles */
+.unit-card-pvp{background:var(--stone-mid);border:1px solid var(--stone-light);border-radius:8px;padding:16px;margin-bottom:14px;}
+.ucp-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.ucp-icon{font-size:20px;} .ucp-name{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);}
+.ucp-cost{font-size:11px;color:var(--pcd);} .ucp-wr{font-family:'Cinzel',serif;font-size:16px;font-weight:600;margin-left:auto;}
+.ucp-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;}
+.ucp-card{background:#181410;border:1px solid var(--stone-light);border-radius:6px;padding:10px;}
+.ucp-label{font-size:10px;letter-spacing:.5px;color:var(--pcd);text-transform:uppercase;margin-bottom:4px;}
+.ucp-val{font-family:'Cinzel',serif;font-size:14px;color:var(--pc);}
+.mini-tbl td,.mini-tbl th{padding:4px 6px;}
+.page-section{display:none;} .page-section.active{display:block;}
+</style></head><body>
+<div class="sidebar">
+  <h2>⚔ PVP</h2>
+  <div class="nav-section">FANTASY</div>
+  <a class="nav-link active" onclick="showSection('overview')" href="#">🏆 Overview</a>
+  <a class="nav-link" onclick="showSection('top100')" href="#">📋 Top 100 Teams</a>
+  <a class="nav-link" onclick="showSection('units')" href="#">🎖 Unit Profiles</a>
+  <a class="nav-link" onclick="showSection('playoff')" href="#">⚡ Playoff</a>
+</div>
+<div class="main">
+  <!-- OVERVIEW -->
+  <div class="page-section active" id="sec-overview">
+    <div class="page-hdr">
+      <h1>⚔ WARFRONT PVP</h1>
+      <p>Fantasy Collection &mdash; 10g vs 10g</p>
+      <div class="meta-row">
+        <div class="meta-pill"><strong>10,064</strong> teams evaluated</div>
+        <div class="meta-pill"><strong>100</strong> in Top 100</div>
+        <div class="meta-pill"><strong>400,836</strong> battles (Top 100)</div>
+        <div class="meta-pill">Playoff: top <strong>16</strong> teams</div>
+      </div>
+    </div>
+    <div class="section-title">🏅 Playoff Podium</div>
+    <div class="podium"><div class="pod-card gold">
+      <div class="pod-medal">🥇</div>
+      <div class="pod-wr">81.7%</div>
+      <div class="pod-rec">245W/0D/55L</div>
+      <div class="pod-cost">10g</div>
+      <div class="pod-team"> mage,  troll,  troll</div>
+    </div><div class="pod-card silver">
+      <div class="pod-medal">🥈</div>
+      <div class="pod-wr">76.0%</div>
+      <div class="pod-rec">228W/0D/72L</div>
+      <div class="pod-cost">10g</div>
+      <div class="pod-team"> bombgoblin,  brute,  peasant,  phoenix</div>
+    </div><div class="pod-card bronze">
+      <div class="pod-medal">🥉</div>
+      <div class="pod-wr">74.3%</div>
+      <div class="pod-rec">223W/0D/77L</div>
+      <div class="pod-cost">10g</div>
+      <div class="pod-team"> brute,  lumberjack,  phoenix</div>
+    </div></div>
+  </div>
+
+  <!-- TOP 100 -->
+  <div class="page-section" id="sec-top100">
+    <div class="section-title">📋 Top 100 Teams — PvP Win Rate</div>
+    <table><thead><tr><th>Rank</th><th>PvP WR</th><th>Record (W/D/L)</th><th>Cost</th><th>Team</th></tr></thead>
+    <tbody><tr>
+      <td class="rk">🥇</td>
+      <td class="gr fw-cell">89.1%</td>
+      <td class="rec">3556W/0D/435L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> mage,  troll,  troll</td>
+    </tr><tr>
+      <td class="rk">🥈</td>
+      <td class="gr fw-cell">82.7%</td>
+      <td class="rec">3357W/0D/704L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  peasant,  siege,  troll</td>
+    </tr><tr>
+      <td class="rk">🥉</td>
+      <td class="gr fw-cell">82.0%</td>
+      <td class="rec">3297W/0D/723L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> peasant,  peasant,  siege,  troll</td>
+    </tr><tr>
+      <td class="rk">#4</td>
+      <td class="gr fw-cell">81.6%</td>
+      <td class="rec">3259W/0D/735L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> siege,  warlord</td>
+    </tr><tr>
+      <td class="rk">#5</td>
+      <td class="gr fw-cell">81.6%</td>
+      <td class="rec">3256W/0D/736L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  siege,  troll</td>
+    </tr><tr>
+      <td class="rk">#6</td>
+      <td class="gr fw-cell">81.4%</td>
+      <td class="rec">3255W/0D/745L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  genie,  siege</td>
+    </tr><tr>
+      <td class="rk">#7</td>
+      <td class="gr fw-cell">81.4%</td>
+      <td class="rec">3251W/0D/745L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  footman,  siege,  troll</td>
+    </tr><tr>
+      <td class="rk">#8</td>
+      <td class="gr fw-cell">77.0%</td>
+      <td class="rec">3102W/0D/929L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  brute,  peasant,  phoenix</td>
+    </tr><tr>
+      <td class="rk">#9</td>
+      <td class="gr fw-cell">74.5%</td>
+      <td class="rec">2975W/0D/1020L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  lumberjack,  phoenix</td>
+    </tr><tr>
+      <td class="rk">#10</td>
+      <td class="gr fw-cell">73.9%</td>
+      <td class="rec">2999W/0D/1057L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  peasant,  siege,  timewizard</td>
+    </tr><tr>
+      <td class="rk">#11</td>
+      <td class="gr fw-cell">72.8%</td>
+      <td class="rec">2937W/0D/1097L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  peasant,  siege,  troll</td>
+    </tr><tr>
+      <td class="rk">#12</td>
+      <td class="gr fw-cell">72.6%</td>
+      <td class="rec">2905W/0D/1095L</td>
+      <td class="gc">9g</td>
+      <td class="team-cell"> footman,  siege,  troll</td>
+    </tr><tr>
+      <td class="rk">#13</td>
+      <td class="gr fw-cell">72.5%</td>
+      <td class="rec">2896W/0D/1096L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  mage,  troll</td>
+    </tr><tr>
+      <td class="rk">#14</td>
+      <td class="gr fw-cell">71.7%</td>
+      <td class="rec">2887W/0D/1141L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  mage,  peasant,  troll</td>
+    </tr><tr>
+      <td class="rk">#15</td>
+      <td class="gr fw-cell">71.6%</td>
+      <td class="rec">2863W/0D/1135L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  brute,  footman,  phoenix</td>
+    </tr><tr>
+      <td class="rk">#16</td>
+      <td class="gr fw-cell">71.4%</td>
+      <td class="rec">2852W/0D/1140L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  footman,  mage,  troll</td>
+    </tr><tr>
+      <td class="rk">#17</td>
+      <td class="gr fw-cell">71.2%</td>
+      <td class="rec">2843W/0D/1150L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  genie,  siege</td>
+    </tr><tr>
+      <td class="rk">#18</td>
+      <td class="gr fw-cell">71.1%</td>
+      <td class="rec">2844W/0D/1154L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  mirrormage,  siege</td>
+    </tr><tr>
+      <td class="rk">#19</td>
+      <td class="gr fw-cell">69.9%</td>
+      <td class="rec">2796W/0D/1202L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  frostwitch,  siege</td>
+    </tr><tr>
+      <td class="rk">#20</td>
+      <td class="gr fw-cell">69.1%</td>
+      <td class="rec">2758W/0D/1235L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  footman,  phoenix,  troll</td>
+    </tr><tr>
+      <td class="rk">#21</td>
+      <td class="gr fw-cell">69.1%</td>
+      <td class="rec">2757W/0D/1235L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  bombgoblin,  brute,  phoenix</td>
+    </tr><tr>
+      <td class="rk">#22</td>
+      <td class="gr fw-cell">67.9%</td>
+      <td class="rec">2714W/0D/1283L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  bombgoblin,  footman,  lumberjack,  phoenix</td>
+    </tr><tr>
+      <td class="rk">#23</td>
+      <td class="gr fw-cell">67.7%</td>
+      <td class="rec">2734W/0D/1302L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  peasant,  phoenix,  troll</td>
+    </tr><tr>
+      <td class="rk">#24</td>
+      <td class="gr fw-cell">67.4%</td>
+      <td class="rec">2691W/0D/1300L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  frostwitch,  phoenix</td>
+    </tr><tr>
+      <td class="rk">#25</td>
+      <td class="gr fw-cell">66.7%</td>
+      <td class="rec">2664W/0D/1328L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  lumberjack,  lumberjack,  phoenix</td>
+    </tr><tr>
+      <td class="rk">#26</td>
+      <td class="gr fw-cell">66.7%</td>
+      <td class="rec">2663W/0D/1328L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  footman,  siege,  voidwalker</td>
+    </tr><tr>
+      <td class="rk">#27</td>
+      <td class="gr fw-cell">64.9%</td>
+      <td class="rec">2624W/0D/1418L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  bombgoblin,  mage,  peasant,  troll</td>
+    </tr><tr>
+      <td class="rk">#28</td>
+      <td class="gr fw-cell">63.7%</td>
+      <td class="rec">2563W/0D/1461L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  footman,  footman,  footman,  siege</td>
+    </tr><tr>
+      <td class="rk">#29</td>
+      <td class="gr fw-cell">63.7%</td>
+      <td class="rec">2542W/0D/1450L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> assassin,  siege,  troll</td>
+    </tr><tr>
+      <td class="rk">#30</td>
+      <td class="gr fw-cell">63.2%</td>
+      <td class="rec">2523W/0D/1468L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> mage,  timewizard,  troll</td>
+    </tr><tr>
+      <td class="rk">#31</td>
+      <td class="gr fw-cell">61.7%</td>
+      <td class="rec">2464W/0D/1532L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  footman,  footman,  siege</td>
+    </tr><tr>
+      <td class="rk">#32</td>
+      <td class="gr fw-cell">61.6%</td>
+      <td class="rec">2461W/0D/1535L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  footman,  siege,  timewizard</td>
+    </tr><tr>
+      <td class="rk">#33</td>
+      <td class="gr fw-cell">60.7%</td>
+      <td class="rec">2457W/0D/1591L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  brute,  brute,  peasant</td>
+    </tr><tr>
+      <td class="rk">#34</td>
+      <td class="gr fw-cell">58.8%</td>
+      <td class="rec">2349W/0D/1644L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  siege,  timewizard</td>
+    </tr><tr>
+      <td class="rk">#35</td>
+      <td class="gr fw-cell">58.6%</td>
+      <td class="rec">2365W/0D/1674L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> frostwitch,  peasant,  siege</td>
+    </tr><tr>
+      <td class="rk">#36</td>
+      <td class="gr fw-cell">58.5%</td>
+      <td class="rec">2335W/0D/1657L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  bombgoblin,  footman,  mage,  troll</td>
+    </tr><tr>
+      <td class="rk">#37</td>
+      <td class="gr fw-cell">58.1%</td>
+      <td class="rec">2320W/0D/1672L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  brute,  mage</td>
+    </tr><tr>
+      <td class="rk">#38</td>
+      <td class="gr fw-cell">57.6%</td>
+      <td class="rec">2302W/0D/1695L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  footman,  siege,  voidwalker</td>
+    </tr><tr>
+      <td class="rk">#39</td>
+      <td class="gr fw-cell">57.3%</td>
+      <td class="rec">2288W/0D/1704L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  siege,  voidwalker</td>
+    </tr><tr>
+      <td class="rk">#40</td>
+      <td class="gr fw-cell">57.0%</td>
+      <td class="rec">2273W/0D/1717L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  bombgoblin,  stormdrake,  troll</td>
+    </tr><tr>
+      <td class="rk">#41</td>
+      <td class="gr fw-cell">56.9%</td>
+      <td class="rec">2290W/0D/1736L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  footman,  mage,  peasant,  troll</td>
+    </tr><tr>
+      <td class="rk">#42</td>
+      <td class="gr fw-cell">56.7%</td>
+      <td class="rec">2308W/0D/1760L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  peasant,  peasant,  siege</td>
+    </tr><tr>
+      <td class="rk">#43</td>
+      <td class="gr fw-cell">56.2%</td>
+      <td class="rec">2272W/0D/1768L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  footman,  footman,  peasant,  siege</td>
+    </tr><tr>
+      <td class="rk">#44</td>
+      <td class="gr fw-cell">56.0%</td>
+      <td class="rec">2236W/0D/1756L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  mirrormage,  stormdrake</td>
+    </tr><tr>
+      <td class="rk">#45</td>
+      <td class="gr fw-cell">55.6%</td>
+      <td class="rec">2245W/0D/1790L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  footman,  footman,  footman,  footman,  siege</td>
+    </tr><tr>
+      <td class="rk">#46</td>
+      <td class="gr fw-cell">55.6%</td>
+      <td class="rec">2256W/0D/1800L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  footman,  footman,  footman,  peasant,  siege</td>
+    </tr><tr>
+      <td class="rk">#47</td>
+      <td class="gr fw-cell">55.1%</td>
+      <td class="rec">2221W/0D/1810L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  footman,  peasant,  peasant,  siege</td>
+    </tr><tr>
+      <td class="rk">#48</td>
+      <td class="ye fw-cell">53.3%</td>
+      <td class="rec">2129W/0D/1863L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  frostwitch,  siege</td>
+    </tr><tr>
+      <td class="rk">#49</td>
+      <td class="ye fw-cell">53.2%</td>
+      <td class="rec">2142W/0D/1882L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  peasant,  siege,  voidwalker</td>
+    </tr><tr>
+      <td class="rk">#50</td>
+      <td class="ye fw-cell">53.1%</td>
+      <td class="rec">2155W/0D/1901L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> mage,  peasant,  peasant,  peasant,  troll</td>
+    </tr><tr>
+      <td class="rk">#51</td>
+      <td class="ye fw-cell">53.0%</td>
+      <td class="rec">2116W/0D/1878L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  bombgoblin,  bombgoblin,  bombgoblin,  footman,  mirrormage</td>
+    </tr><tr>
+      <td class="rk">#52</td>
+      <td class="ye fw-cell">52.3%</td>
+      <td class="rec">2086W/0D/1906L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  mirrormage,  siege</td>
+    </tr><tr>
+      <td class="rk">#53</td>
+      <td class="ye fw-cell">52.2%</td>
+      <td class="rec">2081W/0D/1909L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  bombgoblin,  siege,  timewizard</td>
+    </tr><tr>
+      <td class="rk">#54</td>
+      <td class="ye fw-cell">51.2%</td>
+      <td class="rec">2045W/0D/1950L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  brute,  brute,  footman</td>
+    </tr><tr>
+      <td class="rk">#55</td>
+      <td class="ye fw-cell">49.6%</td>
+      <td class="rec">1981W/0D/2014L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  brute,  brute,  brute</td>
+    </tr><tr>
+      <td class="rk">#56</td>
+      <td class="ye fw-cell">49.4%</td>
+      <td class="rec">1974W/0D/2019L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  bombgoblin,  brute,  footman,  mage</td>
+    </tr><tr>
+      <td class="rk">#57</td>
+      <td class="ye fw-cell">48.3%</td>
+      <td class="rec">1962W/0D/2100L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  bombgoblin,  brute,  brute,  peasant,  peasant</td>
+    </tr><tr>
+      <td class="rk">#58</td>
+      <td class="ye fw-cell">48.0%</td>
+      <td class="rec">1931W/0D/2089L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  footman,  golem,  peasant</td>
+    </tr><tr>
+      <td class="rk">#59</td>
+      <td class="ye fw-cell">46.4%</td>
+      <td class="rec">1851W/0D/2140L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  archer,  troll,  troll</td>
+    </tr><tr>
+      <td class="rk">#60</td>
+      <td class="ye fw-cell">46.0%</td>
+      <td class="rec">1835W/0D/2156L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  lumberjack,  phoenix,  shaman</td>
+    </tr><tr>
+      <td class="rk">#61</td>
+      <td class="ye fw-cell">46.0%</td>
+      <td class="rec">1836W/0D/2158L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  brute,  footman,  siege</td>
+    </tr><tr>
+      <td class="rk">#62</td>
+      <td class="ye fw-cell">45.3%</td>
+      <td class="rec">1810W/0D/2185L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> mirrormage,  troll,  voidwalker</td>
+    </tr><tr>
+      <td class="rk">#63</td>
+      <td class="ye fw-cell">45.2%</td>
+      <td class="rec">1810W/0D/2197L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  brute,  peasant,  siege</td>
+    </tr><tr>
+      <td class="rk">#64</td>
+      <td class="re fw-cell">44.6%</td>
+      <td class="rec">1781W/0D/2212L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  shaman,  siege</td>
+    </tr><tr>
+      <td class="rk">#65</td>
+      <td class="re fw-cell">43.9%</td>
+      <td class="rec">1752W/0D/2241L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  bombgoblin,  bombgoblin,  troll,  voidwalker</td>
+    </tr><tr>
+      <td class="rk">#66</td>
+      <td class="re fw-cell">43.8%</td>
+      <td class="rec">1761W/0D/2255L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  bombgoblin,  bombgoblin,  brute,  lumberjack,  peasant</td>
+    </tr><tr>
+      <td class="rk">#67</td>
+      <td class="re fw-cell">43.2%</td>
+      <td class="rec">1723W/0D/2270L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  footman,  footman,  troll,  troll</td>
+    </tr><tr>
+      <td class="rk">#68</td>
+      <td class="re fw-cell">42.1%</td>
+      <td class="rec">1706W/0D/2344L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  lumberjack,  mage,  peasant</td>
+    </tr><tr>
+      <td class="rk">#69</td>
+      <td class="re fw-cell">40.3%</td>
+      <td class="rec">1612W/0D/2386L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  footman,  lumberjack,  siege</td>
+    </tr><tr>
+      <td class="rk">#70</td>
+      <td class="re fw-cell">40.1%</td>
+      <td class="rec">1615W/0D/2412L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  brute,  brute,  lumberjack,  peasant</td>
+    </tr><tr>
+      <td class="rk">#71</td>
+      <td class="re fw-cell">38.3%</td>
+      <td class="rec">1530W/0D/2461L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  mage,  timewizard</td>
+    </tr><tr>
+      <td class="rk">#72</td>
+      <td class="re fw-cell">37.5%</td>
+      <td class="rec">1496W/0D/2495L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  brute,  siege</td>
+    </tr><tr>
+      <td class="rk">#73</td>
+      <td class="re fw-cell">36.3%</td>
+      <td class="rec">1453W/0D/2545L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  bombgoblin,  bombgoblin,  brute,  footman,  lumberjack</td>
+    </tr><tr>
+      <td class="rk">#74</td>
+      <td class="re fw-cell">36.2%</td>
+      <td class="rec">1462W/0D/2582L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  lumberjack,  lumberjack,  lumberjack,  lumberjack,  peasant</td>
+    </tr><tr>
+      <td class="rk">#75</td>
+      <td class="re fw-cell">34.7%</td>
+      <td class="rec">1384W/0D/2607L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  brute,  lumberjack,  shaman</td>
+    </tr><tr>
+      <td class="rk">#76</td>
+      <td class="re fw-cell">34.2%</td>
+      <td class="rec">1367W/0D/2627L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  brute,  footman,  voidwalker</td>
+    </tr><tr>
+      <td class="rk">#77</td>
+      <td class="re fw-cell">34.0%</td>
+      <td class="rec">1358W/0D/2633L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> angel,  bombgoblin,  bombgoblin,  troll,  voidwalker</td>
+    </tr><tr>
+      <td class="rk">#78</td>
+      <td class="re fw-cell">33.1%</td>
+      <td class="rec">1323W/0D/2670L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> assassin,  lumberjack,  lumberjack,  lumberjack,  lumberjack</td>
+    </tr><tr>
+      <td class="rk">#79</td>
+      <td class="re fw-cell">32.1%</td>
+      <td class="rec">1282W/0D/2710L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  bombgoblin,  bombgoblin,  bombgoblin,  brute,  lumberjack</td>
+    </tr><tr>
+      <td class="rk">#80</td>
+      <td class="re fw-cell">31.8%</td>
+      <td class="rec">1270W/0D/2722L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  lumberjack,  lumberjack,  lumberjack,  lumberjack</td>
+    </tr><tr>
+      <td class="rk">#81</td>
+      <td class="re fw-cell">30.5%</td>
+      <td class="rec">1227W/0D/2799L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  lumberjack,  peasant,  siege</td>
+    </tr><tr>
+      <td class="rk">#82</td>
+      <td class="re fw-cell">28.2%</td>
+      <td class="rec">1141W/0D/2908L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  bombgoblin,  lumberjack,  lumberjack,  peasant,  voidwalker</td>
+    </tr><tr>
+      <td class="rk">#83</td>
+      <td class="re fw-cell">27.8%</td>
+      <td class="rec">1110W/0D/2882L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  archer,  brute,  brute</td>
+    </tr><tr>
+      <td class="rk">#84</td>
+      <td class="re fw-cell">27.3%</td>
+      <td class="rec">1090W/0D/2909L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  bombgoblin,  bombgoblin,  timewizard,  troll</td>
+    </tr><tr>
+      <td class="rk">#85</td>
+      <td class="re fw-cell">26.8%</td>
+      <td class="rec">1071W/0D/2923L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> assassin,  bombgoblin,  bombgoblin,  voidwalker,  voidwalker</td>
+    </tr><tr>
+      <td class="rk">#86</td>
+      <td class="re fw-cell">26.8%</td>
+      <td class="rec">1090W/0D/2978L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  bombgoblin,  brute,  peasant,  troll</td>
+    </tr><tr>
+      <td class="rk">#87</td>
+      <td class="re fw-cell">24.9%</td>
+      <td class="rec">994W/0D/3002L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  bombgoblin,  bombgoblin,  footman,  lumberjack,  voidwalker</td>
+    </tr><tr>
+      <td class="rk">#88</td>
+      <td class="re fw-cell">24.4%</td>
+      <td class="rec">984W/0D/3043L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  archer,  footman,  footman,  peasant,  voidwalker</td>
+    </tr><tr>
+      <td class="rk">#89</td>
+      <td class="re fw-cell">24.2%</td>
+      <td class="rec">976W/0D/3058L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  lumberjack,  lumberjack,  lumberjack,  peasant,  shaman</td>
+    </tr><tr>
+      <td class="rk">#90</td>
+      <td class="re fw-cell">24.0%</td>
+      <td class="rec">959W/0D/3033L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  brute,  footman,  lumberjack,  lumberjack</td>
+    </tr><tr>
+      <td class="rk">#91</td>
+      <td class="re fw-cell">23.4%</td>
+      <td class="rec">935W/0D/3057L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  brute,  lumberjack,  lumberjack,  shaman</td>
+    </tr><tr>
+      <td class="rk">#92</td>
+      <td class="re fw-cell">23.1%</td>
+      <td class="rec">937W/0D/3116L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  lumberjack,  lumberjack,  peasant,  shaman</td>
+    </tr><tr>
+      <td class="rk">#93</td>
+      <td class="re fw-cell">22.3%</td>
+      <td class="rec">888W/0D/3103L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  archer,  brute,  footman,  shaman</td>
+    </tr><tr>
+      <td class="rk">#94</td>
+      <td class="re fw-cell">21.7%</td>
+      <td class="rec">868W/0D/3129L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  footman,  necromancer,  troll</td>
+    </tr><tr>
+      <td class="rk">#95</td>
+      <td class="re fw-cell">21.5%</td>
+      <td class="rec">857W/0D/3135L</td>
+      <td class="gc">9g</td>
+      <td class="team-cell"> bombgoblin,  bombgoblin,  brute,  lumberjack,  lumberjack</td>
+    </tr><tr>
+      <td class="rk">#96</td>
+      <td class="re fw-cell">18.5%</td>
+      <td class="rec">745W/0D/3283L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  footman,  footman,  footman,  lumberjack,  shaman</td>
+    </tr><tr>
+      <td class="rk">#97</td>
+      <td class="re fw-cell">18.1%</td>
+      <td class="rec">723W/0D/3272L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  footman,  lumberjack,  lumberjack,  shaman</td>
+    </tr><tr>
+      <td class="rk">#98</td>
+      <td class="re fw-cell">16.4%</td>
+      <td class="rec">654W/0D/3338L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  brute,  troll,  troll</td>
+    </tr><tr>
+      <td class="rk">#99</td>
+      <td class="re fw-cell">14.5%</td>
+      <td class="rec">579W/0D/3416L</td>
+      <td class="gc">9g</td>
+      <td class="team-cell"> archer,  brute,  brute,  footman</td>
+    </tr><tr>
+      <td class="rk">#100</td>
+      <td class="re fw-cell">8.5%</td>
+      <td class="rec">339W/0D/3654L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> assassin,  assassin,  bombgoblin,  cavalry,  lumberjack</td>
+    </tr></tbody></table>
+  </div>
+
+  <!-- UNIT PROFILES -->
+  <div class="page-section" id="sec-units">
+    <div class="section-title">🎖 Unit Profiles — PvP Performance</div>
+    
+    <div class="unit-card-pvp" id="upvp-warlord">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">warlord</span>
+        <span class="ucp-cost">5g</span>
+        <span class="ucp-wr gr">81.6%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">3259W / 735L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">3,994</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> siege</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing warlord</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> siege,  warlord</td><td class="gr fw-cell">81.6%</td><td class="dim">3994</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-genie">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">genie</span>
+        <span class="ucp-cost">4g</span>
+        <span class="ucp-wr gr">76.3%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">6098W / 1895L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">7,993</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> siege</td><td class="dim">2× in top teams</td></tr><tr><td> footman</td><td class="dim">1× in top teams</td></tr><tr><td> bombgoblin</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing genie</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> footman,  genie,  siege</td><td class="gr fw-cell">81.4%</td><td class="dim">4000</td></tr><tr><td class="mono"> bombgoblin,  genie,  siege</td><td class="gr fw-cell">71.2%</td><td class="dim">3993</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-phoenix">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">phoenix</span>
+        <span class="ucp-cost">5g</span>
+        <span class="ucp-wr gr">67.7%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">27093W / 12923L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">40,016</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> bombgoblin</td><td class="dim">3× in top teams</td></tr><tr><td> brute</td><td class="dim">3× in top teams</td></tr><tr><td> footman</td><td class="dim">2× in top teams</td></tr><tr><td> peasant</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing phoenix</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> bombgoblin,  brute,  peasant,  phoenix</td><td class="gr fw-cell">77.0%</td><td class="dim">4031</td></tr><tr><td class="mono"> brute,  lumberjack,  phoenix</td><td class="gr fw-cell">74.5%</td><td class="dim">3995</td></tr><tr><td class="mono"> bombgoblin,  brute,  footman,  phoenix</td><td class="gr fw-cell">71.6%</td><td class="dim">3998</td></tr><tr><td class="mono"> bombgoblin,  footman,  phoenix,  troll</td><td class="gr fw-cell">69.1%</td><td class="dim">3993</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-frostwitch">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">frostwitch</span>
+        <span class="ucp-cost">4g</span>
+        <span class="ucp-wr gr">62.3%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">9981W / 6039L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">16,020</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> siege</td><td class="dim">3× in top teams</td></tr><tr><td> bombgoblin</td><td class="dim">2× in top teams</td></tr><tr><td> footman</td><td class="dim">1× in top teams</td></tr><tr><td> phoenix</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing frostwitch</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> footman,  frostwitch,  siege</td><td class="gr fw-cell">69.9%</td><td class="dim">3998</td></tr><tr><td class="mono"> bombgoblin,  frostwitch,  phoenix</td><td class="gr fw-cell">67.4%</td><td class="dim">3991</td></tr><tr><td class="mono"> frostwitch,  peasant,  siege</td><td class="gr fw-cell">58.6%</td><td class="dim">4039</td></tr><tr><td class="mono"> bombgoblin,  frostwitch,  siege</td><td class="ye fw-cell">53.3%</td><td class="dim">3992</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-siege">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">siege</span>
+        <span class="ucp-cost">5g</span>
+        <span class="ucp-wr gr">61.3%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">88498W / 55901L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">144,399</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> peasant</td><td class="dim">3× in top teams</td></tr><tr><td> troll</td><td class="dim">3× in top teams</td></tr><tr><td> footman</td><td class="dim">1× in top teams</td></tr><tr><td> warlord</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing siege</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> footman,  peasant,  siege,  troll</td><td class="gr fw-cell">82.7%</td><td class="dim">4061</td></tr><tr><td class="mono"> peasant,  peasant,  siege,  troll</td><td class="gr fw-cell">82.0%</td><td class="dim">4020</td></tr><tr><td class="mono"> siege,  warlord</td><td class="gr fw-cell">81.6%</td><td class="dim">3994</td></tr><tr><td class="mono"> archer,  siege,  troll</td><td class="gr fw-cell">81.6%</td><td class="dim">3992</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-mage">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">mage</span>
+        <span class="ucp-cost">4g</span>
+        <span class="ucp-wr gr">60.7%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">31648W / 20488L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">52,136</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> troll</td><td class="dim">5× in top teams</td></tr><tr><td> archer</td><td class="dim">2× in top teams</td></tr><tr><td> brute</td><td class="dim">1× in top teams</td></tr><tr><td> peasant</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing mage</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> mage,  troll,  troll</td><td class="gr fw-cell">89.1%</td><td class="dim">3991</td></tr><tr><td class="mono"> brute,  mage,  troll</td><td class="gr fw-cell">72.5%</td><td class="dim">3992</td></tr><tr><td class="mono"> archer,  mage,  peasant,  troll</td><td class="gr fw-cell">71.7%</td><td class="dim">4028</td></tr><tr><td class="mono"> archer,  footman,  mage,  troll</td><td class="gr fw-cell">71.4%</td><td class="dim">3992</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-troll">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">troll</span>
+        <span class="ucp-cost">3g</span>
+        <span class="ucp-wr gr">57.3%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">73408W / 54802L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">128,210</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> peasant</td><td class="dim">3× in top teams</td></tr><tr><td> siege</td><td class="dim">3× in top teams</td></tr><tr><td> mage</td><td class="dim">1× in top teams</td></tr><tr><td> footman</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing troll</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> mage,  troll,  troll</td><td class="gr fw-cell">89.1%</td><td class="dim">3991</td></tr><tr><td class="mono"> footman,  peasant,  siege,  troll</td><td class="gr fw-cell">82.7%</td><td class="dim">4061</td></tr><tr><td class="mono"> peasant,  peasant,  siege,  troll</td><td class="gr fw-cell">82.0%</td><td class="dim">4020</td></tr><tr><td class="mono"> archer,  siege,  troll</td><td class="gr fw-cell">81.6%</td><td class="dim">3992</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-stormdrake">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">stormdrake</span>
+        <span class="ucp-cost">5g</span>
+        <span class="ucp-wr gr">56.5%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">4509W / 3473L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">7,982</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> bombgoblin</td><td class="dim">3× in top teams</td></tr><tr><td> troll</td><td class="dim">1× in top teams</td></tr><tr><td> mirrormage</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing stormdrake</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> bombgoblin,  bombgoblin,  stormdrake,  troll</td><td class="gr fw-cell">57.0%</td><td class="dim">3990</td></tr><tr><td class="mono"> bombgoblin,  mirrormage,  stormdrake</td><td class="gr fw-cell">56.0%</td><td class="dim">3992</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-mirrormage">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">mirrormage</span>
+        <span class="ucp-cost">4g</span>
+        <span class="ucp-wr gr">55.5%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">11092W / 8879L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">19,971</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> bombgoblin</td><td class="dim">5× in top teams</td></tr><tr><td> footman</td><td class="dim">2× in top teams</td></tr><tr><td> siege</td><td class="dim">2× in top teams</td></tr><tr><td> stormdrake</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing mirrormage</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> footman,  mirrormage,  siege</td><td class="gr fw-cell">71.1%</td><td class="dim">3998</td></tr><tr><td class="mono"> bombgoblin,  mirrormage,  stormdrake</td><td class="gr fw-cell">56.0%</td><td class="dim">3992</td></tr><tr><td class="mono"> archer,  bombgoblin,  bombgoblin,  bombgoblin,  footman,  mirrormage</td><td class="ye fw-cell">53.0%</td><td class="dim">3994</td></tr><tr><td class="mono"> bombgoblin,  mirrormage,  siege</td><td class="ye fw-cell">52.3%</td><td class="dim">3992</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-timewizard">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">timewizard</span>
+        <span class="ucp-cost">3g</span>
+        <span class="ucp-wr ye">53.7%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">15033W / 12983L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">28,016</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> siege</td><td class="dim">3× in top teams</td></tr><tr><td> footman</td><td class="dim">2× in top teams</td></tr><tr><td> peasant</td><td class="dim">1× in top teams</td></tr><tr><td> mage</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing timewizard</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> footman,  peasant,  siege,  timewizard</td><td class="gr fw-cell">73.9%</td><td class="dim">4056</td></tr><tr><td class="mono"> mage,  timewizard,  troll</td><td class="gr fw-cell">63.2%</td><td class="dim">3991</td></tr><tr><td class="mono"> bombgoblin,  footman,  siege,  timewizard</td><td class="gr fw-cell">61.6%</td><td class="dim">3996</td></tr><tr><td class="mono"> archer,  siege,  timewizard</td><td class="gr fw-cell">58.8%</td><td class="dim">3993</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-peasant">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">peasant</span>
+        <span class="ucp-cost">1g</span>
+        <span class="ucp-wr ye">53.0%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">77103W / 68369L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">145,472</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> siege</td><td class="dim">3× in top teams</td></tr><tr><td> footman</td><td class="dim">2× in top teams</td></tr><tr><td> troll</td><td class="dim">2× in top teams</td></tr><tr><td> bombgoblin</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing peasant</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> footman,  peasant,  siege,  troll</td><td class="gr fw-cell">82.7%</td><td class="dim">4061</td></tr><tr><td class="mono"> peasant,  peasant,  siege,  troll</td><td class="gr fw-cell">82.0%</td><td class="dim">4020</td></tr><tr><td class="mono"> bombgoblin,  brute,  peasant,  phoenix</td><td class="gr fw-cell">77.0%</td><td class="dim">4031</td></tr><tr><td class="mono"> footman,  peasant,  siege,  timewizard</td><td class="gr fw-cell">73.9%</td><td class="dim">4056</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-footman">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">footman</span>
+        <span class="ucp-cost">1g</span>
+        <span class="ucp-wr ye">51.9%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">120936W / 111862L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">232,798</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> siege</td><td class="dim">4× in top teams</td></tr><tr><td> peasant</td><td class="dim">2× in top teams</td></tr><tr><td> troll</td><td class="dim">2× in top teams</td></tr><tr><td> genie</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing footman</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> footman,  peasant,  siege,  troll</td><td class="gr fw-cell">82.7%</td><td class="dim">4061</td></tr><tr><td class="mono"> footman,  genie,  siege</td><td class="gr fw-cell">81.4%</td><td class="dim">4000</td></tr><tr><td class="mono"> footman,  footman,  siege,  troll</td><td class="gr fw-cell">81.4%</td><td class="dim">3996</td></tr><tr><td class="mono"> footman,  peasant,  siege,  timewizard</td><td class="gr fw-cell">73.9%</td><td class="dim">4056</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-golem">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">golem</span>
+        <span class="ucp-cost">6g</span>
+        <span class="ucp-wr ye">48.0%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">1931W / 2089L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">4,020</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> archer</td><td class="dim">1× in top teams</td></tr><tr><td> footman</td><td class="dim">1× in top teams</td></tr><tr><td> peasant</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing golem</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> archer,  footman,  golem,  peasant</td><td class="ye fw-cell">48.0%</td><td class="dim">4020</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-bombgoblin">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">bombgoblin</span>
+        <span class="ucp-cost">1g</span>
+        <span class="ucp-wr ye">46.7%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">119607W / 136677L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">256,284</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> brute</td><td class="dim">2× in top teams</td></tr><tr><td> peasant</td><td class="dim">2× in top teams</td></tr><tr><td> phoenix</td><td class="dim">2× in top teams</td></tr><tr><td> siege</td><td class="dim">2× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing bombgoblin</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> bombgoblin,  brute,  peasant,  phoenix</td><td class="gr fw-cell">77.0%</td><td class="dim">4031</td></tr><tr><td class="mono"> bombgoblin,  peasant,  siege,  troll</td><td class="gr fw-cell">72.8%</td><td class="dim">4034</td></tr><tr><td class="mono"> bombgoblin,  brute,  footman,  phoenix</td><td class="gr fw-cell">71.6%</td><td class="dim">3998</td></tr><tr><td class="mono"> bombgoblin,  genie,  siege</td><td class="gr fw-cell">71.2%</td><td class="dim">3993</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-brute">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">brute</span>
+        <span class="ucp-cost">3g</span>
+        <span class="ucp-wr re">42.7%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">83905W / 112515L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">196,420</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> phoenix</td><td class="dim">3× in top teams</td></tr><tr><td> bombgoblin</td><td class="dim">2× in top teams</td></tr><tr><td> peasant</td><td class="dim">1× in top teams</td></tr><tr><td> lumberjack</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing brute</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> bombgoblin,  brute,  peasant,  phoenix</td><td class="gr fw-cell">77.0%</td><td class="dim">4031</td></tr><tr><td class="mono"> brute,  lumberjack,  phoenix</td><td class="gr fw-cell">74.5%</td><td class="dim">3995</td></tr><tr><td class="mono"> brute,  mage,  troll</td><td class="gr fw-cell">72.5%</td><td class="dim">3992</td></tr><tr><td class="mono"> bombgoblin,  brute,  footman,  phoenix</td><td class="gr fw-cell">71.6%</td><td class="dim">3998</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-archer">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">archer</span>
+        <span class="ucp-cost">2g</span>
+        <span class="ucp-wr re">40.5%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">53557W / 78597L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">132,154</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> footman</td><td class="dim">4× in top teams</td></tr><tr><td> troll</td><td class="dim">3× in top teams</td></tr><tr><td> siege</td><td class="dim">2× in top teams</td></tr><tr><td> mage</td><td class="dim">2× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing archer</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> archer,  siege,  troll</td><td class="gr fw-cell">81.6%</td><td class="dim">3992</td></tr><tr><td class="mono"> archer,  mage,  peasant,  troll</td><td class="gr fw-cell">71.7%</td><td class="dim">4028</td></tr><tr><td class="mono"> archer,  footman,  mage,  troll</td><td class="gr fw-cell">71.4%</td><td class="dim">3992</td></tr><tr><td class="mono"> archer,  footman,  footman,  footman,  siege</td><td class="gr fw-cell">63.7%</td><td class="dim">4024</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-voidwalker">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">voidwalker</span>
+        <span class="ucp-cost">3g</span>
+        <span class="ucp-wr re">40.2%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">20943W / 31094L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">52,037</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> siege</td><td class="dim">4× in top teams</td></tr><tr><td> footman</td><td class="dim">3× in top teams</td></tr><tr><td> bombgoblin</td><td class="dim">2× in top teams</td></tr><tr><td> archer</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing voidwalker</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> footman,  footman,  siege,  voidwalker</td><td class="gr fw-cell">66.7%</td><td class="dim">3991</td></tr><tr><td class="mono"> bombgoblin,  footman,  siege,  voidwalker</td><td class="gr fw-cell">57.6%</td><td class="dim">3997</td></tr><tr><td class="mono"> archer,  siege,  voidwalker</td><td class="gr fw-cell">57.3%</td><td class="dim">3992</td></tr><tr><td class="mono"> bombgoblin,  peasant,  siege,  voidwalker</td><td class="ye fw-cell">53.2%</td><td class="dim">4024</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-angel">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">angel</span>
+        <span class="ucp-cost">2g</span>
+        <span class="ucp-wr re">34.0%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">1358W / 2633L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">3,991</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> bombgoblin</td><td class="dim">2× in top teams</td></tr><tr><td> troll</td><td class="dim">1× in top teams</td></tr><tr><td> voidwalker</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing angel</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> angel,  bombgoblin,  bombgoblin,  troll,  voidwalker</td><td class="re fw-cell">34.0%</td><td class="dim">3991</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-lumberjack">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">lumberjack</span>
+        <span class="ucp-cost">2g</span>
+        <span class="ucp-wr re">33.2%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">57222W / 115224L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">172,446</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> phoenix</td><td class="dim">4× in top teams</td></tr><tr><td> bombgoblin</td><td class="dim">4× in top teams</td></tr><tr><td> brute</td><td class="dim">1× in top teams</td></tr><tr><td> footman</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing lumberjack</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> brute,  lumberjack,  phoenix</td><td class="gr fw-cell">74.5%</td><td class="dim">3995</td></tr><tr><td class="mono"> bombgoblin,  bombgoblin,  footman,  lumberjack,  phoenix</td><td class="gr fw-cell">67.9%</td><td class="dim">3997</td></tr><tr><td class="mono"> bombgoblin,  lumberjack,  lumberjack,  phoenix</td><td class="gr fw-cell">66.7%</td><td class="dim">3992</td></tr><tr><td class="mono"> bombgoblin,  lumberjack,  phoenix,  shaman</td><td class="ye fw-cell">46.0%</td><td class="dim">3991</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-shaman">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">shaman</span>
+        <span class="ucp-cost">2g</span>
+        <span class="ucp-wr re">28.3%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">10204W / 25864L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">36,068</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> lumberjack</td><td class="dim">5× in top teams</td></tr><tr><td> brute</td><td class="dim">3× in top teams</td></tr><tr><td> bombgoblin</td><td class="dim">2× in top teams</td></tr><tr><td> phoenix</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing shaman</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> bombgoblin,  lumberjack,  phoenix,  shaman</td><td class="ye fw-cell">46.0%</td><td class="dim">3991</td></tr><tr><td class="mono"> brute,  shaman,  siege</td><td class="re fw-cell">44.6%</td><td class="dim">3993</td></tr><tr><td class="mono"> brute,  brute,  lumberjack,  shaman</td><td class="re fw-cell">34.7%</td><td class="dim">3991</td></tr><tr><td class="mono"> bombgoblin,  lumberjack,  lumberjack,  lumberjack,  peasant,  shaman</td><td class="re fw-cell">24.2%</td><td class="dim">4034</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-assassin">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">assassin</span>
+        <span class="ucp-cost">2g</span>
+        <span class="ucp-wr re">28.1%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">5614W / 14351L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">19,965</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> lumberjack</td><td class="dim">5× in top teams</td></tr><tr><td> bombgoblin</td><td class="dim">3× in top teams</td></tr><tr><td> voidwalker</td><td class="dim">2× in top teams</td></tr><tr><td> siege</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing assassin</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> assassin,  siege,  troll</td><td class="gr fw-cell">63.7%</td><td class="dim">3992</td></tr><tr><td class="mono"> assassin,  lumberjack,  lumberjack,  lumberjack,  lumberjack</td><td class="re fw-cell">33.1%</td><td class="dim">3993</td></tr><tr><td class="mono"> assassin,  bombgoblin,  bombgoblin,  voidwalker,  voidwalker</td><td class="re fw-cell">26.8%</td><td class="dim">3994</td></tr><tr><td class="mono"> assassin,  assassin,  bombgoblin,  cavalry,  lumberjack</td><td class="re fw-cell">8.5%</td><td class="dim">3993</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-necromancer">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">necromancer</span>
+        <span class="ucp-cost">4g</span>
+        <span class="ucp-wr re">21.7%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">868W / 3129L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">3,997</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> archer</td><td class="dim">1× in top teams</td></tr><tr><td> footman</td><td class="dim">1× in top teams</td></tr><tr><td> troll</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing necromancer</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> archer,  footman,  necromancer,  troll</td><td class="re fw-cell">21.7%</td><td class="dim">3997</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-cavalry">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">cavalry</span>
+        <span class="ucp-cost">3g</span>
+        <span class="ucp-wr re">8.5%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">339W / 3654L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">3,993</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> assassin</td><td class="dim">2× in top teams</td></tr><tr><td> bombgoblin</td><td class="dim">1× in top teams</td></tr><tr><td> lumberjack</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing cavalry</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> assassin,  assassin,  bombgoblin,  cavalry,  lumberjack</td><td class="re fw-cell">8.5%</td><td class="dim">3993</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAYOFF -->
+  <div class="page-section" id="sec-playoff">
+    <div class="section-title">⚡ Playoff — Top 16 Round-Robin (Best of 10)</div>
+    <p class="dim" style="font-size:12px;margin-bottom:1rem">Every team played every other team 10 times. Pure 10g vs 10g skill test.</p>
+    <div class="podium"><div class="pod-card gold">
+      <div class="pod-medal">🥇</div>
+      <div class="pod-wr">81.7%</div>
+      <div class="pod-rec">245W/0D/55L</div>
+      <div class="pod-cost">10g</div>
+      <div class="pod-team"> mage,  troll,  troll</div>
+    </div><div class="pod-card silver">
+      <div class="pod-medal">🥈</div>
+      <div class="pod-wr">76.0%</div>
+      <div class="pod-rec">228W/0D/72L</div>
+      <div class="pod-cost">10g</div>
+      <div class="pod-team"> bombgoblin,  brute,  peasant,  phoenix</div>
+    </div><div class="pod-card bronze">
+      <div class="pod-medal">🥉</div>
+      <div class="pod-wr">74.3%</div>
+      <div class="pod-rec">223W/0D/77L</div>
+      <div class="pod-cost">10g</div>
+      <div class="pod-team"> brute,  lumberjack,  phoenix</div>
+    </div></div>
+    <table><thead><tr><th>Rank</th><th>Playoff WR</th><th>Record (W/D/L)</th><th>Cost</th><th>Team</th></tr></thead>
+    <tbody><tr>
+      <td class="rk">🥇</td>
+      <td class="gr fw-cell">81.7%</td>
+      <td class="rec">245W/0D/55L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> mage,  troll,  troll</td>
+    </tr><tr>
+      <td class="rk">🥈</td>
+      <td class="gr fw-cell">76.0%</td>
+      <td class="rec">228W/0D/72L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  brute,  peasant,  phoenix</td>
+    </tr><tr>
+      <td class="rk">🥉</td>
+      <td class="gr fw-cell">74.3%</td>
+      <td class="rec">223W/0D/77L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  lumberjack,  phoenix</td>
+    </tr><tr>
+      <td class="rk">#4</td>
+      <td class="gr fw-cell">67.0%</td>
+      <td class="rec">201W/0D/99L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> siege,  warlord</td>
+    </tr><tr>
+      <td class="rk">#5</td>
+      <td class="gr fw-cell">62.0%</td>
+      <td class="rec">186W/0D/114L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  genie,  siege</td>
+    </tr><tr>
+      <td class="rk">#6</td>
+      <td class="gr fw-cell">58.0%</td>
+      <td class="rec">174W/0D/126L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  brute,  footman,  phoenix</td>
+    </tr><tr>
+      <td class="rk">#7</td>
+      <td class="ye fw-cell">51.7%</td>
+      <td class="rec">155W/0D/145L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  siege,  troll</td>
+    </tr><tr>
+      <td class="rk">#8</td>
+      <td class="ye fw-cell">46.7%</td>
+      <td class="rec">140W/0D/160L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  peasant,  siege,  troll</td>
+    </tr><tr>
+      <td class="rk">#9</td>
+      <td class="ye fw-cell">46.0%</td>
+      <td class="rec">138W/0D/162L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  footman,  siege,  troll</td>
+    </tr><tr>
+      <td class="rk">#10</td>
+      <td class="re fw-cell">42.3%</td>
+      <td class="rec">127W/0D/173L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  mage,  peasant,  troll</td>
+    </tr><tr>
+      <td class="rk">#11</td>
+      <td class="re fw-cell">41.7%</td>
+      <td class="rec">125W/0D/175L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> archer,  footman,  mage,  troll</td>
+    </tr><tr>
+      <td class="rk">#12</td>
+      <td class="re fw-cell">39.7%</td>
+      <td class="rec">119W/0D/181L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> peasant,  peasant,  siege,  troll</td>
+    </tr><tr>
+      <td class="rk">#13</td>
+      <td class="re fw-cell">33.3%</td>
+      <td class="rec">100W/0D/200L</td>
+      <td class="gc">9g</td>
+      <td class="team-cell"> footman,  siege,  troll</td>
+    </tr><tr>
+      <td class="rk">#14</td>
+      <td class="re fw-cell">30.3%</td>
+      <td class="rec">91W/0D/209L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bombgoblin,  peasant,  siege,  troll</td>
+    </tr><tr>
+      <td class="rk">#15</td>
+      <td class="re fw-cell">26.7%</td>
+      <td class="rec">80W/0D/220L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> brute,  mage,  troll</td>
+    </tr><tr>
+      <td class="rk">#16</td>
+      <td class="re fw-cell">22.7%</td>
+      <td class="rec">68W/0D/232L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> footman,  peasant,  siege,  timewizard</td>
+    </tr></tbody></table>
+  </div>
+</div>
+<script>
+function showSection(id){
+  document.querySelectorAll('.page-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  document.querySelectorAll('.nav-link').forEach(l=>{if(l.getAttribute('onclick')&&l.getAttribute('onclick').includes("'"+id+"'"))l.classList.add('active');});
+}
+</script>
+</body></html>

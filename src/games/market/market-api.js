@@ -31,17 +31,19 @@ export const CATEGORY_LABEL = {
   trophy: 'Trophy',
 };
 
-/** Rarity metadata mirrors case rarities. Kept here so market UI is self-contained. */
+/** Rarity metadata mirrors the universal item rarities. Kept here so market UI is self-contained. */
 export const ITEM_RARITY = {
-  common:    { label: 'Common',    color: '#8a8f99', glow: 'rgba(138,143,153,0.4)'  },
-  uncommon:  { label: 'Uncommon',  color: '#3ddc7e', glow: 'rgba(61,220,126,0.5)'   },
-  rare:      { label: 'Rare',      color: '#22c2ff', glow: 'rgba(34,194,255,0.55)'  },
-  epic:      { label: 'Epic',      color: '#b06bff', glow: 'rgba(176,107,255,0.65)' },
-  legendary: { label: 'Legendary', color: '#ff9a2e', glow: 'rgba(255,154,46,0.75)'  },
-  jackpot:   { label: 'Jackpot',   color: '#ffd96b', glow: 'rgba(255,217,107,0.95)' },
-  ultra:     { label: 'ULTRA',     color: '#ff4cf2', glow: 'rgba(255,76,242,1)'     },
+  common:     { label: 'Common',     color: '#8a8f99', glow: 'rgba(138,143,153,0.4)'  },
+  uncommon:   { label: 'Uncommon',   color: '#3ddc7e', glow: 'rgba(61,220,126,0.5)'   },
+  rare:       { label: 'Rare',       color: '#22c2ff', glow: 'rgba(34,194,255,0.55)'  },
+  epic:       { label: 'Epic',       color: '#b06bff', glow: 'rgba(176,107,255,0.65)' },
+  legendary:  { label: 'Legendary',  color: '#ff9a2e', glow: 'rgba(255,154,46,0.75)'  },
+  mythic:     { label: 'Mythic',     color: '#ff5dc8', glow: 'rgba(255,93,200,0.85)' },
+  jackpot:    { label: 'Jackpot',    color: '#ffd96b', glow: 'rgba(255,217,107,0.95)' },
+  ultra:      { label: 'ULTRA',      color: '#ff4cf2', glow: 'rgba(255,76,242,1)'     },
+  one_of_one: { label: 'ONE OF ONE', color: '#ffea00', glow: 'rgba(255,234,0,0.95)'  },
 };
-export const RARITY_ORDER = ['common','uncommon','rare','epic','legendary','jackpot','ultra'];
+export const RARITY_ORDER = ['common','uncommon','rare','epic','legendary','mythic','jackpot','ultra','one_of_one'];
 
 // ----------------------------------------------------------------------------
 // Catalogue / inventory fetchers

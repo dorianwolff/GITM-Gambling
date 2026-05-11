@@ -1,0 +1,1414 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<title>Warfront PvP — animals</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Pro:wght@300;400&display=swap');
+:root{--gold:#c9a84c;--stone:#1a1410;--stone-mid:#232018;--stone-light:#3d352f;--pc:#f0e8d0;--pcd:#c8b898;--gr:#5cb87a;--ye:#c8a840;--re:#c85050;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Crimson Pro',serif;background:var(--stone);color:var(--pc);min-height:100vh;}
+.sidebar{position:fixed;top:0;left:0;width:200px;height:100vh;background:#111008;border-right:1px solid var(--stone-light);padding:1.5rem 1rem;overflow-y:auto;z-index:10;}
+.sidebar h2{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);letter-spacing:3px;margin-bottom:1.2rem;}
+.nav-link{display:block;padding:6px 10px;font-size:13px;color:var(--pcd);text-decoration:none;border-radius:4px;margin-bottom:2px;cursor:pointer;}
+.nav-link:hover,.nav-link.active{background:var(--stone-mid);color:var(--gold);}
+.nav-section{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--stone-light);padding:8px 10px 3px;margin-top:.5rem;}
+.main{margin-left:200px;padding:2rem 2.5rem;max-width:1200px;}
+.page-hdr{text-align:center;margin-bottom:2.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--stone-light);}
+.page-hdr h1{font-family:'Cinzel',serif;font-size:30px;color:var(--gold);letter-spacing:5px;}
+.page-hdr p{color:var(--pcd);font-size:14px;font-style:italic;margin-top:.4rem;}
+.meta-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:1rem;}
+.meta-pill{background:var(--stone-mid);border:1px solid var(--stone-light);border-radius:6px;padding:5px 16px;font-size:12px;color:var(--pcd);}
+.meta-pill strong{color:var(--gold);}
+.section-title{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--stone-light);padding-bottom:.5rem;margin:2rem 0 1rem;}
+.podium{display:flex;gap:16px;justify-content:center;align-items:flex-end;flex-wrap:wrap;margin-bottom:2rem;}
+.pod-card{border-radius:10px;padding:18px 22px;min-width:200px;max-width:270px;text-align:center;border:1px solid var(--stone-light);background:var(--stone-mid);}
+.pod-card.gold{border-color:var(--gold);background:#251c08;order:-1;}
+.pod-card.silver{border-color:#9090a8;background:#1c1c28;}
+.pod-card.bronze{border-color:#9c6e40;background:#1c1208;}
+.pod-medal{font-size:26px;margin-bottom:4px;}
+.pod-wr{font-family:'Cinzel',serif;font-size:22px;font-weight:600;color:var(--gold);}
+.pod-rec{font-size:12px;color:var(--pcd);margin:3px 0;}
+.pod-cost{font-size:12px;color:var(--gold);margin-bottom:6px;}
+.pod-team{font-size:11px;color:var(--pc);line-height:1.8;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{font-family:'Cinzel',serif;font-size:10px;color:var(--pcd);text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;border-bottom:1px solid var(--stone-light);text-align:left;font-weight:400;}
+tbody td{padding:7px 10px;border-bottom:1px solid #1e1a16;}
+tbody tr:hover td{background:#262018;}
+.rk{font-family:'Cinzel',serif;color:var(--gold);width:44px;font-size:14px;}
+.fw-cell{font-weight:600;} .gc{color:var(--gold);width:40px;} .rec{color:var(--pcd);font-size:11px;}
+.team-cell{font-family:'Crimson Pro',serif;} .dim{color:var(--pcd);} .mono{font-family:monospace;font-size:11px;}
+.gr{color:var(--gr);} .ye{color:var(--ye);} .re{color:var(--re);}
+/* Unit profiles */
+.unit-card-pvp{background:var(--stone-mid);border:1px solid var(--stone-light);border-radius:8px;padding:16px;margin-bottom:14px;}
+.ucp-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.ucp-icon{font-size:20px;} .ucp-name{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);}
+.ucp-cost{font-size:11px;color:var(--pcd);} .ucp-wr{font-family:'Cinzel',serif;font-size:16px;font-weight:600;margin-left:auto;}
+.ucp-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;}
+.ucp-card{background:#181410;border:1px solid var(--stone-light);border-radius:6px;padding:10px;}
+.ucp-label{font-size:10px;letter-spacing:.5px;color:var(--pcd);text-transform:uppercase;margin-bottom:4px;}
+.ucp-val{font-family:'Cinzel',serif;font-size:14px;color:var(--pc);}
+.mini-tbl td,.mini-tbl th{padding:4px 6px;}
+.page-section{display:none;} .page-section.active{display:block;}
+</style></head><body>
+<div class="sidebar">
+  <h2>⚔ PVP</h2>
+  <div class="nav-section">ANIMALS</div>
+  <a class="nav-link active" onclick="showSection('overview')" href="#">🏆 Overview</a>
+  <a class="nav-link" onclick="showSection('top100')" href="#">📋 Top 100 Teams</a>
+  <a class="nav-link" onclick="showSection('units')" href="#">🎖 Unit Profiles</a>
+  <a class="nav-link" onclick="showSection('playoff')" href="#">⚡ Playoff</a>
+</div>
+<div class="main">
+  <!-- OVERVIEW -->
+  <div class="page-section active" id="sec-overview">
+    <div class="page-hdr">
+      <h1>⚔ WARFRONT PVP</h1>
+      <p>Animals Collection &mdash; 10g vs 10g</p>
+      <div class="meta-row">
+        <div class="meta-pill"><strong>12,437</strong> teams evaluated</div>
+        <div class="meta-pill"><strong>100</strong> in Top 100</div>
+        <div class="meta-pill"><strong>399,984</strong> battles (Top 100)</div>
+        <div class="meta-pill">Playoff: top <strong>16</strong> teams</div>
+      </div>
+    </div>
+    <div class="section-title">🏅 Playoff Podium</div>
+    <div class="podium"><div class="pod-card gold">
+      <div class="pod-medal">🥇</div>
+      <div class="pod-wr">76.0%</div>
+      <div class="pod-rec">228W/0D/72L</div>
+      <div class="pod-cost">10g</div>
+      <div class="pod-team"> tortoise,  tortoise,  whale</div>
+    </div><div class="pod-card silver">
+      <div class="pod-medal">🥈</div>
+      <div class="pod-wr">72.7%</div>
+      <div class="pod-rec">218W/0D/82L</div>
+      <div class="pod-cost">10g</div>
+      <div class="pod-team"> jellyfish,  shark,  tortoise</div>
+    </div><div class="pod-card bronze">
+      <div class="pod-medal">🥉</div>
+      <div class="pod-wr">57.0%</div>
+      <div class="pod-rec">171W/0D/129L</div>
+      <div class="pod-cost">10g</div>
+      <div class="pod-team"> chameleon,  shark,  tortoise</div>
+    </div></div>
+  </div>
+
+  <!-- TOP 100 -->
+  <div class="page-section" id="sec-top100">
+    <div class="section-title">📋 Top 100 Teams — PvP Win Rate</div>
+    <table><thead><tr><th>Rank</th><th>PvP WR</th><th>Record (W/D/L)</th><th>Cost</th><th>Team</th></tr></thead>
+    <tbody><tr>
+      <td class="rk">🥇</td>
+      <td class="gr fw-cell">96.1%</td>
+      <td class="rec">3839W/0D/156L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> tortoise,  tortoise,  whale</td>
+    </tr><tr>
+      <td class="rk">🥈</td>
+      <td class="gr fw-cell">88.5%</td>
+      <td class="rec">3537W/0D/458L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bee,  tortoise,  whale</td>
+    </tr><tr>
+      <td class="rk">🥉</td>
+      <td class="gr fw-cell">86.4%</td>
+      <td class="rec">3450W/0D/541L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> jellyfish,  shark,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#4</td>
+      <td class="gr fw-cell">78.6%</td>
+      <td class="rec">3140W/0D/853L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> elephant,  shark</td>
+    </tr><tr>
+      <td class="rk">#5</td>
+      <td class="gr fw-cell">77.9%</td>
+      <td class="rec">3113W/0D/882L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> elephant,  jellyfish,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#6</td>
+      <td class="gr fw-cell">77.2%</td>
+      <td class="rec">3083W/0D/910L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  bear,  crocodile</td>
+    </tr><tr>
+      <td class="rk">#7</td>
+      <td class="gr fw-cell">75.0%</td>
+      <td class="rec">3002W/0D/998L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> shark,  tortoise,  tortoise,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#8</td>
+      <td class="gr fw-cell">74.6%</td>
+      <td class="rec">2976W/0D/1014L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  shark,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#9</td>
+      <td class="gr fw-cell">71.7%</td>
+      <td class="rec">2861W/0D/1132L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bat,  jellyfish,  shark</td>
+    </tr><tr>
+      <td class="rk">#10</td>
+      <td class="gr fw-cell">66.7%</td>
+      <td class="rec">2663W/0D/1328L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bat,  jellyfish,  jellyfish,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#11</td>
+      <td class="gr fw-cell">66.6%</td>
+      <td class="rec">2660W/0D/1333L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  bear,  giraffe</td>
+    </tr><tr>
+      <td class="rk">#12</td>
+      <td class="gr fw-cell">65.9%</td>
+      <td class="rec">2630W/0D/1363L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> elephant,  elephant</td>
+    </tr><tr>
+      <td class="rk">#13</td>
+      <td class="gr fw-cell">65.5%</td>
+      <td class="rec">2615W/0D/1376L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  crocodile,  skunk</td>
+    </tr><tr>
+      <td class="rk">#14</td>
+      <td class="gr fw-cell">65.3%</td>
+      <td class="rec">2610W/0D/1384L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> crocodile,  jellyfish,  skunk</td>
+    </tr><tr>
+      <td class="rk">#15</td>
+      <td class="gr fw-cell">63.7%</td>
+      <td class="rec">2546W/0D/1448L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  bee,  jellyfish,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#16</td>
+      <td class="gr fw-cell">63.2%</td>
+      <td class="rec">2533W/0D/1478L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  gorilla,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#17</td>
+      <td class="gr fw-cell">63.1%</td>
+      <td class="rec">2524W/0D/1473L</td>
+      <td class="gc">9g</td>
+      <td class="team-cell"> elephant,  giraffe</td>
+    </tr><tr>
+      <td class="rk">#18</td>
+      <td class="gr fw-cell">63.0%</td>
+      <td class="rec">2526W/0D/1486L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  viper,  wolfpack,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#19</td>
+      <td class="gr fw-cell">62.6%</td>
+      <td class="rec">2501W/0D/1493L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> eagle,  elephant,  jellyfish</td>
+    </tr><tr>
+      <td class="rk">#20</td>
+      <td class="gr fw-cell">62.0%</td>
+      <td class="rec">2478W/0D/1520L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> jellyfish,  jellyfish,  tortoise,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#21</td>
+      <td class="gr fw-cell">62.0%</td>
+      <td class="rec">2483W/0D/1525L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> kangaroo,  shark,  tortoise,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#22</td>
+      <td class="gr fw-cell">61.8%</td>
+      <td class="rec">2470W/0D/1526L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  gorilla,  mantisshrimp</td>
+    </tr><tr>
+      <td class="rk">#23</td>
+      <td class="gr fw-cell">61.8%</td>
+      <td class="rec">2464W/0D/1526L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  eagle,  shark</td>
+    </tr><tr>
+      <td class="rk">#24</td>
+      <td class="gr fw-cell">61.7%</td>
+      <td class="rec">2465W/0D/1527L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  gorilla,  mantisshrimp</td>
+    </tr><tr>
+      <td class="rk">#25</td>
+      <td class="gr fw-cell">61.7%</td>
+      <td class="rec">2467W/0D/1532L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  bear,  jellyfish,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#26</td>
+      <td class="gr fw-cell">61.1%</td>
+      <td class="rec">2441W/0D/1551L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  gorilla,  jellyfish</td>
+    </tr><tr>
+      <td class="rk">#27</td>
+      <td class="gr fw-cell">60.7%</td>
+      <td class="rec">2424W/0D/1568L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  kangaroo,  shark</td>
+    </tr><tr>
+      <td class="rk">#28</td>
+      <td class="gr fw-cell">59.9%</td>
+      <td class="rec">2410W/0D/1614L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  scorpion,  wolfpack,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#29</td>
+      <td class="gr fw-cell">59.7%</td>
+      <td class="rec">2385W/0D/1610L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  jellyfish,  mantisshrimp</td>
+    </tr><tr>
+      <td class="rk">#30</td>
+      <td class="gr fw-cell">57.7%</td>
+      <td class="rec">2309W/0D/1692L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  jellyfish,  viper,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#31</td>
+      <td class="gr fw-cell">57.3%</td>
+      <td class="rec">2289W/0D/1703L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  gorilla,  scorpion</td>
+    </tr><tr>
+      <td class="rk">#32</td>
+      <td class="gr fw-cell">56.9%</td>
+      <td class="rec">2271W/0D/1722L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  mantisshrimp,  viper</td>
+    </tr><tr>
+      <td class="rk">#33</td>
+      <td class="gr fw-cell">56.5%</td>
+      <td class="rec">2256W/0D/1738L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  bear,  jellyfish,  squirrel</td>
+    </tr><tr>
+      <td class="rk">#34</td>
+      <td class="gr fw-cell">56.1%</td>
+      <td class="rec">2243W/0D/1754L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bee,  chameleon,  jellyfish,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#35</td>
+      <td class="ye fw-cell">54.8%</td>
+      <td class="rec">2192W/0D/1805L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  bear,  squirrel,  viper</td>
+    </tr><tr>
+      <td class="rk">#36</td>
+      <td class="ye fw-cell">54.8%</td>
+      <td class="rec">2207W/0D/1819L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  gorilla,  wolfpack,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#37</td>
+      <td class="ye fw-cell">53.2%</td>
+      <td class="rec">2128W/0D/1874L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> tiger,  tiger,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#38</td>
+      <td class="ye fw-cell">53.2%</td>
+      <td class="rec">2132W/0D/1879L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> jellyfish,  jellyfish,  tortoise,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#39</td>
+      <td class="ye fw-cell">53.1%</td>
+      <td class="rec">2119W/0D/1873L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  jellyfish,  jellyfish</td>
+    </tr><tr>
+      <td class="rk">#40</td>
+      <td class="ye fw-cell">52.9%</td>
+      <td class="rec">2113W/0D/1879L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  viper,  viper</td>
+    </tr><tr>
+      <td class="rk">#41</td>
+      <td class="ye fw-cell">52.5%</td>
+      <td class="rec">2098W/0D/1899L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> giraffe,  jellyfish,  squirrel,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#42</td>
+      <td class="ye fw-cell">52.3%</td>
+      <td class="rec">2111W/0D/1923L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  jellyfish,  wolfpack,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#43</td>
+      <td class="ye fw-cell">52.1%</td>
+      <td class="rec">2091W/0D/1926L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> kangaroo,  shark,  wolfpack,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#44</td>
+      <td class="ye fw-cell">52.1%</td>
+      <td class="rec">2080W/0D/1916L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  eagle,  jellyfish,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#45</td>
+      <td class="ye fw-cell">51.7%</td>
+      <td class="rec">2064W/0D/1927L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bat,  bear,  jellyfish,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#46</td>
+      <td class="ye fw-cell">51.5%</td>
+      <td class="rec">2062W/0D/1938L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  chameleon,  viper,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#47</td>
+      <td class="ye fw-cell">51.1%</td>
+      <td class="rec">2041W/0D/1954L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bat,  gorilla,  gorilla</td>
+    </tr><tr>
+      <td class="rk">#48</td>
+      <td class="ye fw-cell">51.1%</td>
+      <td class="rec">2043W/0D/1958L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  kangaroo,  squirrel,  squirrel,  squirrel,  squirrel</td>
+    </tr><tr>
+      <td class="rk">#49</td>
+      <td class="ye fw-cell">51.0%</td>
+      <td class="rec">2041W/0D/1958L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  tiger,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#50</td>
+      <td class="ye fw-cell">51.0%</td>
+      <td class="rec">2052W/0D/1970L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bat,  shark,  wolfpack,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#51</td>
+      <td class="ye fw-cell">50.6%</td>
+      <td class="rec">2032W/0D/1982L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  chameleon,  scorpion,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#52</td>
+      <td class="ye fw-cell">50.6%</td>
+      <td class="rec">2022W/0D/1975L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  jellyfish,  jellyfish,  squirrel</td>
+    </tr><tr>
+      <td class="rk">#53</td>
+      <td class="ye fw-cell">50.3%</td>
+      <td class="rec">2007W/0D/1987L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  jellyfish,  squirrel,  viper</td>
+    </tr><tr>
+      <td class="rk">#54</td>
+      <td class="ye fw-cell">49.4%</td>
+      <td class="rec">1978W/0D/2024L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  scorpion,  scorpion,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#55</td>
+      <td class="ye fw-cell">48.5%</td>
+      <td class="rec">1939W/0D/2060L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  mantisshrimp,  scorpion,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#56</td>
+      <td class="ye fw-cell">48.3%</td>
+      <td class="rec">1933W/0D/2065L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  kangaroo,  tiger,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#57</td>
+      <td class="ye fw-cell">48.2%</td>
+      <td class="rec">1924W/0D/2068L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> crocodile,  jellyfish,  scorpion</td>
+    </tr><tr>
+      <td class="rk">#58</td>
+      <td class="ye fw-cell">47.9%</td>
+      <td class="rec">1918W/0D/2083L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> crocodile,  jellyfish,  squirrel,  squirrel,  squirrel</td>
+    </tr><tr>
+      <td class="rk">#59</td>
+      <td class="ye fw-cell">47.4%</td>
+      <td class="rec">1893W/0D/2099L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bat,  bee,  rhino,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#60</td>
+      <td class="ye fw-cell">47.4%</td>
+      <td class="rec">1896W/0D/2108L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bee,  gorilla,  scorpion,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#61</td>
+      <td class="ye fw-cell">47.3%</td>
+      <td class="rec">1892W/0D/2108L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> eagle,  gorilla,  scorpion,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#62</td>
+      <td class="ye fw-cell">46.3%</td>
+      <td class="rec">1861W/0D/2159L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  viper,  wolfpack,  wolfpack,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#63</td>
+      <td class="ye fw-cell">46.0%</td>
+      <td class="rec">1835W/0D/2158L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bee,  gorilla,  rhino</td>
+    </tr><tr>
+      <td class="rk">#64</td>
+      <td class="ye fw-cell">45.3%</td>
+      <td class="rec">1810W/0D/2190L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bee,  rhino,  squirrel,  squirrel,  squirrel,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#65</td>
+      <td class="re fw-cell">44.7%</td>
+      <td class="rec">1794W/0D/2218L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  jellyfish,  wolfpack,  wolfpack,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#66</td>
+      <td class="re fw-cell">44.7%</td>
+      <td class="rec">1783W/0D/2210L</td>
+      <td class="gc">9g</td>
+      <td class="team-cell"> giraffe,  jellyfish,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#67</td>
+      <td class="re fw-cell">43.5%</td>
+      <td class="rec">1744W/0D/2265L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> rat,  tiger,  tiger,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#68</td>
+      <td class="re fw-cell">43.5%</td>
+      <td class="rec">1737W/0D/2257L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  kangaroo,  rhino,  squirrel</td>
+    </tr><tr>
+      <td class="rk">#69</td>
+      <td class="re fw-cell">43.1%</td>
+      <td class="rec">1736W/0D/2294L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> tiger,  wolfpack,  wolfpack,  wolfpack,  zebra</td>
+    </tr><tr>
+      <td class="rk">#70</td>
+      <td class="re fw-cell">42.8%</td>
+      <td class="rec">1719W/0D/2299L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bee,  eagle,  rhino,  squirrel,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#71</td>
+      <td class="re fw-cell">42.0%</td>
+      <td class="rec">1677W/0D/2315L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bat,  bee,  eagle,  rhino</td>
+    </tr><tr>
+      <td class="rk">#72</td>
+      <td class="re fw-cell">41.2%</td>
+      <td class="rec">1650W/0D/2358L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> jellyfish,  jellyfish,  squirrel,  squirrel,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#73</td>
+      <td class="re fw-cell">40.7%</td>
+      <td class="rec">1624W/0D/2367L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  gorilla,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#74</td>
+      <td class="re fw-cell">40.5%</td>
+      <td class="rec">1616W/0D/2376L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bee,  gorilla,  jellyfish,  squirrel</td>
+    </tr><tr>
+      <td class="rk">#75</td>
+      <td class="re fw-cell">39.7%</td>
+      <td class="rec">1600W/0D/2432L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  jellyfish,  wolfpack,  wolfpack,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#76</td>
+      <td class="re fw-cell">39.3%</td>
+      <td class="rec">1570W/0D/2421L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  eagle,  eagle,  jellyfish</td>
+    </tr><tr>
+      <td class="rk">#77</td>
+      <td class="re fw-cell">39.1%</td>
+      <td class="rec">1559W/0D/2431L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  gorilla,  skunk</td>
+    </tr><tr>
+      <td class="rk">#78</td>
+      <td class="re fw-cell">37.7%</td>
+      <td class="rec">1507W/0D/2491L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bee,  eagle,  gorilla,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#79</td>
+      <td class="re fw-cell">37.6%</td>
+      <td class="rec">1505W/0D/2500L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  kangaroo,  scorpion,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#80</td>
+      <td class="re fw-cell">37.2%</td>
+      <td class="rec">1484W/0D/2510L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  mantisshrimp,  skunk</td>
+    </tr><tr>
+      <td class="rk">#81</td>
+      <td class="re fw-cell">37.0%</td>
+      <td class="rec">1493W/0D/2544L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  jellyfish,  squirrel,  wolfpack,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#82</td>
+      <td class="re fw-cell">36.2%</td>
+      <td class="rec">1452W/0D/2556L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bee,  jellyfish,  kangaroo,  tortoise,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#83</td>
+      <td class="re fw-cell">35.8%</td>
+      <td class="rec">1427W/0D/2563L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> eagle,  giraffe,  rhino</td>
+    </tr><tr>
+      <td class="rk">#84</td>
+      <td class="re fw-cell">35.1%</td>
+      <td class="rec">1406W/0D/2602L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  jellyfish,  squirrel,  squirrel,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#85</td>
+      <td class="re fw-cell">34.2%</td>
+      <td class="rec">1366W/0D/2625L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> eagle,  eagle,  eagle,  eagle,  eagle</td>
+    </tr><tr>
+      <td class="rk">#86</td>
+      <td class="re fw-cell">33.9%</td>
+      <td class="rec">1356W/0D/2641L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  jellyfish,  viper,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#87</td>
+      <td class="re fw-cell">33.3%</td>
+      <td class="rec">1334W/0D/2668L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> jellyfish,  mantisshrimp,  scorpion,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#88</td>
+      <td class="re fw-cell">32.4%</td>
+      <td class="rec">1293W/0D/2698L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bat,  bee,  eagle,  gorilla</td>
+    </tr><tr>
+      <td class="rk">#89</td>
+      <td class="re fw-cell">32.4%</td>
+      <td class="rec">1302W/0D/2720L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  eagle,  eagle,  wolfpack,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#90</td>
+      <td class="re fw-cell">32.1%</td>
+      <td class="rec">1284W/0D/2717L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  jellyfish,  squirrel,  squirrel,  squirrel,  squirrel</td>
+    </tr><tr>
+      <td class="rk">#91</td>
+      <td class="re fw-cell">31.5%</td>
+      <td class="rec">1256W/0D/2735L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  bee,  jellyfish,  kangaroo</td>
+    </tr><tr>
+      <td class="rk">#92</td>
+      <td class="re fw-cell">31.4%</td>
+      <td class="rec">1253W/0D/2737L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  jellyfish,  zebra</td>
+    </tr><tr>
+      <td class="rk">#93</td>
+      <td class="re fw-cell">30.3%</td>
+      <td class="rec">1210W/0D/2781L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bee,  bee,  kangaroo,  rhino</td>
+    </tr><tr>
+      <td class="rk">#94</td>
+      <td class="re fw-cell">26.5%</td>
+      <td class="rec">1056W/0D/2936L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  jellyfish,  scorpion,  squirrel</td>
+    </tr><tr>
+      <td class="rk">#95</td>
+      <td class="re fw-cell">26.2%</td>
+      <td class="rec">1046W/0D/2946L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> eagle,  eagle,  gorilla,  kangaroo</td>
+    </tr><tr>
+      <td class="rk">#96</td>
+      <td class="re fw-cell">26.1%</td>
+      <td class="rec">1043W/0D/2948L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  eagle,  eagle,  mantisshrimp</td>
+    </tr><tr>
+      <td class="rk">#97</td>
+      <td class="re fw-cell">24.1%</td>
+      <td class="rec">963W/0D/3029L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> jellyfish,  squirrel,  viper,  viper</td>
+    </tr><tr>
+      <td class="rk">#98</td>
+      <td class="re fw-cell">23.8%</td>
+      <td class="rec">951W/0D/3051L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> eagle,  jellyfish,  scorpion,  wolfpack,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#99</td>
+      <td class="re fw-cell">22.7%</td>
+      <td class="rec">908W/0D/3085L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bee,  mantisshrimp,  rhino,  squirrel</td>
+    </tr><tr>
+      <td class="rk">#100</td>
+      <td class="re fw-cell">21.8%</td>
+      <td class="rec">871W/0D/3127L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  bee,  kangaroo,  kangaroo,  wolfpack</td>
+    </tr></tbody></table>
+  </div>
+
+  <!-- UNIT PROFILES -->
+  <div class="page-section" id="sec-units">
+    <div class="section-title">🎖 Unit Profiles — PvP Performance</div>
+    
+    <div class="unit-card-pvp" id="upvp-whale">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">whale</span>
+        <span class="ucp-cost">6g</span>
+        <span class="ucp-wr gr">92.3%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">7376W / 614L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">7,990</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> tortoise</td><td class="dim">3× in top teams</td></tr><tr><td> bee</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing whale</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> tortoise,  tortoise,  whale</td><td class="gr fw-cell">96.1%</td><td class="dim">3995</td></tr><tr><td class="mono"> bee,  tortoise,  whale</td><td class="gr fw-cell">88.5%</td><td class="dim">3995</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-elephant">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">elephant</span>
+        <span class="ucp-cost">5g</span>
+        <span class="ucp-wr gr">69.0%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">16538W / 7427L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">23,965</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> shark</td><td class="dim">1× in top teams</td></tr><tr><td> jellyfish</td><td class="dim">1× in top teams</td></tr><tr><td> tortoise</td><td class="dim">1× in top teams</td></tr><tr><td> giraffe</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing elephant</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> elephant,  shark</td><td class="gr fw-cell">78.6%</td><td class="dim">3993</td></tr><tr><td class="mono"> elephant,  jellyfish,  tortoise</td><td class="gr fw-cell">77.9%</td><td class="dim">3995</td></tr><tr><td class="mono"> elephant,  elephant</td><td class="gr fw-cell">65.9%</td><td class="dim">3993</td></tr><tr><td class="mono"> elephant,  giraffe</td><td class="gr fw-cell">63.1%</td><td class="dim">3997</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-shark">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">shark</span>
+        <span class="ucp-cost">5g</span>
+        <span class="ucp-wr gr">67.4%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">26943W / 13053L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">39,996</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> tortoise</td><td class="dim">4× in top teams</td></tr><tr><td> jellyfish</td><td class="dim">1× in top teams</td></tr><tr><td> elephant</td><td class="dim">1× in top teams</td></tr><tr><td> wolfpack</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing shark</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> jellyfish,  shark,  tortoise</td><td class="gr fw-cell">86.4%</td><td class="dim">3991</td></tr><tr><td class="mono"> elephant,  shark</td><td class="gr fw-cell">78.6%</td><td class="dim">3993</td></tr><tr><td class="mono"> shark,  tortoise,  tortoise,  wolfpack</td><td class="gr fw-cell">75.0%</td><td class="dim">4000</td></tr><tr><td class="mono"> chameleon,  shark,  tortoise</td><td class="gr fw-cell">74.6%</td><td class="dim">3990</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-tortoise">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">tortoise</span>
+        <span class="ucp-cost">2g</span>
+        <span class="ucp-wr gr">63.6%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">58425W / 33509L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">91,934</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> whale</td><td class="dim">2× in top teams</td></tr><tr><td> jellyfish</td><td class="dim">2× in top teams</td></tr><tr><td> bee</td><td class="dim">1× in top teams</td></tr><tr><td> shark</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing tortoise</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> tortoise,  tortoise,  whale</td><td class="gr fw-cell">96.1%</td><td class="dim">3995</td></tr><tr><td class="mono"> bee,  tortoise,  whale</td><td class="gr fw-cell">88.5%</td><td class="dim">3995</td></tr><tr><td class="mono"> jellyfish,  shark,  tortoise</td><td class="gr fw-cell">86.4%</td><td class="dim">3991</td></tr><tr><td class="mono"> elephant,  jellyfish,  tortoise</td><td class="gr fw-cell">77.9%</td><td class="dim">3995</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-crocodile">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">crocodile</span>
+        <span class="ucp-cost">4g</span>
+        <span class="ucp-wr gr">60.8%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">12150W / 7821L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">19,971</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> bear</td><td class="dim">3× in top teams</td></tr><tr><td> skunk</td><td class="dim">2× in top teams</td></tr><tr><td> jellyfish</td><td class="dim">2× in top teams</td></tr><tr><td> scorpion</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing crocodile</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> bear,  bear,  crocodile</td><td class="gr fw-cell">77.2%</td><td class="dim">3993</td></tr><tr><td class="mono"> bear,  crocodile,  skunk</td><td class="gr fw-cell">65.5%</td><td class="dim">3991</td></tr><tr><td class="mono"> crocodile,  jellyfish,  skunk</td><td class="gr fw-cell">65.3%</td><td class="dim">3994</td></tr><tr><td class="mono"> crocodile,  jellyfish,  scorpion</td><td class="ye fw-cell">48.2%</td><td class="dim">3992</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-bear">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">bear</span>
+        <span class="ucp-cost">3g</span>
+        <span class="ucp-wr ye">53.8%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">62375W / 53586L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">115,961</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> crocodile</td><td class="dim">2× in top teams</td></tr><tr><td> giraffe</td><td class="dim">1× in top teams</td></tr><tr><td> skunk</td><td class="dim">1× in top teams</td></tr><tr><td> bee</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing bear</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> bear,  bear,  crocodile</td><td class="gr fw-cell">77.2%</td><td class="dim">3993</td></tr><tr><td class="mono"> bear,  bear,  giraffe</td><td class="gr fw-cell">66.6%</td><td class="dim">3993</td></tr><tr><td class="mono"> bear,  crocodile,  skunk</td><td class="gr fw-cell">65.5%</td><td class="dim">3991</td></tr><tr><td class="mono"> bear,  bee,  jellyfish,  tortoise</td><td class="gr fw-cell">63.7%</td><td class="dim">3994</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-giraffe">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">giraffe</span>
+        <span class="ucp-cost">4g</span>
+        <span class="ucp-wr ye">52.5%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">10492W / 9478L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">19,970</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> bear</td><td class="dim">2× in top teams</td></tr><tr><td> jellyfish</td><td class="dim">2× in top teams</td></tr><tr><td> tortoise</td><td class="dim">2× in top teams</td></tr><tr><td> elephant</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing giraffe</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> bear,  bear,  giraffe</td><td class="gr fw-cell">66.6%</td><td class="dim">3993</td></tr><tr><td class="mono"> elephant,  giraffe</td><td class="gr fw-cell">63.1%</td><td class="dim">3997</td></tr><tr><td class="mono"> giraffe,  jellyfish,  squirrel,  tortoise</td><td class="ye fw-cell">52.5%</td><td class="dim">3997</td></tr><tr><td class="mono"> giraffe,  jellyfish,  tortoise</td><td class="re fw-cell">44.7%</td><td class="dim">3993</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-skunk">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">skunk</span>
+        <span class="ucp-cost">3g</span>
+        <span class="ucp-wr ye">51.8%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">8268W / 7701L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">15,969</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> crocodile</td><td class="dim">2× in top teams</td></tr><tr><td> gorilla</td><td class="dim">2× in top teams</td></tr><tr><td> bear</td><td class="dim">1× in top teams</td></tr><tr><td> jellyfish</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing skunk</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> bear,  crocodile,  skunk</td><td class="gr fw-cell">65.5%</td><td class="dim">3991</td></tr><tr><td class="mono"> crocodile,  jellyfish,  skunk</td><td class="gr fw-cell">65.3%</td><td class="dim">3994</td></tr><tr><td class="mono"> chameleon,  gorilla,  skunk</td><td class="re fw-cell">39.1%</td><td class="dim">3990</td></tr><tr><td class="mono"> gorilla,  mantisshrimp,  skunk</td><td class="re fw-cell">37.2%</td><td class="dim">3994</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-bat">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">bat</span>
+        <span class="ucp-cost">2g</span>
+        <span class="ucp-wr ye">51.8%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">16544W / 15423L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">31,967</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> jellyfish</td><td class="dim">4× in top teams</td></tr><tr><td> tortoise</td><td class="dim">2× in top teams</td></tr><tr><td> gorilla</td><td class="dim">2× in top teams</td></tr><tr><td> shark</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing bat</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> bat,  jellyfish,  shark</td><td class="gr fw-cell">71.7%</td><td class="dim">3993</td></tr><tr><td class="mono"> bat,  jellyfish,  jellyfish,  tortoise</td><td class="gr fw-cell">66.7%</td><td class="dim">3991</td></tr><tr><td class="mono"> bat,  bear,  jellyfish,  tortoise</td><td class="ye fw-cell">51.7%</td><td class="dim">3991</td></tr><tr><td class="mono"> bat,  gorilla,  gorilla</td><td class="ye fw-cell">51.1%</td><td class="dim">3995</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-jellyfish">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">jellyfish</span>
+        <span class="ucp-cost">3g</span>
+        <span class="ucp-wr ye">49.8%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">93679W / 94299L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">187,978</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> tortoise</td><td class="dim">3× in top teams</td></tr><tr><td> shark</td><td class="dim">2× in top teams</td></tr><tr><td> bat</td><td class="dim">2× in top teams</td></tr><tr><td> elephant</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing jellyfish</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> jellyfish,  shark,  tortoise</td><td class="gr fw-cell">86.4%</td><td class="dim">3991</td></tr><tr><td class="mono"> elephant,  jellyfish,  tortoise</td><td class="gr fw-cell">77.9%</td><td class="dim">3995</td></tr><tr><td class="mono"> bat,  jellyfish,  shark</td><td class="gr fw-cell">71.7%</td><td class="dim">3993</td></tr><tr><td class="mono"> bat,  jellyfish,  jellyfish,  tortoise</td><td class="gr fw-cell">66.7%</td><td class="dim">3991</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-gorilla">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">gorilla</span>
+        <span class="ucp-cost">4g</span>
+        <span class="ucp-wr ye">49.3%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">61074W / 62912L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">123,986</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> wolfpack</td><td class="dim">5× in top teams</td></tr><tr><td> mantisshrimp</td><td class="dim">2× in top teams</td></tr><tr><td> viper</td><td class="dim">1× in top teams</td></tr><tr><td> chameleon</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing gorilla</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> gorilla,  gorilla,  wolfpack,  wolfpack</td><td class="gr fw-cell">63.2%</td><td class="dim">4011</td></tr><tr><td class="mono"> gorilla,  viper,  wolfpack,  wolfpack,  wolfpack</td><td class="gr fw-cell">63.0%</td><td class="dim">4012</td></tr><tr><td class="mono"> chameleon,  gorilla,  mantisshrimp</td><td class="gr fw-cell">61.8%</td><td class="dim">3996</td></tr><tr><td class="mono"> bear,  gorilla,  mantisshrimp</td><td class="gr fw-cell">61.7%</td><td class="dim">3992</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-tiger">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">tiger</span>
+        <span class="ucp-cost">4g</span>
+        <span class="ucp-wr ye">48.0%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">13454W / 14595L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">28,049</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> wolfpack</td><td class="dim">6× in top teams</td></tr><tr><td> gorilla</td><td class="dim">1× in top teams</td></tr><tr><td> chameleon</td><td class="dim">1× in top teams</td></tr><tr><td> kangaroo</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing tiger</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> tiger,  tiger,  wolfpack,  wolfpack</td><td class="ye fw-cell">53.2%</td><td class="dim">4002</td></tr><tr><td class="mono"> gorilla,  tiger,  wolfpack,  wolfpack</td><td class="ye fw-cell">51.0%</td><td class="dim">3999</td></tr><tr><td class="mono"> chameleon,  kangaroo,  tiger,  wolfpack</td><td class="ye fw-cell">48.3%</td><td class="dim">3998</td></tr><tr><td class="mono"> rat,  tiger,  tiger,  wolfpack</td><td class="re fw-cell">43.5%</td><td class="dim">4009</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-viper">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">viper</span>
+        <span class="ucp-cost">3g</span>
+        <span class="ucp-wr ye">47.4%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">22736W / 25246L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">47,982</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> wolfpack</td><td class="dim">4× in top teams</td></tr><tr><td> bear</td><td class="dim">3× in top teams</td></tr><tr><td> gorilla</td><td class="dim">2× in top teams</td></tr><tr><td> jellyfish</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing viper</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> gorilla,  viper,  wolfpack,  wolfpack,  wolfpack</td><td class="gr fw-cell">63.0%</td><td class="dim">4012</td></tr><tr><td class="mono"> bear,  jellyfish,  viper,  wolfpack</td><td class="gr fw-cell">57.7%</td><td class="dim">4001</td></tr><tr><td class="mono"> gorilla,  mantisshrimp,  viper</td><td class="gr fw-cell">56.9%</td><td class="dim">3993</td></tr><tr><td class="mono"> bear,  bear,  squirrel,  viper</td><td class="ye fw-cell">54.8%</td><td class="dim">3997</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-chameleon">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">chameleon</span>
+        <span class="ucp-cost">3g</span>
+        <span class="ucp-wr ye">47.2%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">35888W / 40134L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">76,022</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> shark</td><td class="dim">2× in top teams</td></tr><tr><td> gorilla</td><td class="dim">2× in top teams</td></tr><tr><td> tortoise</td><td class="dim">1× in top teams</td></tr><tr><td> mantisshrimp</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing chameleon</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> chameleon,  shark,  tortoise</td><td class="gr fw-cell">74.6%</td><td class="dim">3990</td></tr><tr><td class="mono"> chameleon,  gorilla,  mantisshrimp</td><td class="gr fw-cell">61.8%</td><td class="dim">3996</td></tr><tr><td class="mono"> chameleon,  eagle,  shark</td><td class="gr fw-cell">61.8%</td><td class="dim">3990</td></tr><tr><td class="mono"> chameleon,  gorilla,  scorpion</td><td class="gr fw-cell">57.3%</td><td class="dim">3992</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-wolfpack">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">wolfpack</span>
+        <span class="ucp-cost">1g</span>
+        <span class="ucp-wr ye">47.1%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">136083W / 152966L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">289,049</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> tortoise</td><td class="dim">3× in top teams</td></tr><tr><td> gorilla</td><td class="dim">3× in top teams</td></tr><tr><td> shark</td><td class="dim">2× in top teams</td></tr><tr><td> viper</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing wolfpack</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> shark,  tortoise,  tortoise,  wolfpack</td><td class="gr fw-cell">75.0%</td><td class="dim">4000</td></tr><tr><td class="mono"> gorilla,  gorilla,  wolfpack,  wolfpack</td><td class="gr fw-cell">63.2%</td><td class="dim">4011</td></tr><tr><td class="mono"> gorilla,  viper,  wolfpack,  wolfpack,  wolfpack</td><td class="gr fw-cell">63.0%</td><td class="dim">4012</td></tr><tr><td class="mono"> kangaroo,  shark,  tortoise,  wolfpack</td><td class="gr fw-cell">62.0%</td><td class="dim">4008</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-mantisshrimp">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">mantisshrimp</span>
+        <span class="ucp-cost">3g</span>
+        <span class="ucp-wr ye">45.3%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">16299W / 19656L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">35,955</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> gorilla</td><td class="dim">4× in top teams</td></tr><tr><td> chameleon</td><td class="dim">1× in top teams</td></tr><tr><td> bear</td><td class="dim">1× in top teams</td></tr><tr><td> jellyfish</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing mantisshrimp</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> chameleon,  gorilla,  mantisshrimp</td><td class="gr fw-cell">61.8%</td><td class="dim">3996</td></tr><tr><td class="mono"> bear,  gorilla,  mantisshrimp</td><td class="gr fw-cell">61.7%</td><td class="dim">3992</td></tr><tr><td class="mono"> gorilla,  jellyfish,  mantisshrimp</td><td class="gr fw-cell">59.7%</td><td class="dim">3995</td></tr><tr><td class="mono"> gorilla,  mantisshrimp,  viper</td><td class="gr fw-cell">56.9%</td><td class="dim">3993</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-scorpion">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">scorpion</span>
+        <span class="ucp-cost">3g</span>
+        <span class="ucp-wr re">44.6%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">23184W / 28846L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">52,030</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> wolfpack</td><td class="dim">5× in top teams</td></tr><tr><td> chameleon</td><td class="dim">3× in top teams</td></tr><tr><td> gorilla</td><td class="dim">2× in top teams</td></tr><tr><td> bear</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing scorpion</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> gorilla,  scorpion,  wolfpack,  wolfpack,  wolfpack</td><td class="gr fw-cell">59.9%</td><td class="dim">4024</td></tr><tr><td class="mono"> chameleon,  gorilla,  scorpion</td><td class="gr fw-cell">57.3%</td><td class="dim">3992</td></tr><tr><td class="mono"> chameleon,  chameleon,  scorpion,  wolfpack</td><td class="ye fw-cell">50.6%</td><td class="dim">4014</td></tr><tr><td class="mono"> bear,  scorpion,  scorpion,  wolfpack</td><td class="ye fw-cell">49.4%</td><td class="dim">4002</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-rat">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">rat</span>
+        <span class="ucp-cost">1g</span>
+        <span class="ucp-wr re">43.5%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">1744W / 2265L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">4,009</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> tiger</td><td class="dim">2× in top teams</td></tr><tr><td> wolfpack</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing rat</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> rat,  tiger,  tiger,  wolfpack</td><td class="re fw-cell">43.5%</td><td class="dim">4009</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-bee">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">bee</span>
+        <span class="ucp-cost">2g</span>
+        <span class="ucp-wr re">42.4%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">30479W / 41459L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">71,938</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> tortoise</td><td class="dim">4× in top teams</td></tr><tr><td> jellyfish</td><td class="dim">2× in top teams</td></tr><tr><td> whale</td><td class="dim">1× in top teams</td></tr><tr><td> bear</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing bee</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> bee,  tortoise,  whale</td><td class="gr fw-cell">88.5%</td><td class="dim">3995</td></tr><tr><td class="mono"> bear,  bee,  jellyfish,  tortoise</td><td class="gr fw-cell">63.7%</td><td class="dim">3994</td></tr><tr><td class="mono"> bee,  chameleon,  jellyfish,  tortoise</td><td class="gr fw-cell">56.1%</td><td class="dim">3997</td></tr><tr><td class="mono"> bat,  bee,  rhino,  tortoise</td><td class="ye fw-cell">47.4%</td><td class="dim">3992</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-squirrel">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">squirrel</span>
+        <span class="ucp-cost">1g</span>
+        <span class="ucp-wr re">42.2%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">50671W / 69369L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">120,040</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> bear</td><td class="dim">4× in top teams</td></tr><tr><td> jellyfish</td><td class="dim">2× in top teams</td></tr><tr><td> viper</td><td class="dim">1× in top teams</td></tr><tr><td> giraffe</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing squirrel</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> bear,  bear,  jellyfish,  squirrel</td><td class="gr fw-cell">56.5%</td><td class="dim">3994</td></tr><tr><td class="mono"> bear,  bear,  squirrel,  viper</td><td class="ye fw-cell">54.8%</td><td class="dim">3997</td></tr><tr><td class="mono"> giraffe,  jellyfish,  squirrel,  tortoise</td><td class="ye fw-cell">52.5%</td><td class="dim">3997</td></tr><tr><td class="mono"> gorilla,  kangaroo,  squirrel,  squirrel,  squirrel,  squirrel</td><td class="ye fw-cell">51.1%</td><td class="dim">4001</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-kangaroo">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">kangaroo</span>
+        <span class="ucp-cost">2g</span>
+        <span class="ucp-wr re">40.2%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">20922W / 31071L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">51,993</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> wolfpack</td><td class="dim">4× in top teams</td></tr><tr><td> squirrel</td><td class="dim">4× in top teams</td></tr><tr><td> shark</td><td class="dim">3× in top teams</td></tr><tr><td> tortoise</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing kangaroo</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> kangaroo,  shark,  tortoise,  wolfpack</td><td class="gr fw-cell">62.0%</td><td class="dim">4008</td></tr><tr><td class="mono"> bear,  kangaroo,  shark</td><td class="gr fw-cell">60.7%</td><td class="dim">3992</td></tr><tr><td class="mono"> kangaroo,  shark,  wolfpack,  wolfpack,  wolfpack</td><td class="ye fw-cell">52.1%</td><td class="dim">4017</td></tr><tr><td class="mono"> gorilla,  kangaroo,  squirrel,  squirrel,  squirrel,  squirrel</td><td class="ye fw-cell">51.1%</td><td class="dim">4001</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-rhino">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">rhino</span>
+        <span class="ucp-cost">4g</span>
+        <span class="ucp-wr re">39.5%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">14216W / 21747L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">35,963</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> squirrel</td><td class="dim">4× in top teams</td></tr><tr><td> bee</td><td class="dim">3× in top teams</td></tr><tr><td> bat</td><td class="dim">1× in top teams</td></tr><tr><td> tortoise</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing rhino</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> bat,  bee,  rhino,  tortoise</td><td class="ye fw-cell">47.4%</td><td class="dim">3992</td></tr><tr><td class="mono"> bee,  gorilla,  rhino</td><td class="ye fw-cell">46.0%</td><td class="dim">3993</td></tr><tr><td class="mono"> bee,  rhino,  squirrel,  squirrel,  squirrel,  wolfpack</td><td class="ye fw-cell">45.3%</td><td class="dim">4000</td></tr><tr><td class="mono"> chameleon,  kangaroo,  rhino,  squirrel</td><td class="re fw-cell">43.5%</td><td class="dim">3994</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-eagle">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">eagle</span>
+        <span class="ucp-cost">2g</span>
+        <span class="ucp-wr re">37.3%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">34263W / 57655L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">91,918</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> jellyfish</td><td class="dim">2× in top teams</td></tr><tr><td> elephant</td><td class="dim">1× in top teams</td></tr><tr><td> chameleon</td><td class="dim">1× in top teams</td></tr><tr><td> shark</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing eagle</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> eagle,  elephant,  jellyfish</td><td class="gr fw-cell">62.6%</td><td class="dim">3994</td></tr><tr><td class="mono"> chameleon,  eagle,  shark</td><td class="gr fw-cell">61.8%</td><td class="dim">3990</td></tr><tr><td class="mono"> bear,  eagle,  jellyfish,  tortoise</td><td class="ye fw-cell">52.1%</td><td class="dim">3996</td></tr><tr><td class="mono"> eagle,  gorilla,  scorpion,  wolfpack</td><td class="ye fw-cell">47.3%</td><td class="dim">4000</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+    <div class="unit-card-pvp" id="upvp-zebra">
+      <div class="ucp-header">
+        <span class="ucp-icon"></span>
+        <span class="ucp-name">zebra</span>
+        <span class="ucp-cost">3g</span>
+        <span class="ucp-wr re">37.3%</span>
+      </div>
+      <div class="ucp-grid">
+        <div class="ucp-card">
+          <div class="ucp-label">PvP Record</div>
+          <div class="ucp-val">2989W / 5031L</div>
+          <div class="ucp-label" style="margin-top:.6rem">Appearances</div>
+          <div class="ucp-val dim">8,020</div>
+        </div>
+        <div class="ucp-card">
+          <div class="ucp-label">Best Partners (top 100)</div>
+          <table class="mini-tbl"><tbody><tr><td> wolfpack</td><td class="dim">3× in top teams</td></tr><tr><td> tiger</td><td class="dim">1× in top teams</td></tr><tr><td> gorilla</td><td class="dim">1× in top teams</td></tr><tr><td> jellyfish</td><td class="dim">1× in top teams</td></tr></tbody></table>
+        </div>
+        <div class="ucp-card" style="grid-column:span 2">
+          <div class="ucp-label">Top Teams containing zebra</div>
+          <table class="mini-tbl"><thead><tr><th>Team</th><th>PvP WR</th><th>Games</th></tr></thead><tbody><tr><td class="mono"> tiger,  wolfpack,  wolfpack,  wolfpack,  zebra</td><td class="re fw-cell">43.1%</td><td class="dim">4030</td></tr><tr><td class="mono"> gorilla,  jellyfish,  zebra</td><td class="re fw-cell">31.4%</td><td class="dim">3990</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAYOFF -->
+  <div class="page-section" id="sec-playoff">
+    <div class="section-title">⚡ Playoff — Top 16 Round-Robin (Best of 10)</div>
+    <p class="dim" style="font-size:12px;margin-bottom:1rem">Every team played every other team 10 times. Pure 10g vs 10g skill test.</p>
+    <div class="podium"><div class="pod-card gold">
+      <div class="pod-medal">🥇</div>
+      <div class="pod-wr">76.0%</div>
+      <div class="pod-rec">228W/0D/72L</div>
+      <div class="pod-cost">10g</div>
+      <div class="pod-team"> tortoise,  tortoise,  whale</div>
+    </div><div class="pod-card silver">
+      <div class="pod-medal">🥈</div>
+      <div class="pod-wr">72.7%</div>
+      <div class="pod-rec">218W/0D/82L</div>
+      <div class="pod-cost">10g</div>
+      <div class="pod-team"> jellyfish,  shark,  tortoise</div>
+    </div><div class="pod-card bronze">
+      <div class="pod-medal">🥉</div>
+      <div class="pod-wr">57.0%</div>
+      <div class="pod-rec">171W/0D/129L</div>
+      <div class="pod-cost">10g</div>
+      <div class="pod-team"> chameleon,  shark,  tortoise</div>
+    </div></div>
+    <table><thead><tr><th>Rank</th><th>Playoff WR</th><th>Record (W/D/L)</th><th>Cost</th><th>Team</th></tr></thead>
+    <tbody><tr>
+      <td class="rk">🥇</td>
+      <td class="gr fw-cell">76.0%</td>
+      <td class="rec">228W/0D/72L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> tortoise,  tortoise,  whale</td>
+    </tr><tr>
+      <td class="rk">🥈</td>
+      <td class="gr fw-cell">72.7%</td>
+      <td class="rec">218W/0D/82L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> jellyfish,  shark,  tortoise</td>
+    </tr><tr>
+      <td class="rk">🥉</td>
+      <td class="gr fw-cell">57.0%</td>
+      <td class="rec">171W/0D/129L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> chameleon,  shark,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#4</td>
+      <td class="gr fw-cell">56.7%</td>
+      <td class="rec">170W/0D/130L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  bear,  crocodile</td>
+    </tr><tr>
+      <td class="rk">#5</td>
+      <td class="gr fw-cell">56.3%</td>
+      <td class="rec">169W/0D/131L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bat,  jellyfish,  shark</td>
+    </tr><tr>
+      <td class="rk">#6</td>
+      <td class="gr fw-cell">56.3%</td>
+      <td class="rec">169W/0D/131L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  crocodile,  skunk</td>
+    </tr><tr>
+      <td class="rk">#7</td>
+      <td class="gr fw-cell">55.7%</td>
+      <td class="rec">167W/0D/133L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  bear,  giraffe</td>
+    </tr><tr>
+      <td class="rk">#8</td>
+      <td class="ye fw-cell">54.3%</td>
+      <td class="rec">163W/0D/137L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> elephant,  jellyfish,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#9</td>
+      <td class="ye fw-cell">53.0%</td>
+      <td class="rec">159W/0D/141L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bat,  jellyfish,  jellyfish,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#10</td>
+      <td class="ye fw-cell">51.3%</td>
+      <td class="rec">154W/0D/146L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> shark,  tortoise,  tortoise,  wolfpack</td>
+    </tr><tr>
+      <td class="rk">#11</td>
+      <td class="ye fw-cell">50.0%</td>
+      <td class="rec">150W/0D/150L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bee,  tortoise,  whale</td>
+    </tr><tr>
+      <td class="rk">#12</td>
+      <td class="ye fw-cell">48.0%</td>
+      <td class="rec">144W/0D/156L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> elephant,  shark</td>
+    </tr><tr>
+      <td class="rk">#13</td>
+      <td class="re fw-cell">37.7%</td>
+      <td class="rec">113W/0D/187L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> bear,  bee,  jellyfish,  tortoise</td>
+    </tr><tr>
+      <td class="rk">#14</td>
+      <td class="re fw-cell">37.3%</td>
+      <td class="rec">112W/0D/188L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> crocodile,  jellyfish,  skunk</td>
+    </tr><tr>
+      <td class="rk">#15</td>
+      <td class="re fw-cell">27.7%</td>
+      <td class="rec">83W/0D/217L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> elephant,  elephant</td>
+    </tr><tr>
+      <td class="rk">#16</td>
+      <td class="re fw-cell">10.0%</td>
+      <td class="rec">30W/0D/270L</td>
+      <td class="gc">10g</td>
+      <td class="team-cell"> gorilla,  gorilla,  wolfpack,  wolfpack</td>
+    </tr></tbody></table>
+  </div>
+</div>
+<script>
+function showSection(id){
+  document.querySelectorAll('.page-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  document.querySelectorAll('.nav-link').forEach(l=>{if(l.getAttribute('onclick')&&l.getAttribute('onclick').includes("'"+id+"'"))l.classList.add('active');});
+}
+</script>
+</body></html>

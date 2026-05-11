@@ -766,7 +766,17 @@ function closedCell() {
 }
 
 function revealedCell(r) {
-  const meta = RARITY_META[r.rarity];
+  if (!r) {
+    return h('div.rounded-lg.flex.items-center.justify-center.text-2xl', {
+      style: {
+        aspectRatio: '1 / 1',
+        background: 'linear-gradient(180deg, #1a1d25, #0d1016)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        transition: 'transform 180ms',
+      },
+    }, ['❔']);
+  }
+  const meta = RARITY_META[r.rarity] ?? RARITY_META.common;
   return h('div.rounded-lg.flex.flex-col.items-center.justify-center.gap-0.5.text-center.p-1', {
     style: {
       aspectRatio: '1 / 1',
@@ -787,12 +797,13 @@ function batchSummary(batch) {
   let gross = 0;
   let highlight = null;
   for (const r of batch) {
+    if (!r) continue;
     counts[r.rarity] = (counts[r.rarity] ?? 0) + 1;
     gross += r.reward;
     const order = ['common','uncommon','rare','epic','legendary','jackpot','ultra'];
     if (!highlight || order.indexOf(r.rarity) > order.indexOf(highlight)) highlight = r.rarity;
   }
-  const hMeta = RARITY_META[highlight];
+  const hMeta = RARITY_META[highlight] ?? RARITY_META.common;
   return h('div.flex.items-center.justify-between.gap-4.rounded-xl.p-3', {
     style: {
       background: hMeta.bg,

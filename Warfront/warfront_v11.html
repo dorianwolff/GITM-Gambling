@@ -1,0 +1,3629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Warfront</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap');
+:root{
+  --gold:#c9a84c;--gold-light:#e8d5a3;--gold-dim:#7a5f2a;
+  --stone:#2a2420;--stone-mid:#3d352f;--stone-light:#5a4f47;
+  --parchment:#f2ead8;--parchment-dark:#d4c9a8;
+  --pc:#4a9eff;--ec:#ff5a4a;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Crimson Pro',serif;background:#1a1410;color:var(--parchment);min-height:100vh;}
+.app{max-width:1200px;margin:0 auto;padding:1.5rem 2rem 3rem;}
+.header{text-align:center;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--stone-light);}
+.header h1{font-family:'Cinzel',serif;font-size:28px;font-weight:600;color:var(--gold);letter-spacing:4px;}
+.header p{font-size:13px;color:var(--parchment-dark);margin-top:4px;font-style:italic;}
+.phase{display:none;}.phase.active{display:block;}
+
+/* gold bar */
+.gold-row{display:flex;align-items:center;justify-content:space-between;background:var(--stone-mid);border:1px solid var(--stone-light);border-radius:8px;padding:10px 16px;margin-bottom:1rem;}
+.gold-row .lbl{font-size:11px;color:var(--parchment-dark);text-transform:uppercase;letter-spacing:1px;}
+.gold-row .val{font-family:'Cinzel',serif;font-size:20px;color:var(--gold);}
+.gold-row .rem{font-size:12px;color:var(--parchment-dark);}
+
+/* legend */
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--parchment-dark);margin-bottom:1rem;padding:7px 12px;background:var(--stone);border-radius:6px;}
+.legend-item{display:flex;align-items:center;gap:4px;}
+.leg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+/* unit grid */
+.units-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:.75rem;}
+.unit-card{background:var(--stone-mid);border:1px solid var(--stone-light);border-radius:8px;padding:10px;cursor:pointer;transition:border-color .15s,background .15s;user-select:none;}
+.unit-card:hover{border-color:var(--gold);}
+.unit-card.selected{border-color:var(--gold);background:#3d2f10;}
+.unit-card.dimmed{opacity:.35;pointer-events:none;}
+.uc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;}
+.uc-name{font-family:'Cinzel',serif;font-size:11px;color:var(--gold-light);line-height:1.3;}
+.uc-cost{font-size:11px;font-weight:600;color:var(--stone);background:var(--gold);padding:1px 6px;border-radius:3px;white-space:nowrap;}
+.uc-icon{font-size:22px;margin-bottom:5px;display:block;}
+.uc-tags{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:5px;}
+.tag{font-size:9px;padding:1px 5px;border-radius:3px;text-transform:uppercase;letter-spacing:.4px;font-weight:600;}
+.tag-ground{background:#5a4f47;color:#d4c9a8;}.tag-flying{background:#1a3a5c;color:#90c8ff;}
+.tag-melee{background:#5c1a1a;color:#ff9090;}.tag-ranged{background:#1a4a2a;color:#90ffb0;}
+.tag-rusher{background:#4a1a5c;color:#d090ff;}.tag-aoe{background:#5c3a1a;color:#ffb880;}
+.tag-support{background:#1a4a4a;color:#90ffee;}.tag-special{background:#3a1a4a;color:#ff90d0;}
+.uc-bars{margin-bottom:5px;}
+.bar-row{display:flex;align-items:center;gap:5px;margin-bottom:2px;}
+.bar-lbl{font-size:9px;color:var(--parchment-dark);width:22px;text-transform:uppercase;}
+.bar-track{flex:1;height:4px;background:#111;border-radius:2px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;}
+.uc-tip{font-size:10px;color:var(--parchment-dark);font-style:italic;line-height:1.4;margin-bottom:5px;min-height:26px;}
+.qty-ctrl{display:flex;align-items:center;gap:5px;}
+.qty-btn{width:22px;height:22px;border:1px solid var(--stone-light);border-radius:4px;background:var(--stone);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--parchment);transition:background .1s;}
+.qty-btn:hover:not(:disabled){background:var(--stone-light);}
+.qty-btn:disabled{opacity:.28;cursor:not-allowed;}
+.qty-num{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);min-width:16px;text-align:center;}
+.roster-lbl{font-size:11px;color:var(--parchment-dark);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;}
+.roster{display:flex;flex-wrap:wrap;gap:5px;min-height:32px;padding:6px 10px;background:var(--stone);border:1px solid var(--stone-light);border-radius:6px;margin-bottom:.75rem;}
+.roster-chip{font-size:11px;padding:2px 8px;border-radius:4px;background:#3d2f10;color:var(--gold-light);border:1px solid var(--gold-dim);}
+.roster-empty{font-size:12px;color:var(--stone-light);font-style:italic;align-self:center;}
+.syn-box{font-size:12px;color:var(--gold-light);background:#2a200a;border:1px solid var(--gold-dim);border-radius:6px;padding:6px 12px;margin-bottom:.75rem;display:none;line-height:1.7;}
+.slot-warn{font-size:12px;color:#ff9090;text-align:center;margin-bottom:6px;display:none;}
+.btn-main{width:100%;padding:11px;font-family:'Cinzel',serif;font-size:14px;letter-spacing:2px;background:var(--gold);color:var(--stone);border:none;border-radius:8px;cursor:pointer;transition:opacity .15s;margin-bottom:.75rem;}
+.btn-main:disabled{opacity:.3;cursor:not-allowed;}
+.btn-main:hover:not(:disabled){opacity:.85;}
+.payout-section{margin-top:1.5rem;}
+.payout-section h3{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-bottom:7px;letter-spacing:1px;}
+.ptable{width:100%;border-collapse:collapse;font-size:12px;}
+.ptable th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--stone-light);color:var(--parchment-dark);font-size:11px;text-transform:uppercase;letter-spacing:.4px;font-weight:400;}
+.ptable td{padding:5px 8px;border-bottom:1px solid #2a2420;color:var(--parchment);}
+.mb{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;}
+.mb-win{background:#0d3d1a;color:#4caf50;}.mb-lose{background:#3d0d0d;color:#e53935;}
+
+/* ══ BATTLE ══ */
+.battle-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.battle-title{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);letter-spacing:2px;}
+.wave-info{font-size:12px;color:var(--parchment-dark);}
+.battle-scene{border:1px solid var(--stone-light);border-radius:10px;margin-bottom:10px;overflow:hidden;position:relative;}
+/* battle-inner holds the fixed 680px game world and scales to fill battle-scene */
+.battle-inner{
+  width:680px;
+  transform-origin:top left;
+  /* JS will set transform:scale() to fill the container */
+}
+/* zones themselves clip their backgrounds but fighters can extend slightly */
+.sky-zone{overflow:hidden;}
+.ground-zone{overflow:hidden;}
+/* Fighters are positioned absolutely within zones — cap them via JS yPos clamp */
+
+/* Night sky with stars */
+.sky-zone{
+  position:relative;height:120px;background:#07101e;
+  overflow:hidden;
+}
+/* Animated star layer */
+.sky-zone::before{
+  content:'';position:absolute;inset:0;
+  background-image:
+    radial-gradient(1.2px 1.2px at 8% 20%,#fff 0%,transparent 100%),
+    radial-gradient(1px 1px at 18% 70%,#dde 0%,transparent 100%),
+    radial-gradient(1.5px 1.5px at 28% 40%,#fff 0%,transparent 100%),
+    radial-gradient(1px 1px at 37% 15%,#eef 0%,transparent 100%),
+    radial-gradient(1.2px 1.2px at 46% 60%,#fff 0%,transparent 100%),
+    radial-gradient(1px 1px at 54% 30%,#dde 0%,transparent 100%),
+    radial-gradient(1.5px 1.5px at 63% 80%,#fff 0%,transparent 100%),
+    radial-gradient(1px 1px at 72% 10%,#eef 0%,transparent 100%),
+    radial-gradient(1.2px 1.2px at 80% 55%,#fff 0%,transparent 100%),
+    radial-gradient(1px 1px at 88% 35%,#dde 0%,transparent 100%),
+    radial-gradient(1.5px 1.5px at 93% 75%,#fff 0%,transparent 100%),
+    radial-gradient(1px 1px at 13% 50%,#fff 0%,transparent 100%),
+    radial-gradient(1px 1px at 58% 90%,#eef 0%,transparent 100%),
+    radial-gradient(1.2px 1.2px at 41% 85%,#fff 0%,transparent 100%),
+    radial-gradient(1px 1px at 75% 65%,#dde 0%,transparent 100%);
+  animation:twinkle 3s ease-in-out infinite alternate;
+  pointer-events:none;
+}
+/* Moon */
+.sky-zone::after{
+  content:'';position:absolute;top:8px;right:70px;
+  width:22px;height:22px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#f0e8c0,#c8b870);
+  opacity:.7;box-shadow:0 0 18px 6px rgba(200,180,100,.2);
+  pointer-events:none;
+}
+@keyframes twinkle{
+  0%{opacity:.7;} 50%{opacity:1;} 100%{opacity:.6;}
+}
+.sky-label{position:absolute;top:5px;left:8px;font-size:9px;color:#2a5080;text-transform:uppercase;letter-spacing:1px;z-index:2;}
+
+/* Ground zone — prairie with hills */
+.ground-zone{position:relative;height:160px;overflow:hidden;}
+/* Sky gradient backdrop */
+.ground-zone::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,#0a1c08 0%,#122a0e 45%,#1a3812 100%);
+  pointer-events:none;z-index:0;
+}
+/* Rolling hill silhouette */
+.ground-zone::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:36px;
+  background:#0d1f09;
+  clip-path:ellipse(60% 100% at 30% 100%) polygon(0 100%,100% 100%,100% 0,0 0);
+  pointer-events:none;z-index:1;
+}
+/* Grass strip */
+.ground-grass{
+  position:absolute;bottom:0;left:0;right:0;height:36px;
+  background:#0e2209;
+  z-index:1;pointer-events:none;
+}
+/* Hill bump left */
+.hill-l{
+  position:absolute;bottom:10px;left:10%;
+  width:200px;height:60px;
+  background:#0d1f09;border-radius:50% 50% 0 0;
+  z-index:0;pointer-events:none;
+}
+/* Hill bump right */
+.hill-r{
+  position:absolute;bottom:10px;right:8%;
+  width:160px;height:50px;
+  background:#0d1f09;border-radius:50% 50% 0 0;
+  z-index:0;pointer-events:none;
+}
+/* Torch glow near bases */
+.torch-p{position:absolute;left:52px;bottom:18px;width:6px;height:6px;border-radius:50%;background:#ffaa30;z-index:3;box-shadow:0 0 10px 6px rgba(255,160,40,.4);pointer-events:none;animation:flicker 1.2s ease-in-out infinite alternate;}
+.torch-e{position:absolute;right:52px;bottom:18px;width:6px;height:6px;border-radius:50%;background:#ff6030;z-index:3;box-shadow:0 0 10px 6px rgba(255,80,40,.4);pointer-events:none;animation:flicker 1.4s ease-in-out infinite alternate;}
+@keyframes flicker{0%{opacity:.7;box-shadow:0 0 8px 4px rgba(255,160,40,.3);}100%{opacity:1;box-shadow:0 0 14px 9px rgba(255,160,40,.5);}}
+.ground-label{position:absolute;bottom:5px;left:8px;font-size:9px;color:#2a4a1a;text-transform:uppercase;letter-spacing:1px;z-index:4;}
+
+/* Bases */
+.base{position:absolute;top:50%;transform:translateY(-50%);width:46px;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px;z-index:5;}
+.base-p{left:4px;background:#0d2a4a;border:1px solid #4a9eff;}
+.base-e{right:4px;background:#4a0d0d;border:1px solid #ff5a4a;}
+.base-name{font-size:8px;color:var(--parchment-dark);text-transform:uppercase;letter-spacing:.5px;}
+.base-hp-text{font-family:'Cinzel',serif;font-size:11px;}
+.base-hp-bar{width:36px;height:4px;background:#111;border-radius:2px;overflow:hidden;margin-top:2px;}
+.base-hp-fill-p{height:100%;background:var(--pc);border-radius:2px;transition:width .3s;}
+.base-hp-fill-e{height:100%;background:var(--ec);border-radius:2px;transition:width .3s;}
+
+/* Fighters position is JS-clamped to stay within zone bounds */
+
+.fighter{position:absolute;display:flex;flex-direction:column;align-items:center;pointer-events:none;z-index:10;}
+.fighter-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;border:1.5px solid transparent;}
+.fighter.player .fighter-icon{border-color:var(--pc);background:#0d2040;}
+.fighter.enemy .fighter-icon{border-color:var(--ec);background:#2a0d0d;}
+.fighter.slowed .fighter-icon{border-color:#80c8ff;background:#0a1a40;}
+.unit-hp-bar{width:28px;height:4px;background:#111;border-radius:2px;overflow:hidden;margin-top:2px;}
+.unit-hp-fill{height:100%;border-radius:2px;transition:width .1s;}
+.player .unit-hp-fill{background:var(--pc);}
+.enemy .unit-hp-fill{background:var(--ec);}
+
+/* Effects */
+.aoe-ring{position:absolute;border-radius:50%;border:2px solid rgba(255,180,60,.7);pointer-events:none;animation:aoe-pop .4s ease-out forwards;z-index:20;}
+.frost-ring{position:absolute;border-radius:50%;border:2px solid rgba(80,180,255,.8);pointer-events:none;animation:aoe-pop .4s ease-out forwards;z-index:20;}
+.explode-ring{position:absolute;border-radius:50%;border:3px solid rgba(255,100,20,.9);pointer-events:none;animation:aoe-pop .55s ease-out forwards;z-index:20;}
+.respawn-flash{position:absolute;border-radius:50%;border:3px solid rgba(255,160,40,.9);pointer-events:none;animation:aoe-pop .5s ease-out forwards;z-index:20;}
+@keyframes aoe-pop{0%{transform:translate(-50%,-50%) scale(0);opacity:1;}100%{transform:translate(-50%,-50%) scale(1);opacity:0;}}
+.hit-flash{position:absolute;border-radius:50%;pointer-events:none;z-index:21;width:16px;height:16px;background:rgba(255,200,80,.6);animation:hit-pop .22s ease-out forwards;transform:translate(-50%,-50%);}
+@keyframes hit-pop{0%{transform:translate(-50%,-50%) scale(.4);opacity:1;}100%{transform:translate(-50%,-50%) scale(1.5);opacity:0;}}
+
+/* HP bars row */
+.hp-bars-row{display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:11px;background:#0a0e0a;}
+.hp-label-p{color:var(--pc);font-weight:600;white-space:nowrap;min-width:52px;}
+.hp-label-e{color:var(--ec);font-weight:600;white-space:nowrap;min-width:52px;text-align:right;}
+.hp-track{flex:1;height:8px;background:#111;border-radius:4px;overflow:hidden;}
+.hp-fill-p{height:100%;background:var(--pc);border-radius:4px;transition:width .3s;}
+.hp-fill-e{height:100%;background:var(--ec);border-radius:4px;transition:width .3s;float:right;}
+
+.log{background:var(--stone);border:1px solid var(--stone-light);border-radius:8px;padding:8px 12px;font-size:12px;height:88px;overflow:hidden;line-height:1.85;margin-bottom:1rem;}
+.ll{color:var(--parchment-dark);}
+.ll.good{color:#6be88a;}.ll.bad{color:#ff8080;}.ll.aoe{color:#ffb860;}.ll.info{color:#80c8ff;}.ll.special{color:#ff90d0;}
+
+/* Result */
+.result-box{text-align:center;padding:3rem 1rem 2rem;}
+.result-title{font-family:'Cinzel',serif;font-size:30px;font-weight:600;margin-bottom:8px;}
+.result-sub{font-size:14px;color:var(--parchment-dark);font-style:italic;margin-bottom:.5rem;}
+.result-diff{font-size:13px;color:var(--parchment-dark);margin-bottom:1.5rem;}
+.result-mult{font-family:'Cinzel',serif;font-size:44px;font-weight:600;margin-bottom:2rem;}
+.btn-replay{padding:9px 30px;border-radius:8px;border:1px solid var(--gold);background:transparent;font-family:'Cinzel',serif;font-size:13px;letter-spacing:2px;color:var(--gold);cursor:pointer;transition:background .15s;}
+.btn-replay:hover{background:#3d2f10;}
+
+/* ══ MOBILE RESPONSIVE ══════════════════════════════════════════ */
+@media(max-width:480px){
+  .app{padding:1rem .6rem 2.5rem;}
+  .header h1{font-size:22px;letter-spacing:2px;}
+  .units-grid{grid-template-columns:repeat(2,1fr);gap:6px;}
+  .uc-icon{font-size:18px;}
+  .uc-name{font-size:10px;}
+  .uc-tip{font-size:9px;min-height:22px;}
+  .tag{font-size:8px;padding:1px 4px;}
+  .sky-zone{height:58px;}
+  .ground-zone{height:85px;}
+  .fighter-icon{width:24px;height:24px;font-size:12px;}
+  .unit-hp-bar{width:24px;}
+  .hp-label-p,.hp-label-e{min-width:40px;font-size:10px;}
+  .base-name{font-size:7px;}
+  .base-hp-text{font-size:10px;}
+  .base-hp-bar{width:30px;}
+  .log{font-size:11px;height:72px;}
+  .result-title{font-size:24px;}
+  .result-mult{font-size:36px;}
+  .payout-section h3{font-size:12px;}
+  .ptable{font-size:11px;}
+  .ptable th,.ptable td{padding:4px 5px;}
+  .legend{gap:7px;font-size:10px;}
+  .gold-row .val{font-size:17px;}
+  .gold-row .rem{font-size:11px;}
+  .btn-main{font-size:13px;padding:10px;}
+  .esb-val{font-size:15px;}
+  .hill-l{width:140px;}
+  .hill-r{width:110px;}
+}
+@media(max-width:360px){
+  .units-grid{grid-template-columns:repeat(2,1fr);}
+  .uc-bars{display:none;}
+}
+
+/* Shade quality tiers */
+.shade-low  .fighter-icon{border-color:#555!important;background:#1a1a1a!important;}
+.shade-mid  .fighter-icon{border-color:#7a3aaa!important;background:#1a0a2a!important;}
+.shade-high .fighter-icon{border-color:#e07020!important;background:#2a1000!important;}
+/* Assassin teleport flash */
+.teleport-flash{position:absolute;border-radius:50%;pointer-events:none;z-index:25;
+  width:36px;height:36px;background:rgba(160,60,255,.55);
+  animation:hit-pop .35s ease-out forwards;transform:translate(-50%,-50%);}
+/* Mirror reflect flash */
+.reflect-flash{position:absolute;border-radius:50%;pointer-events:none;z-index:24;
+  width:20px;height:20px;background:rgba(80,200,255,.65);
+  animation:hit-pop .25s ease-out forwards;transform:translate(-50%,-50%);}
+/* Chain lightning line (drawn via short divs) */
+.chain-bolt{position:absolute;height:2px;background:rgba(120,200,255,.8);
+  pointer-events:none;z-index:22;transform-origin:left center;
+  animation:chain-fade .3s ease-out forwards;}
+@keyframes chain-fade{0%{opacity:1;}100%{opacity:0;}}
+
+/* Surrender confirm overlay */
+.confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center;}
+.confirm-overlay.visible{display:flex;}
+.confirm-box{background:#2e2720;border:1px solid #5a4f47;border-radius:10px;padding:1.5rem 1.75rem;max-width:320px;width:90%;text-align:center;}
+.confirm-box p{font-family:'Crimson Pro',serif;font-size:15px;color:#f2ead8;margin-bottom:1.25rem;line-height:1.5;}
+.confirm-btns{display:flex;gap:10px;}
+.confirm-yes{flex:1;padding:9px;border-radius:7px;border:1px solid #5c1a1a;background:transparent;color:#ff8080;font-family:Cinzel,serif;font-size:12px;letter-spacing:1px;cursor:pointer;}
+.confirm-yes:hover{background:#2a0808;}
+.confirm-no{flex:1;padding:9px;border-radius:7px;border:1px solid #5a4f47;background:transparent;color:#d4c9a8;font-family:Cinzel,serif;font-size:12px;letter-spacing:1px;cursor:pointer;}
+.confirm-no:hover{background:#3d352f;}
+
+/* Collection selector */
+.collection-sel{display:flex;gap:8px;margin-bottom:1rem;}
+.col-btn{flex:1;padding:10px;border-radius:8px;border:1px solid var(--stone-light);background:transparent;cursor:pointer;font-family:'Cinzel',serif;font-size:13px;letter-spacing:1px;transition:all .15s;text-align:center;}
+.col-btn:hover{border-color:var(--gold);}
+.col-btn.active{background:#3d2f10;border-color:var(--gold);color:var(--gold);}
+.col-btn.fantasy{color:#c9a84c;}
+.col-btn.animals{color:#6bd96b;}
+.tag-animal{background:#0d2d0d;color:#6bd96b;}
+.tag-fantasy{background:#2a1a3a;color:#c080ff;}
+/* Animal special effects */
+.poison-tick{position:absolute;border-radius:50%;pointer-events:none;z-index:24;
+  width:14px;height:14px;background:rgba(80,200,40,.7);
+  animation:hit-pop .3s ease-out forwards;transform:translate(-50%,-50%);}
+.stun-ring{position:absolute;border-radius:50%;border:2px solid rgba(255,220,40,.8);pointer-events:none;animation:aoe-pop .6s ease-out forwards;z-index:20;}
+.camo-fighter{opacity:0.15!important;}
+.grab-line{position:absolute;height:2px;background:rgba(200,120,40,.8);pointer-events:none;z-index:22;transform-origin:left center;}
+
+/* ── Special Effect Animations ──────────────────────────────── */
+
+/* Shade spawn burst */
+@keyframes shade-spawn{
+  0%{transform:translate(-50%,-50%) scale(0.2);opacity:1;}
+  60%{transform:translate(-50%,-50%) scale(1.4);opacity:.7;}
+  100%{transform:translate(-50%,-50%) scale(1);opacity:0;}
+}
+.shade-burst{position:absolute;width:52px;height:52px;border-radius:50%;
+  border:2px solid #9060ff;background:rgba(100,30,200,.35);
+  pointer-events:none;z-index:26;
+  animation:shade-spawn .55s ease-out forwards;transform:translate(-50%,-50%);}
+
+/* Hit damage flash on fighter */
+@keyframes dmg-shake{
+  0%{filter:brightness(3);}
+  30%{filter:brightness(1.8);}
+  100%{filter:brightness(1);}
+}
+.damage-flash{animation:dmg-shake .25s ease-out;}
+
+/* Assassin teleport shadow trail */
+@keyframes shadow-fade{
+  0%{opacity:.6;}100%{opacity:0;}
+}
+.tele-shadow{position:absolute;pointer-events:none;z-index:20;opacity:.6;
+  animation:shadow-fade .4s ease-out forwards;}
+.tele-shadow .fighter-icon{border-color:#9b30ff!important;background:#1a0030!important;
+  box-shadow:0 0 12px rgba(155,48,255,.8)!important;}
+
+/* Viper poison cloud */
+@keyframes poison-puff{
+  0%{transform:translate(-50%,-100%) scale(.5);opacity:.9;}
+  100%{transform:translate(-50%,-200%) scale(1.5);opacity:0;}
+}
+.poison-cloud{position:absolute;width:20px;height:20px;border-radius:50%;
+  background:radial-gradient(circle,rgba(80,200,30,.8),rgba(40,140,20,0));
+  pointer-events:none;z-index:24;
+  animation:poison-puff .6s ease-out forwards;}
+
+/* Chain lightning arc */
+@keyframes arc-fade{0%{opacity:1;}100%{opacity:0;}}
+.chain-arc{position:absolute;height:2px;background:linear-gradient(90deg,rgba(100,180,255,0),rgba(160,220,255,1),rgba(100,180,255,0));
+  pointer-events:none;z-index:22;transform-origin:left center;
+  animation:arc-fade .35s ease-out forwards;}
+
+/* Crit/big-hit number pop */
+@keyframes dmg-num{
+  0%{opacity:1;transform:translateY(0);}
+  100%{opacity:0;transform:translateY(-28px);}
+}
+.dmg-number{position:absolute;font-family:Cinzel,serif;font-size:13px;font-weight:700;
+  color:#ff6060;text-shadow:0 0 6px #000;pointer-events:none;z-index:30;
+  animation:dmg-num .7s ease-out forwards;white-space:nowrap;}
+.dmg-number.crit{color:#ffd700;font-size:16px;}
+
+/* Elephant trumpet shockwave */
+@keyframes trumpet-wave{
+  0%{transform:translate(-50%,-50%) scale(0);opacity:.9;border-color:#ffe060;}
+  100%{transform:translate(-50%,-50%) scale(1);opacity:0;border-color:#ff9020;}
+}
+.trumpet-wave{position:absolute;border-radius:50%;border:3px solid #ffe060;
+  pointer-events:none;z-index:23;
+  animation:trumpet-wave .7s ease-out forwards;}
+
+/* Eagle dive speed-lines */
+@keyframes speed-line{0%{opacity:.8;transform:scaleX(1);}100%{opacity:0;transform:scaleX(0);}}
+.speed-line{position:absolute;height:2px;background:linear-gradient(90deg,rgba(255,255,200,.8),transparent);
+  pointer-events:none;z-index:22;transform-origin:right center;
+  animation:speed-line .3s ease-out forwards;}
+
+
+/* Desktop: wider battle layout */
+@media(min-width:768px){
+  .battle-scene{display:flex;flex-direction:column;}
+  .sky-zone{height:130px!important;}
+  .ground-zone{height:180px!important;}
+  .log{height:120px;}
+  .units-grid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));}
+}
+
+/* Speed boost blue saiyan aura */
+@keyframes saiyan-pulse{0%{box-shadow:0 0 8px 4px rgba(80,160,255,.5);}100%{box-shadow:0 0 16px 8px rgba(80,160,255,.9);}}
+.speed-boosted .fighter-icon{animation:saiyan-pulse .5s ease-in-out infinite alternate;border-color:#60d0ff!important;}
+
+/* Brute rage red neon below 30% */
+@keyframes rage-glow{0%{box-shadow:0 0 8px 4px rgba(255,40,0,.6);}100%{box-shadow:0 0 20px 10px rgba(255,60,20,.95);}}
+.brute-raging .fighter-icon{animation:rage-glow .3s ease-in-out infinite alternate;border-color:#ff4020!important;background:#3a0808!important;}
+
+/* Heal cross pop */
+@keyframes heal-cross{0%{opacity:1;transform:translateY(0) scale(1);}100%{opacity:0;transform:translateY(-22px) scale(1.4);}}
+.heal-cross{position:absolute;font-size:12px;pointer-events:none;z-index:28;color:#4caf50;text-shadow:0 0 6px #000;
+  animation:heal-cross .7s ease-out forwards;white-space:nowrap;}
+
+/* Warlord gold aura buff */
+@keyframes warlord-aura{0%{box-shadow:0 0 6px 3px rgba(200,168,60,.4);}100%{box-shadow:0 0 14px 7px rgba(200,168,60,.8);}}
+.warlord-buffed .fighter-icon{animation:warlord-aura .8s ease-in-out infinite alternate;border-color:#c8a83c!important;}
+
+/* Ground shake for elephant */
+@keyframes ground-shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-3px);}40%{transform:translateX(3px);}60%{transform:translateX(-2px);}80%{transform:translateX(2px);}}
+.shaking{animation:ground-shake .4s ease-out;}
+
+/* Crocodile spin effect */
+@keyframes croc-spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+.croc-spinning .fighter-icon{animation:croc-spin .6s ease-out;}
+
+/* Skunk green cloud */
+.stink-cloud{position:absolute;border-radius:50%;pointer-events:none;z-index:23;
+  background:radial-gradient(circle,rgba(80,220,40,.35),rgba(40,140,20,0));
+  border:2px solid rgba(80,220,40,.6);animation:aoe-pop .6s ease-out forwards;}
+
+/* Poison cloud green */
+@keyframes poison-rise{0%{opacity:.8;transform:translate(-50%,-50%) scale(.3);}100%{opacity:0;transform:translate(-50%,-80%) scale(1.8);}}
+.poison-cloud{position:absolute;width:22px;height:22px;border-radius:50%;
+  background:radial-gradient(circle,rgba(80,200,30,.8),transparent);
+  pointer-events:none;z-index:24;animation:poison-rise .7s ease-out forwards;}
+
+
+/* Bee swarm effects */
+@keyframes bee-sting{0%{opacity:1;transform:scale(1);}100%{opacity:0;transform:scale(2) translateY(-10px);}}
+.bee-sting{position:absolute;font-size:10px;pointer-events:none;z-index:28;color:#ffd700;
+  animation:bee-sting .4s ease-out forwards;}
+.bee-sting::after{content:'🐝';}
+@keyframes bee-swarm-orbit{
+  0%{transform:translate(-50%,-50%) rotate(0deg) translateX(16px) rotate(0deg);opacity:.9;}
+  100%{transform:translate(-50%,-50%) rotate(360deg) translateX(16px) rotate(-360deg);opacity:.6;}
+}
+.bee-swarm-aura{position:absolute;pointer-events:none;z-index:27;width:32px;height:32px;}
+.bee-swarm-aura::before,.bee-swarm-aura::after{
+  content:'🐝';font-size:11px;position:absolute;top:50%;left:50%;
+  animation:bee-swarm-orbit 0.9s linear infinite;
+}
+.bee-swarm-aura::after{animation-delay:-0.45s;}
+
+
+/* Whale tidal wave drag effect */
+@keyframes wave-drag{
+  0%  { opacity:.9; transform:scaleX(1)   scaleY(1);   }
+  40% { opacity:.7; transform:scaleX(1.6) scaleY(0.7); }
+  100%{ opacity:0;  transform:scaleX(2.2) scaleY(0.3); }
+}
+.wave-drag{
+  position:absolute;pointer-events:none;z-index:25;
+  border-radius:50%;
+  border:3px solid rgba(100,200,255,.85);
+  background:rgba(60,160,255,.15);
+  animation:wave-drag .55s cubic-bezier(.25,.46,.45,.94) forwards;
+}
+@keyframes wave-ripple{
+  0%  { opacity:.8; transform:translate(-50%,-50%) scale(.2); }
+  100%{ opacity:0;  transform:translate(-50%,-50%) scale(1.8); }
+}
+.wave-ripple{
+  position:absolute;pointer-events:none;z-index:24;
+  border-radius:50%;
+  border:2px solid rgba(140,220,255,.9);
+  width:60px;height:60px;
+  animation:wave-ripple .5s ease-out forwards;
+}
+/* Knockback slide animation on the fighter element */
+@keyframes knockback-slide{
+  0%  { outline: 3px solid rgba(100,200,255,.9); box-shadow: 0 0 18px rgba(100,200,255,.7); }
+  100%{ outline: none; box-shadow: none; }
+}
+.wave-knocked .fighter-icon{
+  animation: knockback-slide .6s ease-out forwards !important;
+  border-color: rgba(100,200,255,.9) !important;
+}
+
+
+/* Siege — bomb arc projectile */
+@keyframes bomb-arc{
+  0%  {transform:translate(0,0) scale(1); opacity:1;}
+  50% {transform:translate(var(--bx),calc(var(--by) - 40px)) scale(1.2); opacity:1;}
+  100%{transform:translate(calc(var(--bx)*2),0) scale(0.5); opacity:0;}
+}
+.siege-bomb{position:absolute;pointer-events:none;z-index:28;font-size:14px;
+  animation:bomb-arc .45s cubic-bezier(.33,0,.66,1) forwards;}
+/* Siege — explosion pop */
+@keyframes boom-ring{
+  0%  {transform:translate(-50%,-50%) scale(.1);opacity:1;border-width:6px;}
+  60% {transform:translate(-50%,-50%) scale(1.2);opacity:.8;border-width:3px;}
+  100%{transform:translate(-50%,-50%) scale(1.8);opacity:0;border-width:1px;}
+}
+.boom-ring{position:absolute;border-radius:50%;border:6px solid rgba(255,180,40,1);
+  background:rgba(255,80,0,.25);pointer-events:none;z-index:27;
+  animation:boom-ring .5s ease-out forwards;}
+/* BombGoblin — bigger mushroom explosion */
+@keyframes goblin-boom{
+  0%  {transform:translate(-50%,-50%) scale(.2);opacity:1;background:rgba(255,200,40,.9);}
+  30% {transform:translate(-50%,-50%) scale(1.5);opacity:.9;background:rgba(255,120,20,.8);}
+  70% {transform:translate(-50%,-50%) scale(1.8);opacity:.5;background:rgba(100,100,100,.4);}
+  100%{transform:translate(-50%,-50%) scale(2.5);opacity:0;background:rgba(80,80,80,.1);}
+}
+.goblin-boom{position:absolute;border-radius:50%;pointer-events:none;z-index:27;
+  width:120px;height:120px;
+  animation:goblin-boom .7s ease-out forwards;}
+/* FrostWitch — ice crystal slow ring */
+@keyframes frost-slow{
+  0%  {transform:translate(-50%,-50%) scale(.3);opacity:1;border-color:rgba(140,220,255,1);}
+  100%{transform:translate(-50%,-50%) scale(1.4);opacity:0;border-color:rgba(200,240,255,.2);}
+}
+.frost-slow-ring{position:absolute;border-radius:50%;border:3px solid rgba(140,220,255,1);
+  width:50px;height:50px;pointer-events:none;z-index:26;
+  animation:frost-slow .6s ease-out forwards;}
+/* Mirror Mage — reflect burst */
+@keyframes reflect-burst{
+  0%  {opacity:1;transform:scale(.5);}
+  50% {opacity:.8;transform:scale(1.3) rotate(30deg);}
+  100%{opacity:0;transform:scale(1.8) rotate(60deg);}
+}
+.reflect-burst{position:absolute;font-size:18px;pointer-events:none;z-index:28;
+  animation:reflect-burst .4s ease-out forwards;}
+/* Mirror arc between targets */
+@keyframes mirror-arc-fade{0%{opacity:.8;}100%{opacity:0;}}
+.mirror-arc{position:absolute;height:2px;pointer-events:none;z-index:24;
+  background:linear-gradient(90deg,rgba(180,180,255,0),rgba(200,200,255,1),rgba(180,180,255,0));
+  transform-origin:left center;animation:mirror-arc-fade .35s ease-out forwards;}
+/* Squirrel dodge */
+@keyframes dodge-pop{0%{opacity:1;transform:translateY(0) scale(1);}100%{opacity:0;transform:translateY(-20px) scale(1.5);}}
+.dodge-text{position:absolute;font-family:'Cinzel',serif;font-size:11px;font-weight:700;
+  color:#ffd700;text-shadow:0 0 6px #000;pointer-events:none;z-index:30;
+  animation:dodge-pop .6s ease-out forwards;}
+@keyframes dodge-flash-anim{0%,100%{opacity:1}50%{opacity:.2;transform:translateX(6px);}}
+.dodge-flash{animation:dodge-flash-anim .28s ease-out;}
+/* Bear grow — additional css complement to JS animation */
+@keyframes bear-grow-ring{
+  0%  {transform:translate(-50%,-50%) scale(.1);opacity:.9;border-color:#ff6600;}
+  100%{transform:translate(-50%,-50%) scale(1.8);opacity:0;border-color:#ff2200;}
+}
+.bear-grow-ring{position:absolute;border-radius:50%;border:4px solid #ff6600;
+  width:60px;height:60px;pointer-events:none;z-index:26;
+  animation:bear-grow-ring .5s ease-out forwards;}
+
+
+/* Enemy vs Player color variants for effects */
+.enemy .fighter-icon { border-color: var(--ec) !important; }
+/* Enemy AoE rings — orange/red vs player blue/green */
+.enemy-aoe-ring{position:absolute;border-radius:50%;border:2px solid rgba(255,80,20,.85);
+  pointer-events:none;animation:aoe-pop .5s ease-out forwards;z-index:20;}
+.enemy-explode-ring{position:absolute;border-radius:50%;border:3px solid rgba(255,60,0,1);
+  pointer-events:none;animation:aoe-pop .6s ease-out forwards;z-index:22;}
+.enemy-frost-ring{position:absolute;border-radius:50%;border:2px solid rgba(255,160,80,.8);
+  pointer-events:none;animation:aoe-pop .5s ease-out forwards;z-index:20;}
+.enemy-chain-bolt{position:absolute;height:2px;background:rgba(255,120,40,.9);
+  pointer-events:none;z-index:22;transform-origin:left center;
+  animation:arc-fade .35s ease-out forwards;}
+.enemy-boom-ring{position:absolute;border-radius:50%;border:6px solid rgba(255,40,40,1);
+  background:rgba(180,20,0,.25);pointer-events:none;z-index:27;
+  animation:boom-ring .5s ease-out forwards;}
+.enemy-teleport-flash{position:absolute;border-radius:50%;border:2px solid rgba(255,80,80,.9);
+  pointer-events:none;animation:aoe-pop .35s ease-out forwards;z-index:22;
+  width:32px;height:32px;}
+.enemy-shade-burst{position:absolute;width:52px;height:52px;border-radius:50%;
+  border:2px solid #ff4040;background:rgba(200,30,30,.35);
+  pointer-events:none;z-index:26;
+  animation:shade-spawn .55s ease-out forwards;transform:translate(-50%,-50%);}
+
+
+/* Rat contaminate */
+@keyframes contaminate-pulse{0%,100%{box-shadow:0 0 6px 2px rgba(180,220,80,.5);}50%{box-shadow:0 0 12px 4px rgba(180,220,80,.9);}}
+.contaminated .fighter-icon{animation:contaminate-pulse .7s ease-in-out infinite;border-color:rgba(160,200,60,.9)!important;}
+@keyframes contaminate-ring{
+  0%{transform:translate(-50%,-50%) scaleX(.1) scaleY(.4);opacity:1;border-color:rgba(180,220,40,.9);}
+  100%{transform:translate(-50%,-50%) scaleX(1.2) scaleY(1);opacity:0;border-color:rgba(140,180,30,.1);}
+}
+.contaminate-ring{position:absolute;border-radius:50%;border:4px solid rgba(180,220,40,.9);
+  pointer-events:none;z-index:24;
+  animation:contaminate-ring .8s ease-out forwards;}
+
+
+/* Squirrel dodge wiggle */
+@keyframes squirrel-dodge{
+  0%  {transform:translateX(0);}
+  20% {transform:translateX(8px) rotate(15deg);}
+  40% {transform:translateX(-8px) rotate(-15deg);}
+  60% {transform:translateX(5px) rotate(8deg);}
+  100%{transform:translateX(0) rotate(0);}
+}
+.squirrel-dodging .fighter-icon{animation:squirrel-dodge .3s ease-out;}
+
+
+/* Fixed battle lane width — zones are 680px inside .battle-inner which scales */
+.battle-scene { width: 100%; }
+.sky-zone, .ground-zone {
+  width: 680px;
+  position: relative;
+  box-sizing: border-box;
+}
+
+
+/* Tiger roar rings — echo expanding from tiger position */
+@keyframes roar-ring-expand{
+  0%  { transform:translate(-50%,-50%) scale(.05); opacity:1; border-width:5px; }
+  40% { opacity:.8; }
+  100%{ transform:translate(-50%,-50%) scale(2.8); opacity:0; border-width:1px; }
+}
+.roar-ring{
+  position:absolute;border-radius:50%;pointer-events:none;z-index:28;
+  width:180px;height:60px;
+  border:5px solid rgba(255,200,40,.95);
+  background:rgba(255,160,10,.06);
+  animation:roar-ring-expand .9s cubic-bezier(.2,.6,.4,1) forwards;
+}
+@keyframes tiger-roar-glow{
+  0%,100%{box-shadow:0 0 0 0 rgba(255,160,20,0);}
+  30%{box-shadow:0 0 30px 20px rgba(255,160,20,.7);}
+  60%{box-shadow:0 0 50px 30px rgba(255,200,40,.4);}
+}
+.tiger-roaring .fighter-icon{
+  animation:tiger-roar-glow .75s ease-out !important;
+  border-color:#ffcc00 !important;
+  transform:scale(1.4);
+  transition:transform .2s;
+}
+/* Silenced unit — greyed out with mute icon */
+@keyframes silence-pulse{
+  0%,100%{opacity:.55;} 50%{opacity:.85;}
+}
+.silenced-unit .fighter-icon{
+  animation:silence-pulse .6s ease-in-out infinite;
+  filter:grayscale(0.6);
+  border-color:rgba(180,180,180,.5) !important;
+}
+/* Rat infection — purple pulsing aura */
+@keyframes infect-aura{
+  0%,100%{box-shadow:0 0 8px 3px rgba(160,40,220,.5);}
+  50%{box-shadow:0 0 18px 8px rgba(200,80,255,.8);}
+}
+.infected-aura .fighter-icon{
+  animation:infect-aura .8s ease-in-out infinite;
+  border-color:rgba(180,60,240,.9) !important;
+}
+/* Kangaroo arc */
+@keyframes kang-fade{0%{opacity:1;}80%{opacity:.5;}100%{opacity:0;}}
+.kangaroo-arc{
+  position:absolute;font-size:18px;pointer-events:none;z-index:30;
+  animation:kang-fade .38s linear forwards;
+  transition:left .03s linear, top .03s linear;
+}
+
+
+/* Skunk gas — ground phase lingers, air phase rises */
+@keyframes gas-ground{
+  0%  {opacity:0;transform:translate(-50%,-50%) scale(.2) scaleY(0.4);}
+  15% {opacity:.8;}
+  75% {opacity:.65;transform:translate(-50%,-50%) scale(1.1) scaleY(0.9);}
+  100%{opacity:0;transform:translate(-50%,-70%) scale(1.3) scaleY(0.7);filter:blur(5px);}
+}
+@keyframes gas-rise{
+  0%  {opacity:0;transform:translate(-50%,-50%) scale(.3) scaleY(.5);}
+  20% {opacity:.55;}
+  70% {opacity:.4;transform:translate(-50%,-120%) scale(1.4) scaleY(.8);}
+  100%{opacity:0;transform:translate(-50%,-200%) scale(1.7) scaleY(.5);filter:blur(8px);}
+}
+.skunk-gas{position:absolute;border-radius:60%;pointer-events:none;z-index:24;transform-origin:center center;}
+.skunk-gas-ground{
+  background:radial-gradient(ellipse,rgba(60,215,40,.72),rgba(30,165,20,.4) 55%,transparent 80%);
+  animation:gas-ground 2.5s cubic-bezier(.2,.6,.4,1) forwards;
+}
+.skunk-gas-air{
+  background:radial-gradient(ellipse,rgba(80,210,50,.52),rgba(40,150,25,.25) 60%,transparent 85%);
+  animation:gas-rise 2.2s ease-out forwards;
+}
+
+
+/* Giraffe target symbol */
+@keyframes target-lock{
+  0%  {transform:translate(-50%,-50%) scale(2);opacity:0;}
+  40% {opacity:1;transform:translate(-50%,-50%) scale(1.1);}
+  80% {opacity:.8;transform:translate(-50%,-50%) scale(1);}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(.8);}
+}
+.giraffe-target{
+  position:absolute;font-size:16px;pointer-events:none;z-index:29;
+  animation:target-lock .45s ease-out forwards;
+}
+
+
+/* Shade rising animation — shadow pool then ghost emerges */
+@keyframes shadow-pool{
+  0%  {transform:translate(-50%,-50%) scale(.1,.2);opacity:0;}
+  40% {opacity:.7;transform:translate(-50%,-50%) scale(1.2,.3);}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.8,.15);}
+}
+.shade-shadow{
+  position:absolute;width:40px;height:16px;border-radius:50%;
+  background:rgba(80,0,120,.75);pointer-events:none;z-index:23;
+  animation:shadow-pool .6s ease-out forwards;
+  transform-origin:center center;
+}
+
+
+/* ── Genie wish animations ──────────────────────────────────────────────── */
+@keyframes genie-wish-pulse{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.3);filter:blur(8px);}
+  30%{opacity:1;filter:blur(1px);}
+  70%{opacity:.8;}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(2.2);filter:blur(10px);}
+}
+.genie-wish-revive{position:absolute;width:70px;height:70px;border-radius:50%;pointer-events:none;z-index:28;
+  background:radial-gradient(circle,rgba(80,255,160,.9),rgba(40,200,80,.3) 60%,transparent);
+  border:2px solid rgba(80,255,160,.8);animation:genie-wish-pulse .8s ease-out forwards;}
+.genie-wish-damage{position:absolute;width:80px;height:80px;border-radius:50%;pointer-events:none;z-index:28;
+  background:radial-gradient(circle,rgba(255,80,40,.9),rgba(200,40,20,.3) 60%,transparent);
+  border:2px solid rgba(255,80,40,.8);animation:genie-wish-pulse .9s ease-out forwards;}
+.genie-wish-kill{position:absolute;width:60px;height:60px;border-radius:50%;pointer-events:none;z-index:28;
+  background:radial-gradient(circle,rgba(180,0,255,.9),rgba(100,0,180,.3) 60%,transparent);
+  border:2px solid rgba(180,0,255,.8);animation:genie-wish-pulse .7s ease-out forwards;}
+@keyframes genie-summon-ring{
+  0%{transform:translate(-50%,-50%) scale(.1);opacity:1;border-width:6px;}
+  60%{opacity:.7;}
+  100%{transform:translate(-50%,-50%) scale(1.8);opacity:0;border-width:1px;}
+}
+.genie-summon{position:absolute;width:70px;height:70px;border-radius:50%;pointer-events:none;z-index:28;
+  border:6px solid rgba(255,215,0,.9);background:rgba(255,215,0,.08);
+  animation:genie-summon-ring .7s ease-out forwards;}
+@keyframes genie-icon-glow{
+  0%,100%{box-shadow:0 0 6px 3px rgba(255,215,0,.3);}
+  50%{box-shadow:0 0 22px 10px rgba(255,215,0,.8);}
+}
+.genie-wishing .fighter-icon{animation:genie-icon-glow .5s ease-in-out 3;}
+
+/* ── Time Wizard spell animations ───────────────────────────────────────── */
+/* Time Stop — blue frost freeze */
+@keyframes time-stop-ring{
+  0%{transform:translate(-50%,-50%) scale(.05);opacity:1;border-color:rgba(80,180,255,1);}
+  100%{transform:translate(-50%,-50%) scale(3.5);opacity:0;border-color:rgba(80,180,255,0);}
+}
+.time-stop-ring{position:absolute;width:200px;height:80px;border-radius:50%;border:4px solid rgba(80,180,255,1);
+  pointer-events:none;z-index:28;animation:time-stop-ring .7s ease-out forwards;}
+@keyframes frozen-pulse{
+  0%,100%{filter:grayscale(.7) brightness(.7);}
+  50%{filter:grayscale(.9) brightness(.5);}
+}
+.time-frozen .fighter-icon{animation:frozen-pulse .4s ease-in-out infinite;border-color:rgba(80,180,255,.8)!important;}
+
+/* Time Rewind — green clock swirl */
+@keyframes time-rewind-swirl{
+  0%{transform:translate(-50%,-50%) rotate(0deg) scale(.2);opacity:1;}
+  60%{opacity:.8;}
+  100%{transform:translate(-50%,-50%) rotate(-360deg) scale(1.5);opacity:0;}
+}
+.time-rewind-ring{position:absolute;width:60px;height:60px;border-radius:50%;border:4px solid rgba(80,255,120,1);
+  border-style:dashed;pointer-events:none;z-index:28;animation:time-rewind-swirl .8s ease-out forwards;}
+
+/* Time Accelerate — gold speed blur */
+@keyframes time-accel-streak{
+  0%{transform:scaleX(0);opacity:1;}
+  100%{transform:scaleX(3);opacity:0;}
+}
+.time-accel-streak{position:absolute;height:3px;background:linear-gradient(90deg,rgba(255,215,0,.9),transparent);
+  pointer-events:none;z-index:27;animation:time-accel-streak .35s ease-out forwards;transform-origin:left center;}
+@keyframes wizard-glow{
+  0%,100%{box-shadow:0 0 6px 3px rgba(255,215,0,.3);}
+  50%{box-shadow:0 0 24px 12px rgba(255,215,0,.9);}
+}
+.wizard-casting .fighter-icon{animation:wizard-glow .6s ease-in-out;}
+
+
+/* ─── Day/Night & Environment ─────────────────────────────────────────────── */
+/* Sky gradient transitions with time */
+@keyframes sky-day{
+  0%   {background:linear-gradient(180deg,#06060f 0%,#110820 100%);}
+  8%   {background:linear-gradient(180deg,#0e0612 0%,#280c1c 100%);}
+  18%  {background:linear-gradient(180deg,#6a2812 0%,#b84e1e 42%,#d4884a 100%);}
+  22%  {background:linear-gradient(180deg,#8c4020 0%,#c86028 42%,#e0a055 100%);}
+  28%  {background:linear-gradient(180deg,#2a5070 0%,#508090 100%);}
+  35%  {background:linear-gradient(180deg,#1e5082 0%,#4898b8 100%);}
+  50%  {background:linear-gradient(180deg,#1a4e8a 0%,#72b4d4 100%);}
+  65%  {background:linear-gradient(180deg,#1e5082 0%,#4898b8 100%);}
+  72%  {background:linear-gradient(180deg,#2a5070 0%,#508090 100%);}
+  78%  {background:linear-gradient(180deg,#8c3818 0%,#c05a22 42%,#d48840 100%);}
+  82%  {background:linear-gradient(180deg,#5a2010 0%,#8c3818 42%,#b0601e 100%);}
+  88%  {background:linear-gradient(180deg,#160814 0%,#261026 100%);}
+  94%  {background:linear-gradient(180deg,#09080e 0%,#14091c 100%);}
+  100% {background:linear-gradient(180deg,#06060f 0%,#110820 100%);}
+}
+.sky-zone{
+  animation:sky-day var(--day-dur,60s) ease-in-out infinite !important;
+  overflow:hidden;position:relative;
+}
+/* Celestal body (sun/moon) */
+.celestial{
+  position:absolute;width:28px;height:28px;border-radius:50%;
+  pointer-events:none;z-index:3;
+  /* Smooth movement — JS updates position, CSS interpolates */
+  /* Transition enabled by JS after first frame to prevent startup jump */
+}
+/* Sky zone clips anything below its bottom edge, so bodies below horizon are invisible */
+
+.celestial.sun{
+  background:radial-gradient(circle,#fffbe0 30%,#ffd060 70%,#ff9020 100%);
+  box-shadow:0 0 22px 10px rgba(255,200,60,.6);
+}
+.celestial.moon{
+  background:radial-gradient(circle,#e8e8d8 40%,#c0c0b0 100%);
+  box-shadow:0 0 12px 4px rgba(180,180,220,.3);
+}
+/* Clouds */
+@keyframes cloud-drift{0%{transform:translateX(0);}100%{transform:translateX(780px);}}
+.env-cloud{
+  position:absolute;pointer-events:none;z-index:2;
+  background:rgba(255,255,255,.18);border-radius:50%;
+  filter:blur(5px);
+}
+/* Mountains in ground zone */
+.mountain-layer{
+  position:absolute;bottom:0;left:0;width:100%;pointer-events:none;z-index:1;
+}
+/* Flying unit shadow on ground */
+.fly-shadow{
+  position:absolute;border-radius:50%;pointer-events:none;z-index:0;
+  background:rgba(0,0,0,.35);
+  filter:blur(4px);
+  transform-origin:center center;
+}
+
+
+/* Mantis shrimp shockwave */
+@keyframes mantis-wave{
+  0%  {transform:translate(-50%,-50%) scale(.1);opacity:1;border-width:5px;border-color:rgba(60,200,255,1);}
+  50% {opacity:.8;border-color:rgba(80,220,180,.8);}
+  100%{transform:translate(-50%,-50%) scale(2.2);opacity:0;border-width:1px;}
+}
+.mantis-wave{position:absolute;width:60px;height:60px;border-radius:50%;border:5px solid rgba(60,200,255,1);
+  pointer-events:none;z-index:27;animation:mantis-wave .5s ease-out forwards;}
+
+
+/* ─── Gorilla ─────────────────────────────────────────── */
+@keyframes gorilla-jump{
+  0%  {transform:scaleX(1)   translateY(0);}
+  30% {transform:scaleX(.85) translateY(-18px) rotate(-5deg);}
+  70% {transform:scaleX(1.1) translateY(-8px)  rotate(3deg);}
+  100%{transform:scaleX(1)   translateY(0) rotate(0);}
+}
+.gorilla-jumping .fighter-icon{animation:gorilla-jump .45s cubic-bezier(.3,-0.5,.7,1.5);}
+@keyframes gorilla-rage{
+  0%,100%{box-shadow:0 0 8px 4px rgba(255,80,20,.4);}
+  50%{box-shadow:0 0 20px 10px rgba(255,40,0,.8);}
+}
+.gorilla-ranged .fighter-icon{animation:gorilla-rage .5s ease-in-out infinite;border-color:#ff4400!important;}
+
+/* ─── Shark ────────────────────────────────────────────── */
+@keyframes shark-prey-lock{
+  0%{transform:translate(-50%,-60%) scale(2);opacity:0;}
+  40%{opacity:1;transform:translate(-50%,-60%) scale(1);}
+  80%{opacity:.8;}
+  100%{opacity:0;transform:translate(-50%,-80%) scale(.8);}
+}
+.shark-prey-mark{position:absolute;font-size:14px;pointer-events:none;z-index:29;
+  animation:shark-prey-lock .7s ease-out forwards;}
+@keyframes shark-buff-pulse{
+  0%{box-shadow:0 0 6px 3px rgba(80,255,100,.3),0 0 4px 2px rgba(255,80,40,.2);}
+  50%{box-shadow:0 0 18px 8px rgba(80,255,100,.7),0 0 14px 6px rgba(255,80,40,.6);}
+  100%{box-shadow:0 0 6px 3px rgba(80,255,100,.3),0 0 4px 2px rgba(255,80,40,.2);}
+}
+.shark-buffed .fighter-icon{animation:shark-buff-pulse .6s ease-in-out 3;}
+
+/* ─── Lumberjack ────────────────────────────────────────── */
+@keyframes axe-chop{
+  0%{transform:rotate(-30deg) translateY(0);}
+  40%{transform:rotate(60deg) translateY(4px);}
+  70%{transform:rotate(-10deg) translateY(-2px);}
+  100%{transform:rotate(0) translateY(0);}
+}
+.lumberjack-chopping .fighter-icon{animation:axe-chop .25s ease-out;}
+
+/* ─── Angel ─────────────────────────────────────────────── */
+@keyframes angel-bless{
+  0%{transform:translate(-50%,-50%) scale(.2);opacity:1;}
+  60%{opacity:.8;transform:translate(-50%,-80%) scale(1.1);}
+  100%{opacity:0;transform:translate(-50%,-130%) scale(1.5);}
+}
+.angel-bless-particle{position:absolute;pointer-events:none;z-index:28;font-size:12px;
+  animation:angel-bless .7s ease-out forwards;}
+@keyframes angel-double-glow{
+  0%,100%{box-shadow:0 0 10px 5px rgba(200,180,255,.5);}
+  50%{box-shadow:0 0 28px 14px rgba(220,200,255,.95);}
+}
+.angel-double-buffed .fighter-icon{animation:angel-double-glow .4s ease-in-out infinite;border-color:#e0d0ff!important;}
+
+
+/* Shark prey skull + fog */
+@keyframes fog-appear{
+  0%{opacity:0;transform:scale(.3);filter:blur(10px);}
+  40%{opacity:.7;filter:blur(3px);}
+  100%{opacity:0;transform:scale(1.8);filter:blur(12px);}
+}
+.shark-prey-fog{position:absolute;width:60px;height:60px;border-radius:50%;
+  background:radial-gradient(circle,rgba(20,40,120,.85),rgba(10,20,80,.4) 60%,transparent 80%);
+  pointer-events:none;z-index:27;animation:fog-appear .8s ease-out forwards;}
+.shark-prey-skull{position:absolute;font-size:10px;pointer-events:none;z-index:20;
+  top:-3px;right:-3px;line-height:1;}
+
+
+/* ─── Sticky gold widget ────────────────────────────────────────────────── */
+.gold-widget{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;gap:10px;
+  background:rgba(26,20,16,.92);
+  backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--stone-light);
+  padding:8px 14px;
+  font-family:'Cinzel',serif;
+  margin-bottom:.85rem;
+  border-radius:0 0 8px 8px;
+}
+.gw-gold{font-size:clamp(13px,2.5vw,18px);color:var(--gold);font-weight:600;letter-spacing:1px;}
+.gw-sep{color:var(--stone-light);}
+.gw-slots{font-size:clamp(12px,2vw,15px);color:var(--parchment-dark);letter-spacing:.5px;}
+
+/* ─── Sticky army bar ───────────────────────────────────────────────────── */
+.army-sticky{
+  position:sticky;bottom:0;z-index:99;
+  background:rgba(26,20,16,.95);
+  backdrop-filter:blur(10px);
+  border-top:1px solid var(--stone-light);
+  padding:8px 10px 10px;
+  border-radius:8px 8px 0 0;
+  margin-top:.5rem;
+}
+.army-sticky .roster{margin-bottom:6px;border-color:var(--stone-light);}
+.army-sticky .btn-main{margin-bottom:0;}
+
+
+/* ─── Genie reworked animations ─────────────────────────────────────────── */
+/* Purple coin rain for blast */
+@keyframes coin-fall{
+  0%  {transform:translateY(-10px) rotate(0deg);opacity:1;}
+  80% {opacity:.8;}
+  100%{transform:translateY(70px) rotate(360deg);opacity:0;}
+}
+.genie-coin{position:absolute;pointer-events:none;z-index:28;font-size:11px;
+  animation:coin-fall .7s ease-in forwards;}
+/* Purple aura for revive/summon */
+@keyframes purple-aura-expand{
+  0%  {transform:translate(-50%,-50%) scale(.1);opacity:.9;border-color:rgba(180,40,255,1);}
+  60% {opacity:.7;}
+  100%{transform:translate(-50%,-50%) scale(2.4);opacity:0;border-color:rgba(100,0,180,.1);}
+}
+.genie-aura{position:absolute;width:70px;height:70px;border-radius:50%;
+  border:4px solid rgba(180,40,255,1);pointer-events:none;z-index:28;
+  background:rgba(120,0,200,.08);
+  animation:purple-aura-expand .8s ease-out forwards;}
+
+</style>
+</head>
+<body>
+<div class="app">
+<div class="header"><h1>WARFRONT</h1><p>Draft your army — Fantasy or Animals. The battlefield rewards strategy, not just numbers.</p></div>
+
+<!-- ═══ DRAFT ═══════════════════════════════════════════ -->
+<div class="phase active" id="ph-draft">
+  <!-- Sticky gold + slots widget -->
+  <div class="gold-widget" id="gold-widget">
+    <span class="gw-gold" id="gw-gold">10 Gold</span>
+    <span class="gw-sep">·</span>
+    <span class="gw-slots" id="gw-slots">0/6 slots</span>
+  </div>
+  <!-- Hidden legacy element for backward-compat -->
+  <div id="gold-rem" style="display:none">0g spent · 10g left · 0/6 slots</div>
+
+  <div class="collection-sel">
+    <button class="col-btn fantasy active" id="col-fantasy" onclick="selectCollection('fantasy')">⚔ Fantasy</button>
+    <button class="col-btn animals" id="col-animals" onclick="selectCollection('animals')">🐾 Animals</button>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="leg-dot" style="background:#5a4f47"></div>Ground</div>
+    <div class="legend-item"><div class="leg-dot" style="background:#1a3a5c"></div>Flying</div>
+    <div class="legend-item"><div class="leg-dot" style="background:#5c1a1a"></div>Melee</div>
+    <div class="legend-item"><div class="leg-dot" style="background:#1a4a2a"></div>Ranged</div>
+    <div class="legend-item"><div class="leg-dot" style="background:#4a1a5c"></div>Rusher</div>
+    <div class="legend-item"><div class="leg-dot" style="background:#5c3a1a"></div>AoE</div>
+    <div class="legend-item"><div class="leg-dot" style="background:#3a1a4a"></div>Special</div>
+  </div>
+  <div class="units-grid" id="units-grid"></div>
+  <div id="slot-warn" class="slot-warn">Max 6 unit slots reached</div>
+  <div id="syn-box" class="syn-box"></div>
+  <div class="army-sticky" id="army-sticky">
+    <div class="roster" id="roster"><span class="roster-empty">No units selected yet</span></div>
+    <button class="btn-main" id="btn-deploy" disabled onclick="goFormationSkip()">⚔ Deploy Army</button>
+  </div>
+  <div class="payout-section">
+    <h3>Reward Table (based on enemy difficulty)</h3>
+    <table class="ptable">
+      <thead><tr><th>Enemy Budget</th><th>Difficulty</th><th>Win Reward</th></tr></thead>
+      <tbody>
+        <tr><td>11g</td><td>Easy</td><td><span class="mb mb-win">1.2×</span></td></tr>
+        <tr><td>12g</td><td>Normal</td><td><span class="mb mb-win">1.5×</span></td></tr>
+        <tr><td>13g</td><td>Hard</td><td><span class="mb mb-win">2.0×</span></td></tr>
+        <tr><td>14g</td><td>Brutal</td><td><span class="mb mb-win">3.0×</span></td></tr>
+        <tr><td>15g</td><td>Legendary</td><td><span class="mb mb-win">5.0×</span></td></tr>
+        <tr><td>16g</td><td>Impossible</td><td><span class="mb mb-win">10.0×</span></td></tr>
+        <tr><td>Any</td><td>Defeat</td><td><span class="mb mb-lose">Lose bet</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══ BATTLE ═══════════════════════════════════════════ -->
+<div class="phase" id="ph-battle">
+  <div class="battle-header">
+    <div class="battle-title" id="battle-diff-label">BATTLE</div>
+    <div id="wave-info" class="wave-info">—</div>
+  </div>
+  <div class="battle-scene" id="battle-scene">
+    <div class="battle-inner" id="battle-inner">
+    <div class="sky-zone" id="sky-zone">
+    <!-- Celestial bodies: sun and moon on opposite sides of same invisible circle -->
+    <div class="celestial sun" id="cel-sun" style="left:80px;top:20px;"></div>
+    <div class="celestial moon" id="cel-moon" style="left:80px;top:120px;"></div>
+    <!-- Clouds (3 layers, different speeds) -->
+    <div class="env-cloud" id="cloud1" style="width:90px;height:28px;top:12px;left:-100px;animation:cloud-drift 28s linear infinite;"></div>
+    <div class="env-cloud" id="cloud2" style="width:60px;height:18px;top:28px;left:-60px;animation:cloud-drift 42s linear infinite 14s;opacity:.7;"></div>
+    <div class="env-cloud" id="cloud3" style="width:120px;height:22px;top:8px;left:-120px;animation:cloud-drift 55s linear infinite 7s;opacity:.5;"></div>
+      <div class="sky-label">Sky Lane</div>
+    </div>
+    <div class="ground-zone" id="ground-zone">
+    <!-- Mountain/hill silhouettes — generated uniquely each battle by JS -->
+    <svg id="mountain-svg" class="mountain-layer" viewBox="0 0 680 180" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path id="mountain-path2" fill="#253025" opacity="0.4" d="M0,180 Q0,180 0,180 Z"/>
+      <path id="mountain-path" fill="#1a2218" opacity="0.7" d="M0,180 Q0,180 0,180 Z"/>
+    </svg>
+      <div class="hill-l"></div><div class="hill-r"></div>
+      <div class="ground-grass"></div>
+      <div class="torch-p"></div><div class="torch-e"></div>
+      <div class="base base-p" id="gbase-p">
+        <div class="base-name">Your base</div>
+        <div class="base-hp-text" id="gbase-p-hp" style="color:var(--pc)">100</div>
+        <div class="base-hp-bar"><div class="base-hp-fill-p" id="gbase-p-bar" style="width:100%"></div></div>
+      </div>
+      <div class="base base-e" id="gbase-e">
+        <div class="base-name">Enemy base</div>
+        <div class="base-hp-text" id="gbase-e-hp" style="color:var(--ec)">100</div>
+        <div class="base-hp-bar"><div class="base-hp-fill-e" id="gbase-e-bar" style="width:100%"></div></div>
+      </div>
+      <div class="ground-label">Ground Lane</div>
+    </div>
+    </div><!-- /battle-inner -->
+
+    <div class="hp-bars-row">
+      <span class="hp-label-p" id="php-lbl">100 HP</span>
+      <div class="hp-track"><div class="hp-fill-p" id="hp-fill-p" style="width:100%"></div></div>
+      <div class="hp-track" style="direction:rtl"><div class="hp-fill-e" id="hp-fill-e" style="width:100%"></div></div>
+      <span class="hp-label-e" id="ehp-lbl">100 HP</span>
+    </div>
+  </div>
+  <div class="log" id="log"></div>
+  <button id="btn-surrender" style="width:100%;padding:8px;border-radius:8px;border:1px solid #5c1a1a;background:transparent;font-family:Cinzel,serif;font-size:12px;letter-spacing:1px;color:#ff8080;cursor:pointer;margin-bottom:.5rem;transition:background .15s;" onmouseenter="this.style.background='#2a0808'" onmouseleave="this.style.background='transparent'" onclick="surrender()">⚑ Surrender (lose bet)</button>
+</div>
+
+<!-- ═══ RESULT ═══════════════════════════════════════════ -->
+<div class="phase" id="ph-result">
+  <div class="result-box">
+    <div class="result-title" id="r-title">Victory!</div>
+    <div class="result-sub" id="r-sub"></div>
+    <div class="result-diff" id="r-diff"></div>
+    <div class="result-mult" id="r-mult"></div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn-replay" onclick="reset()">Draft Again</button>
+      <button class="btn-replay" id="btn-play-again" onclick="playAgain()" style="display:none;border-color:#4a9eff;color:#4a9eff;">▶ Play Again</button>
+    </div>
+  </div>
+</div>
+</div>
+<div class="confirm-overlay" id="surrender-overlay">
+  <div class="confirm-box">
+    <p>Surrender and lose your bet?</p>
+    <div class="confirm-btns">
+      <button class="confirm-yes" onclick="doSurrender()">⚑ Surrender</button>
+      <button class="confirm-no" onclick="closeSurrender()">← Keep fighting</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// UNITS — sorted by cost ascending
+// BUG FIXES vs v4:
+//   Shaman: attackType changed from 'support' to 'ranged' but dmg=0;
+//           it now walks like any fighter but never attacks (dmg=0).
+//           The support early-return is removed entirely.
+//   Bomb Goblin: baseEngageRange now 36 (not 999) so it can hit base.
+//                selfDestruct logic runs before rusher check.
+// ════════════════════════════════════════════════════════════════
+const UNITS = [
+  // ── 1g ──────────────────────────────────────────────────────────────────────
+  {
+    id:'peasant',name:'Peasant',icon:'🧑',cost:1,
+    hp:56,dmg:3,spd:52,atkRate:1.4,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    aoeShield:true,
+    collection:'fantasy',tags:['ground','melee','special'],
+    tip:'Shield Bearer passively absorbs 40% of AoE damage hitting nearby allies. Fragile.',
+  },
+  {
+    id:'footman',name:'Footman',icon:'🛡',cost:1,
+    hp:63,dmg:6,spd:43,atkRate:1.2,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    isFootman:true,
+    collection:'fantasy',tags:['ground','melee'],
+    tip:'Wall unit (1g).Crumbles to AoE.',
+  },
+  {
+    id:'bombgoblin',name:'Bomb Goblin',icon:'💥',cost:1,
+    hp:43,dmg:36,spd:100,atkRate:999,aoe:{radius:54},
+    lane:'ground',attackType:'melee',targeting:'rusher',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    selfDestruct:true,
+    collection:'fantasy',tags:['ground','melee','rusher','aoe','special'],
+    tip:'Kamikaze sprints into the largest enemy cluster and self-destructs. Devastating vs blobs.',
+  },
+  // ── 2g ──────────────────────────────────────────────────────────────────────
+  {
+    id:'archer',name:'Archer',icon:'🏹',cost:2,
+    hp:29,dmg:8,spd:41,atkRate:0.9,aoe:null,
+    lane:'ground',attackType:'ranged',targeting:'fighter',
+    canHitFlying:true,prioritiseAir:true,airDmgMult:2.0,
+    engageRange:151,baseEngageRange:151,
+    collection:'fantasy',tags:['ground','ranged'],
+    tip:'Ranged attacks ground and air. 2× dmg vs flying. Very fragile — place behind melee.',
+  },
+  {
+    id:'assassin',name:'Assassin',icon:'🗡',cost:2,
+    hp:53,dmg:24,spd:68,atkRate:1.4,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    isAssassin:true,
+    collection:'fantasy',tags:['ground','melee','special'],
+    tip:'Hops 85px toward enemy backline every 0.8s. Burst damage on arrival. Fragile.',
+  },
+  {
+    id:'shaman',name:'Shaman',icon:'✦',cost:2,
+    hp:44,dmg:0,spd:45,atkRate:999,aoe:null,
+    lane:'ground',attackType:'ranged',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:200,baseEngageRange:200,
+    isShaman:true,healRange:120,
+    collection:'fantasy',tags:['ground','support'],
+    tip:'Heals lowest-HP ally within 120px for 8 every 1.5s. Follows army. Never attacks.',
+  },
+  {
+    id:'lumberjack',name:'Lumberjack',icon:'🪓',cost:2,
+    hp:68,dmg:11,spd:65,atkRate:0.6,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    lumberjackAxe:true,
+    collection:'fantasy',tags:['ground','melee','special'],
+    tip:'Lumberjack gains +1 damage for each living enemy. Fast attacker with high DPS that scales with larger enemy teams. Punishes swarm compositions.',
+  },
+  {
+    id:'angel',name:'Angel',icon:'🪽',cost:2,
+    hp:65,dmg:0,spd:60,atkRate:999,aoe:null,
+    lane:'air',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:200,baseEngageRange:200,
+    isAngel:true,angelCooldown:2,
+    collection:'fantasy',tags:['flying','support'],
+    tip:'Angel flying support that cannot attack. Every 2s blesses a random ground ally with a random buff for 4s: -0.3 atk speed (min 0.1), +9 dmg, or -30% dmg taken. If the ally already has an angel buff, effects are doubled!',
+  },
+  // ── 3g ──────────────────────────────────────────────────────────────────────
+  {
+    id:'brute',name:'Brute',icon:'⚔',cost:3,
+    hp:110,dmg:18,spd:60,atkRate:0.9,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    collection:'fantasy',tags:['ground','melee'],
+    tip:'High HP/dmg (3g). Rages below 30% HP (+50% speed).',
+  },
+  {
+    id:'cavalry',name:'Cavalry',icon:'🏇',cost:3,
+    hp:72,dmg:29,spd:63,atkRate:1.8,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'rusher',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    collection:'fantasy',tags:['ground','melee','rusher'],
+    tip:'Beelines to enemy base (3g). First hit 2× (trample).',
+  },
+  {
+    id:'harpy',name:'Fairy',icon:'🧚‍♀️',cost:3,
+    hp:53,dmg:9,spd:89,atkRate:1.3,aoe:null,
+    lane:'air',attackType:'melee',targeting:'rusher',
+    canHitFlying:true,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    aoeResist:0.5,
+    collection:'fantasy',tags:['flying','melee','rusher'],
+    tip:'Flying rusher (3g). 50% AoE resistance.',
+  },
+  {
+    id:'troll',name:'Troll',icon:'👹',cost:3,
+    hp:154,dmg:13,spd:48,atkRate:1.3,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    regenPerSec:3,
+    collection:'fantasy',tags:['ground','melee','special'],
+    tip:'Regenerates 3 HP/s (3g). Hard to kill without sustained focus or AoE.',
+  },
+  {
+    id:'voidwalker',name:'Voidwalker',icon:'👾',cost:3,
+    hp:97,dmg:20,spd:62,atkRate:1.1,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    voidCycle:5.0,voidDuration:1.5,
+    collection:'fantasy',tags:['ground','melee','special'],
+    tip:'Every 5s phases out 1.5s — immune and untargetable but cannot attack.',
+  },
+  // ── 4g ──────────────────────────────────────────────────────────────────────
+  {
+    id:'frostwitch',name:'Frost Witch',icon:'❄',cost:4,
+    hp:104,dmg:18,spd:44,atkRate:1.6,aoe:null,
+    lane:'ground',attackType:'ranged',targeting:'fighter',
+    canHitFlying:true,prioritiseAir:false,engageRange:185,baseEngageRange:185,
+    slowOnHit:2.0,frostSlowPct:0.7,
+    collection:'fantasy',tags:['ground','ranged','special'],
+    tip:'Long-range ranged (185px), hits ground + air. Slows target to 30% speed for 2s.',
+  },
+  {
+    id:'mage',name:'Mage',icon:'🔮',cost:4,
+    hp:48,dmg:22,spd:42,atkRate:1.6,aoe:{radius:50},
+    lane:'ground',attackType:'ranged',targeting:'fighter',
+    canHitFlying:true,prioritiseAir:true,engageRange:150,baseEngageRange:150,
+    collection:'fantasy',tags:['ground','ranged','aoe'],
+    tip:'Ranged AoE (4g) — attacks ground and air. Prioritises flying targets.',
+  },
+  {
+    id:'mirrormage',name:'Mirror Mage',icon:'🪞',cost:4,
+    hp:98,dmg:16,spd:40,atkRate:1.5,aoe:null,
+    lane:'ground',attackType:'ranged',targeting:'fighter',
+    canHitFlying:true,prioritiseAir:false,engageRange:140,baseEngageRange:140,
+    reflectPct:0.4,mirrorAll:true,
+    collection:'fantasy',tags:['ground','ranged','special'],
+    tip:'Mirror Mage ranged, hits ground + air. Each attack also strikes ALL same-type enemies. Reflects 40% of incoming damage back to attacker.',
+  },
+  {
+    id:'necromancer',name:'Necromancer',icon:'💀',cost:4,
+    hp:104,dmg:21,spd:35,atkRate:1.9,aoe:null,
+    lane:'ground',attackType:'ranged',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:140,baseEngageRange:140,
+    isNecromancer:true,
+    collection:'fantasy',tags:['ground','ranged','special'],
+    tip:'Necromancer raises a Shade (50% stats) from ANY fallen unit — ally or enemy! Max 3 raises per game. Closest necromancer claims the corpse. Ghost fights for the necromancer\'s team.',
+  },
+  // ── 5g ──────────────────────────────────────────────────────────────────────
+  {
+    id:'phoenix',name:'Phoenix',icon:'🐦‍🔥',cost:5,
+    hp:66,dmg:18,spd:66,atkRate:1.4,aoe:{radius:40},
+    lane:'air',attackType:'ranged',targeting:'fighter',
+    canHitFlying:true,prioritiseAir:false,engageRange:140,baseEngageRange:140,
+    phoenixRez:true,
+    collection:'fantasy',tags:['flying','ranged','aoe','special'],
+    tip:'Flying AoE (5g). Respawns once at 40% HP after 2s.',
+  },
+  {
+    id:'warlord',name:'Warlord',icon:'👑',cost:5,
+    hp:152,dmg:20,spd:38,atkRate:1.1,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    collection:'fantasy',tags:['ground','melee','support'],
+    tip:'Warlord all friendly ground units deal +40% damage while the Warlord lives. Slow but tanky frontliner.',
+  },
+  {
+    id:'siege',name:'Siege Engine',icon:'💣',cost:5,
+    hp:55,dmg:40,spd:27,atkRate:2.1,aoe:{radius:62},
+    lane:'ground',attackType:'ranged',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:160,baseEngageRange:160,
+    golemDoubleStrike:false,
+    collection:'fantasy',tags:['ground','ranged','aoe'],
+    tip:'Siege Engine ranged AoE ground only. Bomb lands 420ms after firing. Cannot hit flying.',
+  },
+  {
+    id:'stormdrake',name:'Storm Drake',icon:'🐉',cost:5,
+    hp:85,dmg:19,spd:70,atkRate:1.8,aoe:null,
+    lane:'air',attackType:'ranged',targeting:'fighter',
+    canHitFlying:true,prioritiseAir:false,engageRange:160,baseEngageRange:160,
+    chainLightning:3,
+    collection:'fantasy',tags:['flying','ranged','special'],
+    tip:'Flying ranged chain lightning hits 3 targets (each bounce −45% dmg).',
+  },
+  // ── 5g (continued) ──────────────────────────────────────────────────────────
+  {
+    id:'genie',name:'Genie',icon:'🧞',cost:4,
+    hp:174,dmg:17,spd:45,atkRate:1.3,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    isGenie:true,wishCooldown:12,
+    collection:'fantasy',tags:['ground','melee','special'],
+    tip:'Genie every 12s grants a random wish — revive ally, blast all enemies, banish one, or summon a unit. Wish power scales with team size (more units = weaker per wish). Tanky utility unit.',
+  },
+  {
+    id:'timewizard',name:'Time Wizard',icon:'⏳',cost:3,
+    hp:118,dmg:16,spd:36,atkRate:2.1,aoe:null,
+    lane:'ground',attackType:'ranged',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:80,baseEngageRange:80,
+    isTimeWizard:true,spellCooldown:6,
+    collection:'fantasy',tags:['ground','ranged','special'],
+    tip:'Time Wizard every 6s casts 1 of 3 spells which lasts for 3 seconds — Time Stop (all units frozen), Time Rewind (HP restored to 3s ago), Time Accelerate (3× speed+atk). Slow but unpredictable.',
+  },
+  // ── 6g ──────────────────────────────────────────────────────────────────────
+  {
+    id:'golem',name:'Golem',icon:'🗿',cost:6,
+    hp:351,dmg:32,spd:24,atkRate:2.2,aoe:{radius:42},
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    golemDoubleStrike:true,
+    collection:'fantasy',tags:['ground','melee','aoe'],
+    tip:'Golem double-strike pattern — slow first stomp, fast follow-up 300ms later. Enormous HP. Must reach targets.',
+  },
+];
+
+// ════════════════════════════════════════════════════════════════
+// FORMATIONS
+// xOffset: extra px pushed toward enemy (positive = closer to enemy)
+// ySpread: multiplier on the vertical spread (1=normal, <1=tighter, >1=wider)
+// backlineOnly: if true, only support/ranged units get the rearward offset
+// ════════════════════════════════════════════════════════════════
+const FORMATIONS = []; // removed
+
+const DIFF_TABLE=[
+  {budget:11,name:'Easy',     mult:1.2},
+  {budget:12,name:'Normal',   mult:1.5},
+  {budget:13,name:'Hard',     mult:2.0},
+  {budget:14,name:'Brutal',   mult:3.0},
+  {budget:15,name:'Legendary',mult:5.0},
+  {budget:16,name:'Impossible',mult:10.0},
+];
+
+const BUDGET=10,MAX_SLOTS=6;
+let qty={};
+UNITS.forEach(u=>qty[u.id]=0);
+const selectedFormation={ySpread:1.0,meleeExtraX:0,rangedExtraX:0};
+let enemyDiff=null; // set when entering formation phase
+
+let fighters=[],logLines=[],rafId=null;
+let playerBaseHP=100,enemyBaseHP=100;
+let lastTs=null,accumSec=0,battleElapsed=0;
+const BATTLE_LIMIT=40,LOGIC_HZ=30,LOGIC_DT=1/LOGIC_HZ;
+
+// ════════════════════════════════════════════════════════════════
+// DRAFT
+// ════════════════════════════════════════════════════════════════
+const calcSpent=()=>getActiveUnits().reduce((s,u)=>s+((qty[u.id]||0)*u.cost),0);
+const calcSlots=()=>getActiveUnits().reduce((s,u)=>s+(qty[u.id]||0),0);
+
+function renderDraft(){
+  const allUnits=[...UNITS,...(typeof ANIMAL_UNITS!=='undefined'?ANIMAL_UNITS:[])];
+  const maxHp=Math.max(...allUnits.map(u=>u.hp));
+  const maxDmg=Math.max(...allUnits.map(u=>u.dmg));
+  const maxSpd=Math.max(...allUnits.map(u=>u.spd));
+  const spent=calcSpent(),slots=calcSlots(),rem=BUDGET-spent;
+  document.getElementById('gold-rem').textContent=spent+'g spent · '+rem+'g left · '+slots+'/'+MAX_SLOTS+' slots';
+  // Update sticky gold widget
+  const gwGold=document.getElementById('gw-gold');
+  const gwSlots=document.getElementById('gw-slots');
+  if(gwGold) gwGold.textContent=rem+'g Gold';
+  if(gwSlots) gwSlots.textContent=slots+'/'+MAX_SLOTS+' slots';
+  document.getElementById('slot-warn').style.display=slots>=MAX_SLOTS?'block':'none';
+  document.getElementById('units-grid').innerHTML=getActiveUnits().map(u=>{
+    const q=qty[u.id],canAdd=rem>=u.cost&&slots<MAX_SLOTS;
+    const tagHtml=u.tags.map(t=>`<span class="tag tag-${t}">${t}</span>`).join('');
+    return `<div class="unit-card${q>0?' selected':''}${!canAdd&&q===0?' dimmed':''}">
+      <div class="uc-top"><span class="uc-name">${u.name}</span><span class="uc-cost">${u.cost}g</span></div>
+      <span class="uc-icon">${u.icon}</span>
+      <div class="uc-tags">${tagHtml}</div>
+      <div class="uc-bars">
+        <div class="bar-row"><span class="bar-lbl">HP</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(u.hp/maxHp*100)}%;background:#4a9eff"></div></div></div>
+        <div class="bar-row"><span class="bar-lbl">DMG</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(u.dmg/maxDmg*100)}%;background:#ff5a4a"></div></div></div>
+        <div class="bar-row"><span class="bar-lbl">SPD</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(u.spd/maxSpd*100)}%;background:#4caf50"></div></div></div>
+        ${u.aoe?`<div class="bar-row"><span class="bar-lbl">AoE</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(u.aoe.radius/62*100)}%;background:#ffaa60"></div></div></div>`:''}
+        ${(u.atkRate&&u.atkRate<10)?`<div class="bar-row"><span class="bar-lbl">Rate</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(Math.min(100,(1/u.atkRate)/3*100))}%;background:#cc88ff"></div></div></div>`:''}
+      </div>
+      <div class="uc-tip">${u.tip}</div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeQty('${u.id}',-1)" ${q===0?'disabled':''}>−</button>
+        <span class="qty-num">${q}</span>
+        <button class="qty-btn" onclick="changeQty('${u.id}',1)" ${!canAdd?'disabled':''}>+</button>
+      </div>
+    </div>`;
+  }).join('');
+  renderRoster(); renderSynergies();
+  document.getElementById('btn-deploy').disabled=calcSlots()===0;
+}
+
+function changeQty(id,delta){
+  const u=getActiveUnits().find(x=>x.id===id),newQ=(qty[id]||0)+delta;
+  if(newQ<0)return;
+  if(calcSpent()-qty[id]*u.cost+newQ*u.cost>BUDGET)return;
+  if(calcSlots()-qty[id]+newQ>MAX_SLOTS)return;
+  qty[id]=newQ; renderDraft();
+}
+
+function renderRoster(){
+  const chips=getActiveUnits().filter(u=>(qty[u.id]||0)>0).map(u=>`<span class="roster-chip">${qty[u.id]}× ${u.icon} ${u.name}</span>`).join('');
+  document.getElementById('roster').innerHTML=chips||'<span class="roster-empty">No units selected yet</span>';
+}
+
+function renderSynergies(){
+  const notes=[],has=id=>qty[id]>0;
+  if(has('warlord'))                     notes.push('👑 Warlord: ground allies +20% dmg');
+  if(has('footman')&&has('archer'))      notes.push('🛡🏹 Shield wall: Archers +15% dmg behind Footmen');
+  if(qty['shaman']>=2)                   notes.push('✦✦ Double Shaman: heal stacks');
+  if(has('shaman')&&has('troll'))        notes.push('✦👹 Shaman+Troll: regen+heal near-unkillable combo');
+  if(has('siege')&&has('cavalry'))       notes.push('💣🐴 Cavalry draws troops into Siege AoE');
+  if(has('mage')&&has('archer'))         notes.push('🔮🏹 Double anti-air stack');
+  if(has('frostwitch')&&has('brute'))    notes.push('❄⚔ Witch slows, Brutes catch and crush');
+  if(has('necromancer')&&has('peasant')) notes.push('💀🧑 Peasants die fast → Necromancer raises many Shades');
+  if(has('bombgoblin')&&has('cavalry'))  notes.push('💥🐴 Cavalry distracts, Goblin explodes the cluster');
+  const b=document.getElementById('syn-box');
+  if(notes.length){b.style.display='block';b.innerHTML='⚡ Synergies: '+notes.join(' &nbsp;·&nbsp; ');}
+  else b.style.display='none';
+}
+
+// ════════════════════════════════════════════════════════════════
+// FORMATION PHASE
+// ════════════════════════════════════════════════════════════════
+function goFormation(){
+  enemyDiff=DIFF_TABLE[Math.floor(Math.random()*DIFF_TABLE.length)];
+  document.getElementById('battle-diff-label').textContent='BATTLE — '+enemyDiff.name.toUpperCase();
+  startBattle();
+}
+function goFormationSkip(){ goFormation(); }
+
+// ════════════════════════════════════════════════════════════════
+// BATTLE ENGINE
+// ════════════════════════════════════════════════════════════════
+function showPhase(id){document.querySelectorAll('.phase').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');}
+
+// buildEnemyArmy replaced by buildEnemyArmyCollection (defined in collection logic)
+
+function mkFighterDef(u,isEnemy,idx){
+  return{...u,currentHp:u.hp,uid:u.id+(isEnemy?'e':'p')+idx,isEnemy,
+    trampled:false,raging:false,_rezDone:false,_slowTimer:0,_slowActive:false,
+    _originalSpd:u.spd,_healTimer:0,atkCooldown:Math.random()*(u.atkRate===999?1:u.atkRate),
+    isShade:false,
+    _teleTimer:Math.random()*2,
+    _killStacks:0,_baseDmg:u.dmg,
+    _voidTimer:Math.random()*(u.voidCycle||5),_voidActive:false,
+    // Animal flags
+    _bearRaged:false,
+    _camoTimer:Math.random()*(u.camoCycle||7),_camoActive:false,
+    _trumpetTimer:Math.random()*(u.trumpetCooldown||8),
+    _stunned:false,_stunTimer:0,
+    _grabbed:false,_grabbing:false,_grabTimer:0,_grabTarget:null,
+    _eagleDived:false,_retreating:false,_retreatDist:0,_diveLanded:false,_diveLandTimer:0,
+    _poisoned:false,_poisonDmg:0,_poisonRemaining:0,_poisonTimer:0,
+    _punchCount:0, _axoTimer:0,
+    _beeSwarm:false, _beeSwarmDmg:0, _beeSwarmRemain:0, _beeSwarmTimer:0, _beeSwarmEl:null,
+    _knockbackRemain:0, _knockbackTarget:null, _knockbackSpeed:0,
+    _contaminated:false, _contaminateTimer:0, _contaminateDmg:0, _baseDmgBackup:undefined,
+    _stinkTimer:0, _stinkTimer2:0, _stinked:false, _stinkMult:0, _gasExposure:0,
+    _activeGasClouds:null,
+    _speedBoostTimer:0, _speedBoosted:false, _speedBoostRemain:0,
+    _waveTimer:Math.random()*(u.waveCooldown||7),
+    _jumpTimer:Math.random()*(u.jumpCooldown||4),
+    _pounceCount:0, _gorillaRaged:false, _roarTimer:0, _roaring:false, _roarPhase:0, _silenced:false, _silenceTimer:0,
+  };
+}
+
+
+function spawnFighter(def,isEnemy,idx,total,isShade){
+  const zoneId=def.lane==='air'?'sky-zone':'ground-zone';
+  const zone=document.getElementById(zoneId);
+  const zW=680; // fixed lane width — never read offsetWidth during battle
+  const zH=zone.offsetHeight||160; // zone height CAN be read at spawn time (static)
+
+  const spread=1.0;
+  // Fighter height = 28px icon + 4px bar + 2px gap = 34px. Pad top/bottom by 4px.
+  const UNIT_H=34, PAD=4;
+  const usableH=Math.max(UNIT_H,(zH-PAD*2-UNIT_H)*Math.min(spread,1.3));
+  const centreY=zH/2;
+  const halfSpan=usableH/2;
+  const yFrac=total<=1?0.5:idx/(total-1);
+  const rawY=centreY-halfSpan+yFrac*(usableH);
+  // Hard clamp so no unit ever overflows the zone
+  const yPos=Math.max(PAD,Math.min(zH-UNIT_H-PAD,rawY));
+
+  const startX=isEnemy?(zW-62):62;
+
+  const el=document.createElement('div');
+  el.className='fighter '+(isEnemy?'enemy':'player');
+  const hpBar=document.createElement('div'); hpBar.className='unit-hp-bar';
+  const hpFill=document.createElement('div'); hpFill.className='unit-hp-fill'; hpFill.style.width='100%';
+  hpBar.appendChild(hpFill);
+  const icon=document.createElement('div'); icon.className='fighter-icon';
+  icon.textContent=isShade?'👻':def.icon;
+  el.appendChild(hpBar); el.appendChild(icon);
+  zone.appendChild(el);
+  el.style.left=startX+'px'; el.style.top=Math.round(yPos)+'px';
+
+  return{...def,
+    currentHp:isShade?def.hp:def.hp, maxHp:isShade?def.hp:def.hp,
+    dmg:def.dmg, spd:def.spd,
+    atkRate:isShade?1.2:def.atkRate,
+    el,hpFill, x:startX, y:Math.round(yPos), alive:true,
+    trampled:false,raging:false,_rezDone:false,_slowTimer:0,_slowActive:false,
+    _originalSpd:def.spd,_healTimer:0,
+    atkCooldown:Math.random()*(def.atkRate===999?1:def.atkRate),
+    isEnemy, isShade,
+    isNecromancer:isShade?false:!!def.isNecromancer,
+    isShaman:isShade?false:!!def.isShaman,
+    selfDestruct:isShade?false:!!def.selfDestruct,
+    phoenixRez:isShade?false:!!def.phoenixRez,
+    slowOnHit:isShade?null:def.slowOnHit||null,
+    regenPerSec:isShade?0:(def.regenPerSec||0),
+    reflectPct:isShade?0:(def.reflectPct||0),
+    isAssassin:isShade?false:!!def.isAssassin,
+    teleportCooldown:def.teleportCooldown||999,
+    chainLightning:isShade?0:(def.chainLightning||0),
+    killBonus:isShade?0:(def.killBonus||0),
+    maxKillBonus:isShade?0:(def.maxKillBonus||0),
+    _killStacks:0,_baseDmg:def.dmg,_teleTimer:Math.random()*2,
+    _voidTimer:Math.random()*(def.voidCycle||5),_voidActive:false,
+  };
+}
+
+function spawnDmgNumber(x,y,zone,dmg,isCrit){
+  const n=document.createElement('div');
+  n.className='dmg-number'+(isCrit?' crit':'');
+  n.textContent=(isCrit?'💥 ':'')+dmg;
+  n.style.cssText=`left:${x+4}px;top:${y-4}px;`;
+  zone.appendChild(n); setTimeout(()=>n.remove(),700);
+}
+function spawnShadeBurst(x,y,zone,isEnemy){
+  const b=document.createElement('div'); b.className=isEnemy?'enemy-shade-burst':'shade-burst';
+  b.style.cssText=`left:${x+14}px;top:${y+14}px;`;
+  zone.appendChild(b); setTimeout(()=>b.remove(),600);
+}
+function spawnSpeedLines(x,y,zone,dir){
+  for(let i=0;i<3;i++){
+    const l=document.createElement('div'); l.className='speed-line';
+    const len=20+Math.random()*30;
+    l.style.cssText=`left:${x+(dir>0?-len:14)}px;top:${y+8+i*6}px;width:${len}px;`;
+    zone.appendChild(l); setTimeout(()=>l.remove(),320);
+  }
+}
+function flashAoE(cx,cy,radius,zone,cls,isEnemy){
+  let useCls=cls;
+  if(isEnemy){
+    if(cls==='aoe-ring') useCls='enemy-aoe-ring';
+    else if(cls==='explode-ring') useCls='enemy-explode-ring';
+    else if(cls==='frost-ring') useCls='enemy-frost-ring';
+    else if(cls==='boom-ring') useCls='enemy-boom-ring';
+  }
+  const el=document.createElement('div'); el.className=useCls;
+  const r=document.createElement('div'); r.className=cls||'aoe-ring';
+  r.style.cssText=`left:${cx}px;top:${cy+14}px;width:${radius*2}px;height:${radius*2}px;`;
+  zone.appendChild(r); setTimeout(()=>r.remove(),500);
+}
+function flashHit(cx,cy,zone){
+  const h=document.createElement('div'); h.className='hit-flash';
+  h.style.cssText=`left:${cx+14}px;top:${cy+14}px;`; zone.appendChild(h);
+  setTimeout(()=>h.remove(),280);
+}
+function addLog(text,cls=''){
+  logLines.push({text,cls}); if(logLines.length>5)logLines.shift();
+  document.getElementById('log').innerHTML=logLines.map(l=>`<div class="ll ${l.cls}">${l.text}</div>`).join('');
+}
+function updateBaseUI(){
+  const p=Math.max(0,Math.round(playerBaseHP)),e=Math.max(0,Math.round(enemyBaseHP));
+  document.getElementById('gbase-p-hp').textContent=p;
+  document.getElementById('gbase-e-hp').textContent=e;
+  document.getElementById('gbase-p-bar').style.width=p+'%';
+  document.getElementById('gbase-e-bar').style.width=e+'%';
+  document.getElementById('hp-fill-p').style.width=p+'%';
+  document.getElementById('hp-fill-e').style.width=e+'%';
+  document.getElementById('php-lbl').textContent=p+' HP';
+  document.getElementById('ehp-lbl').textContent=e+' HP';
+}
+
+function kill(f){
+  if(!f.alive&&!f.phoenixRez)return;
+  f.alive=false; f._finalDead=true;
+  // Release anything this unit was holding/affecting
+  if(f._grabTarget){f._grabTarget._grabbed=false;f._grabTarget=null;}
+  f.el.style.opacity='0'; f.el.style.transition='opacity .3s';
+  setTimeout(()=>{if(f.el.parentNode)f.el.parentNode.removeChild(f.el);},400);
+  if(!f.isShade) addLog((f.isEnemy?'Enemy ':'Your ')+f.name+' is slain!',f.isEnemy?'good':'bad');
+}
+
+function tryRaiseShade(dead){
+  if(!dead||dead.isShade)return; // don't re-raise shades
+  const PCT=0.50; // always 50% of dead unit's stats
+  // Find all living necromancers from EITHER team — they can claim this corpse
+  // Priority: closest necromancer wins; tie → same-team necromancer wins
+  const allNecros=fighters.filter(f=>f.alive&&f.isNecromancer&&(f._necroUses||0)<3);
+  if(!allNecros.length)return;
+  const sorted_n=allNecros.slice().sort((a,b)=>{
+    const da=Math.hypot(a.x-dead.x,a.y-dead.y);
+    const db=Math.hypot(b.x-dead.x,b.y-dead.y);
+    if(Math.abs(da-db)<5){ // tie-break: same-team wins
+      if(a.isEnemy===dead.isEnemy&&b.isEnemy!==dead.isEnemy)return -1;
+      if(b.isEnemy===dead.isEnemy&&a.isEnemy!==dead.isEnemy)return 1;
+    }
+    return da-db;
+  });
+  const n=sorted_n[0];
+  n._necroUses=(n._necroUses||0)+1;
+  // The shade fights for the NECROMANCER'S team (even if enemy corpse)
+  const shadeIsEnemy=n.isEnemy;
+  const shadeHp=Math.max(10,Math.round((dead.maxHp||dead.hp)*PCT));
+  const shadeDmg=Math.max(4,Math.round((dead.dmg||10)*PCT));
+  const shadeSpd=Math.max(30,Math.round((dead._originalSpd||dead.spd||50)*PCT));
+  const shadeZoneId=dead.lane==='air'?'sky-zone':'ground-zone';
+  const shadeZone=document.getElementById(shadeZoneId);
+  // Ghost rising animation — shadow on ground, then ghost emerges
+  const shadow=document.createElement('div'); shadow.className='shade-shadow';
+  shadow.style.cssText='left:'+(dead.x+14)+'px;top:'+(dead.y+20)+'px;';
+  shadeZone.appendChild(shadow);
+  setTimeout(()=>shadow.remove(),600);
+  // Shade element — starts invisible, rises after 0.5s
+  const shadeEl=document.createElement('div');
+  shadeEl.className='fighter '+(shadeIsEnemy?'enemy':'player')+' shade-high';
+  shadeEl.style.opacity='0'; shadeEl.style.transform='translateY(20px)';
+  const shadeHpBar=document.createElement('div'); shadeHpBar.className='unit-hp-bar';
+  const shadeHpFill=document.createElement('div'); shadeHpFill.className='unit-hp-fill'; shadeHpFill.style.width='100%';
+  shadeHpBar.appendChild(shadeHpFill);
+  const shadeIconEl=document.createElement('div'); shadeIconEl.className='fighter-icon'; shadeIconEl.textContent='👻';
+  shadeEl.appendChild(shadeHpBar); shadeEl.appendChild(shadeIconEl);
+  shadeZone.appendChild(shadeEl);
+  shadeEl.style.left=Math.round(dead.x)+'px'; shadeEl.style.top=Math.round(dead.y)+'px';
+  setTimeout(()=>{
+    shadeEl.style.transition='opacity .4s ease-out,transform .4s ease-out';
+    shadeEl.style.opacity='1'; shadeEl.style.transform='translateY(0)';
+  },150);
+  const shade={
+    id:'shade',name:'Shade',icon:'👻',cost:0,
+    hp:shadeHp,maxHp:shadeHp,currentHp:shadeHp,dmg:shadeDmg,spd:shadeSpd,atkRate:1.2,aoe:null,
+    lane:dead.lane,attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    canHitFlying:dead.lane==='air', // flying shades can attack flying units
+    prioritiseAir:dead.lane==='air',engageRange:36,baseEngageRange:36,
+    el:shadeEl,hpFill:shadeHpFill,
+    x:dead.x,y:dead.y,alive:true,
+    trampled:false,raging:false,_rezDone:false,_slowTimer:0,_slowActive:false,
+    _originalSpd:shadeSpd,_healTimer:0,_voidTimer:0,_voidActive:false,_teleTimer:999,
+    uid:'shade'+(shadeIsEnemy?'e':'p')+Date.now()+Math.random(),
+    atkCooldown:0.3,isEnemy:shadeIsEnemy,isShade:true,
+    isNecromancer:false,_necroUses:0,isShaman:false,
+    isGenie:false,_wishTimer:0,_wishing:false,_startUnits:0,
+    isAngel:false,_angelTimer:0,_angelBuff:0,_angelRoll:-1,_angelDmgReduce:0,
+    isTimeWizard:false,_spellTimer:0,_casting:false,_hpHistory:[],_hpHistTimer:0,_accelerated:false,_accelTimer:0,_timeStopped:false,_timeStopTimer:0,selfDestruct:false,phoenixRez:false,
+    slowOnHit:null,regenPerSec:0,reflectPct:0,isAssassin:false,
+    chainLightning:0,_baseDmg:shadeDmg,
+    collection:'fantasy',
+  };
+  spawnShadeBurst(dead.x,dead.y,shadeZone,shadeIsEnemy);
+  const usesLeft=3-(n._necroUses||0);
+  fighters.push(shade);
+  addLog((n.isEnemy?'Enemy ':'')+'Necromancer raises '+(dead.isEnemy!==n.isEnemy?'enemy ':'')+'Shade (50% stats, '+usesLeft+' raises left)!','special');
+}
+
+function dealDmg(attacker,target,rawDmg){
+  if(!target.alive)return 0;
+  if(target._voidActive)return 0; // intangible
+  if(attacker.id==='archer'&&target.lane==='air')rawDmg*=(attacker.airDmgMult||1);
+  // Lumberjack bonus damage per enemy alive
+  if(attacker.lumberjackAxe&&attacker._lumberjackBonus>0) rawDmg+=attacker._lumberjackBonus;
+  // Angel -30% dmg taken reduction
+  if(target._angelDmgReduce>0) rawDmg=Math.max(1,rawDmg*(1-target._angelDmgReduce));
+  const warlordUp=fighters.some(f=>f.alive&&!f.isEnemy&&f.id==='warlord');
+  if(warlordUp&&!attacker.isEnemy&&attacker.lane==='ground'){rawDmg*=1.4;attacker.el.classList.add('warlord-buffed');}
+  else if(!warlordUp) attacker.el.classList.remove('warlord-buffed');
+  if(attacker.id==='archer'&&fighters.some(f=>f.alive&&!f.isEnemy&&f.id==='footman'))rawDmg*=1.15;
+  if(target.shellBlock) rawDmg*=(1-target.shellBlock);
+  const dmg=Math.max(1,Math.round(rawDmg));
+  target.currentHp-=dmg;
+  target.hpFill.style.width=Math.max(0,Math.round(target.currentHp/target.maxHp*100))+'%';
+  // Squirrel dodge (30% chance to evade entire hit)
+  if(target.dodgeChance&&Math.random()<target.dodgeChance){
+    // Dodge animation
+    target.el.classList.add('dodge-flash');
+    if(target.id==='squirrel'||target.dodgeChance){
+      target.el.classList.add('squirrel-dodging');
+      setTimeout(()=>target.el.classList.remove('squirrel-dodging'),320);
+    }
+    setTimeout(()=>target.el.classList.remove('dodge-flash'),300);
+    const dz=document.getElementById(target.lane==='air'?'sky-zone':'ground-zone');
+    const dn=document.createElement('div'); dn.className='dodge-text';
+    dn.textContent='DODGE!'; dn.style.cssText='left:'+(target.x)+'px;top:'+target.y+'px;';
+    dz.appendChild(dn); setTimeout(()=>dn.remove(),600);
+    return 0; // no damage taken
+  }
+  // Hit flash on unit
+  target.el.classList.remove('damage-flash');
+  void target.el.offsetWidth; // force reflow
+  target.el.classList.add('damage-flash');
+  setTimeout(()=>target.el.classList.remove('damage-flash'),260);
+  // Damage number (show for heavy hits or crits)
+  if(dmg>=10){
+    const dz=document.getElementById(target.lane==='air'?'sky-zone':'ground-zone');
+    spawnDmgNumber(target.x,target.y,dz,dmg,dmg>=(target.maxHp*0.25));
+  }
+  if(attacker.slowOnHit&&!target._slowActive){
+    target._slowActive=true; target._slowTimer=attacker.slowOnHit;
+    target._originalSpd=target._originalSpd||target.spd;
+    const slowPct=(attacker.frostSlowPct)||0.5;
+    target.spd=target._originalSpd*(1-slowPct); target.el.classList.add('slowed');
+    // Ice crystal ring at target
+    const tz2=document.getElementById(target.lane==='air'?'sky-zone':'ground-zone');
+    const fr=document.createElement('div'); fr.className='frost-slow-ring';
+    fr.style.left=Math.round(target.x+14)+'px'; fr.style.top=Math.round(target.y+14)+'px';
+    tz2.appendChild(fr); setTimeout(()=>fr.remove(),640);
+  }
+  // Rat contaminate: when rat hits any enemy, ALL ground enemies lose 10 dmg for 5s
+  if(attacker.ratContaminate&&!target.isShade){
+    const affected=fighters.filter(o=>o.alive&&o.isEnemy===target.isEnemy&&o.lane==='ground'&&!o._contaminated);
+    const cDmg=attacker.contaminateDmg||10;
+    const cDur=attacker.contaminateDur||5;
+    affected.forEach(t=>{
+      t._contaminated=true; t._contaminateTimer=cDur;
+      t._contaminateDmg=cDmg;
+      t._baseDmgBackup=t._baseDmgBackup||t.dmg;
+      t.dmg=Math.max(1,t.dmg-cDmg); // reduce all special moves too
+    });
+    if(affected.length){
+      const zone2=document.getElementById('ground-zone');
+      const cr=document.createElement('div'); cr.className='contaminate-ring';
+      cr.style.cssText='left:50%;top:50%;width:180px;height:60px;';
+      zone2.appendChild(cr); setTimeout(()=>cr.remove(),800);
+      addLog((attacker.isEnemy?'Enemy ':'')+'🐀 RAT contaminates all ground enemies! -10 atk for '+cDur+'s!','aoe');
+    }
+  }
+  // Viper/scorpion poison
+  if(attacker.poisonDmg&&!target.isShade){
+    target._poisoned=true;
+    target._poisonDmg=attacker.poisonDmg;
+    target._poisonRemaining=attacker.poisonDur||5;
+    target._poisonTimer=0;
+  }
+  // Giraffe: show target lock symbol just before hit
+  if(attacker.id==='giraffe'||attacker.id==='giraffe'){
+    const gz2=document.getElementById(target.lane==='air'?'sky-zone':'ground-zone');
+    const gt=document.createElement('div'); gt.className='giraffe-target'; gt.textContent='🎯';
+    gt.style.left=(target.x+14)+'px'; gt.style.top=(target.y+4)+'px';
+    gz2.appendChild(gt); setTimeout(()=>gt.remove(),470);
+  }
+  // Bee swarm: launches a persistent swarm on target
+  if(attacker.beeSwarm&&!target.isShade&&!target._beeSwarm){
+    target._beeSwarm=true;
+    target._beeSwarmDmg=attacker.swarmDmg||4;
+    target._beeSwarmRemain=attacker.swarmDur||6;
+    target._beeSwarmTimer=0;
+    // Spawn visual bee swarm on target
+    const bz=document.getElementById(target.lane==='air'?'sky-zone':'ground-zone');
+    const bs=document.createElement('div'); bs.className='bee-swarm-aura';
+    bs.style.cssText='left:'+(target.x)+'px;top:'+(target.y-5)+'px;';
+    bz.appendChild(bs);
+    // Store reference on target so we can follow it each tick
+    target._beeSwarmEl=bs;
+    setTimeout(()=>{bs.remove();if(target._beeSwarmEl===bs)delete target._beeSwarmEl;},6200);
+    addLog((attacker.isEnemy?'Enemy ':'')+'Bee swarm launched on '+target.name+'!','special');
+  }
+  // Mirror Mage reflect — happens before death check
+  if(target.reflectPct&&attacker.alive&&dmg>0){
+    const reflect=Math.max(1,Math.round(dmg*target.reflectPct));
+    attacker.currentHp-=reflect;
+    attacker.hpFill.style.width=Math.max(0,Math.round(attacker.currentHp/attacker.maxHp*100))+'%';
+    const rz=document.getElementById(target.lane==='air'?'sky-zone':'ground-zone');
+    const rh=document.createElement('div'); rh.className='reflect-flash';
+    rh.style.cssText=`left:${attacker.x+14}px;top:${attacker.y+14}px;`;
+    rz.appendChild(rh); setTimeout(()=>rh.remove(),300);
+    if(attacker.currentHp<=0){ tryRaiseShade(attacker); kill(attacker); }
+  }
+  if(target.currentHp<=0){
+    if(target.phoenixRez&&!target._rezDone){
+      target._rezDone=true;
+      // Hide phoenix briefly — it will revive after 1 second
+      target.alive=false; // temporarily mark dead so it can't be targeted
+      target.el.style.opacity='0';
+      target.el.style.transition='opacity .2s';
+      const rezTarget=target, rezDmg=dmg;
+      setTimeout(()=>{
+        if(!rezTarget._finalDead){
+          rezTarget.alive=true;
+          rezTarget.currentHp=Math.round(rezTarget.maxHp*0.4);
+          rezTarget.hpFill.style.width='40%';
+          // Rising flame animation
+          rezTarget.el.style.transition='opacity .4s, transform .5s';
+          rezTarget.el.style.transform='scale(0.3)';
+          rezTarget.el.style.opacity='0';
+          setTimeout(()=>{
+            rezTarget.el.style.transform='scale(1.3)';
+            rezTarget.el.style.opacity='1';
+            setTimeout(()=>{rezTarget.el.style.transform='scale(1)'; rezTarget.el.style.transition='';},300);
+          },50);
+          const z2=document.getElementById(rezTarget.lane==='air'?'sky-zone':'ground-zone');
+          flashAoE(rezTarget.x,rezTarget.y,70,z2,'respawn-flash');
+          // Second ring
+          const r2=document.createElement('div'); r2.className='respawn-flash';
+          r2.style.cssText='left:'+(rezTarget.x+14)+'px;top:'+(rezTarget.y+14)+'px;width:100px;height:100px;border-color:rgba(255,120,20,.9);';
+          z2.appendChild(r2); setTimeout(()=>r2.remove(),520);
+          addLog('🐦‍🔥 Phoenix RISES from the ashes!','special');
+        }
+      },1000);
+      return rezDmg;
+    }
+    tryRaiseShade(target); kill(target);
+  }
+  return dmg;
+}
+
+function logicTick(dt){
+  // Lane width is FIXED at 680px — never read offsetWidth during battle
+  const gzW=680, szW=680;
+  const alive=fighters.filter(f=>f.alive);
+  const pAlive=alive.filter(f=>!f.isEnemy);
+
+  // Slow timers
+  // ── ANGEL BUFF TIMER: tick for every alive fighter so buffs expire even if angel dies ──
+  fighters.forEach(a=>{
+    if(!a.alive||!(a._angelBuff>0)) return;
+    a._angelBuff-=dt;
+    if(a._angelBuff<=0){
+      a._angelBuff=0;
+      if(a._angelRoll===0&&a._angelAtkOrig!==undefined){a.atkRate=a._angelAtkOrig;delete a._angelAtkOrig;}
+      if(a._angelRoll===1&&a._angelDmgOrig!==undefined){a.dmg=a._angelDmgOrig;delete a._angelDmgOrig;}
+      if(a._angelRoll===2){a._angelDmgReduce=0;}
+      a.el.classList.remove('angel-double-buffed');
+      delete a._angelRoll;
+    }
+  });
+
+  // ── SKUNK GAS ZONES: tick all active gas clouds and apply DoT/debuffs ──────
+  fighters.filter(fw=>fw.alive&&fw.stinkCloud&&fw._activeGasClouds).forEach(fw=>{
+    fw._activeGasClouds=fw._activeGasClouds.filter(gz=>{
+      // Tick timers
+      gz.groundTimer-=dt;
+      if(gz.airDelay>0) gz.airDelay-=dt;
+      else gz.airTimer=(gz.airTimer||0)+dt;
+      const expired=gz.groundTimer<=0&&(gz.airTimer>=2.0||!gz.hitsFlying);
+      if(expired) return false;
+      // Apply to enemies in ground zone
+      alive.filter(o=>o.isEnemy!==gz.isEnemy&&o.lane==='ground'&&Math.abs(o.x-gz.x)<=gz.rad).forEach(t=>{
+        // Debuff (once)
+        if(!t._stinked){
+          t._stinked=true; t._stinkTimer2=(gz.stinkDuration||5.0);
+          t._stinkMult=gz.dmgReduction; t._stinkDmgPerSec=gz.baseDps;
+          if(!t._stinkAtkSlowed){t._stinkAtkSlowed=true;t._originalAtkRate=t.atkRate;t.atkRate*=(1+gz.atkSlow);}
+        }
+        // Scaling DoT: damage increases with time spent in gas
+        t._gasExposure=(t._gasExposure||0)+dt;
+        const scaledDps=gz.baseDps*(1+Math.min(2,t._gasExposure*0.4)); // ramps up over ~5s
+        t._stinkDmgPerSec=Math.max(t._stinkDmgPerSec||0, scaledDps);
+      });
+      // Apply to air enemies (with delay, less range)
+      if(gz.hitsFlying&&gz.airDelay<=0&&gz.airTimer>0){
+        alive.filter(o=>o.isEnemy!==gz.isEnemy&&o.lane==='air'&&Math.abs(o.x-gz.x)<=gz.airRad).forEach(t=>{
+          if(!t._stinked){
+            t._stinked=true; t._stinkTimer2=gz.airTimer+0.5;
+            t._stinkMult=gz.dmgReduction*0.6; // weaker in air
+            t._stinkDmgPerSec=gz.baseDps*0.5;
+          }
+          t._gasExposure=(t._gasExposure||0)+dt;
+          t._stinkDmgPerSec=Math.max(t._stinkDmgPerSec||0, gz.baseDps*0.5*(1+Math.min(1.5,t._gasExposure*0.3)));
+        });
+      }
+      return true;
+    });
+  });
+  // Clear exposure when unit leaves gas
+  alive.forEach(t=>{
+    const inAnyGas=fighters.some(fw=>fw._activeGasClouds&&fw._activeGasClouds.some(gz=>
+      gz.isEnemy!==t.isEnemy&&(
+        (t.lane==='ground'&&Math.abs(t.x-gz.x)<=gz.rad&&gz.groundTimer>0)||
+        (t.lane==='air'&&gz.hitsFlying&&gz.airDelay<=0&&Math.abs(t.x-gz.x)<=gz.airRad)
+      )
+    ));
+    if(!inAnyGas) t._gasExposure=0;
+  });
+
+  alive.forEach(f=>{
+    if(f._slowActive){f._slowTimer-=dt;if(f._slowTimer<=0){f._slowActive=false;f.spd=f._originalSpd;f.el.classList.remove('slowed');}}
+  });
+
+  // Troll regen
+  alive.filter(f=>f.regenPerSec>0).forEach(t=>{
+    t.currentHp=Math.min(t.maxHp,t.currentHp+t.regenPerSec*dt);
+    t.hpFill.style.width=Math.round(t.currentHp/t.maxHp*100)+'%';
+  });
+
+  // Shaman heal — runs for BOTH sides, only within healRange px
+  alive.filter(f=>f.isShaman).forEach(sh=>{
+    sh._healTimer=(sh._healTimer||0)+dt;
+    if(sh._healTimer>=1.5){
+      sh._healTimer=0;
+      const sideAlive=alive.filter(a=>a.isEnemy===sh.isEnemy);
+      const cnt=sideAlive.filter(a=>a.isShaman).length;
+      const range=sh.healRange||120;
+      // Heal lowest-HP-percentage ally on same side within range
+      const inRange=sideAlive.filter(a=>!a.isShaman&&Math.abs(a.x-sh.x)<=range);
+      const t=inRange.sort((a,b)=>(a.currentHp/a.maxHp)-(b.currentHp/b.maxHp))[0];
+      if(t){
+        t.currentHp=Math.min(t.maxHp,t.currentHp+8*cnt);
+        t.hpFill.style.width=Math.round(t.currentHp/t.maxHp*100)+'%';
+        addLog((sh.isEnemy?'Enemy ':'')+'Shaman heals '+t.name+' for '+(8*cnt),'info');
+        // Green heal cross
+        const hz=document.getElementById(t.lane==='air'?'sky-zone':'ground-zone');
+        const hc=document.createElement('div'); hc.className='heal-cross'; hc.textContent='+';
+        hc.style.cssText='left:'+(t.x+10)+'px;top:'+t.y+'px;'; hz.appendChild(hc); setTimeout(()=>hc.remove(),720);
+      }
+    }
+  });
+
+  function isValidTarget(f,o){
+    if(o.isEnemy===f.isEnemy||!o.alive)return false;
+    if(o._camoActive)return false; // invisible — untargetable
+    if(o.lane==='air'&&f.attackType==='melee'&&f.lane==='ground')return false;
+    if(o.lane==='air'&&!f.canHitFlying)return false;
+    return true;
+  }
+  function pickTarget(f,opp){
+  // Shark: always hunt the marked prey if alive
+  if(f.sharkPrey&&f._preyUid){
+    const prey=opp.find(o=>o.uid===f._preyUid);
+    if(prey&&prey.alive) return prey;
+  }
+    if(!opp.length)return null;
+    if(f.prioritiseAir){const air=opp.filter(o=>o.lane==='air');if(air.length)return air.sort((a,b)=>Math.abs(a.x-f.x)-Math.abs(b.x-f.x))[0];}
+    return opp.sort((a,b)=>Math.abs(a.x-f.x)-Math.abs(b.x-f.x))[0];
+  }
+
+  alive.forEach(f=>{
+    if(!f.alive)return;
+    const zW=f.lane==='air'?szW:gzW;
+    const zone=document.getElementById(f.lane==='air'?'sky-zone':'ground-zone');
+    const dir=f.isEnemy?-1:1;
+    const playerBaseX=60,enemyBaseX=zW-60;
+    const oppBaseX=f.isEnemy?playerBaseX:enemyBaseX;
+    f.atkCooldown=Math.max(0,f.atkCooldown-dt);
+
+    // Brute rage
+    if(f.id==='brute'&&!f.raging&&f.currentHp/f.maxHp<0.3){
+      f.raging=true; f.spd=(f._originalSpd||f.spd)*1.5;
+      f.el.classList.add('brute-raging');
+      addLog('Brute RAGES!','aoe');
+    }
+
+    // ── ANIMAL MECHANICS ─────────────────────────────────────────────
+
+    // Mantis Shrimp punch stun: every Nth hit stuns target
+    if(f.punchStun){
+      f._punchCount=f._punchCount||0;
+      // _punchCount is incremented in the attack block — just check flag here
+    }
+
+    // Bee swarm DoT (persists on target regardless of bee alive/dead)
+    // Update visual to follow target
+    if(f._beeSwarmEl&&f.alive){
+      f._beeSwarmEl.style.left=Math.round(f.x)+'px';
+      f._beeSwarmEl.style.top=Math.round(f.y-5)+'px';
+    }
+    if(f._beeSwarm){
+      f._beeSwarmTimer=(f._beeSwarmTimer||0)+dt;
+      if(f._beeSwarmTimer>=0.5){
+        f._beeSwarmTimer=0;
+        const bsdmg=f._beeSwarmDmg||4;
+        f.currentHp=Math.max(0,f.currentHp-bsdmg*0.5);
+        f.hpFill.style.width=Math.max(0,Math.round(f.currentHp/f.maxHp*100))+'%';
+        // Tiny bee particle
+        const bz=document.getElementById(f.lane==='air'?'sky-zone':'ground-zone');
+        const bp=document.createElement('div'); bp.className='bee-sting';
+        bp.style.cssText='left:'+(f.x+10)+'px;top:'+f.y+'px;';
+        bz.appendChild(bp); setTimeout(()=>bp.remove(),400);
+        if(f.currentHp<=0){tryRaiseShade(f);kill(f);return;}
+      }
+      f._beeSwarmRemain=(f._beeSwarmRemain||0)-dt;
+      if(f._beeSwarmRemain<=0){f._beeSwarm=false;}
+    }
+    // Bat echolocation: reveal/remove nearby camo
+    if(f.echolocation&&f.alive){
+      alive.filter(o=>o.isEnemy!==f.isEnemy&&o._camoActive&&Math.abs(o.x-f.x)<=150).forEach(t=>{
+        t._camoActive=false; t._camoTimer=0; t.el.classList.remove('camo-fighter');
+        addLog((f.isEnemy?'Enemy ':'')+'Bat reveals '+t.name+'!','special');
+      });
+    }
+
+    // Skunk stink cloud
+    if(f.stinkCloud){
+      f._stinkTimer=(f._stinkTimer||0)+dt;
+      if(f._stinkTimer>=(f.stinkCooldown||6)){
+        f._stinkTimer=0;
+        const rad=f.stinkRadius||85;
+        const zone2=document.getElementById(f.lane==='air'?'sky-zone':'ground-zone');
+        // Sustained gas cloud: ground phase (0-2.5s), then rises to air (1.5-4s)
+        const gndZ2=document.getElementById('ground-zone');
+        const skyZ2=document.getElementById('sky-zone');
+        const GAS_DUR=2500; // ms gas lingers on ground
+        const GAS_RISE=1500; // ms before it rises to air
+        // Spawn 6 ground gas clouds with staggered timing
+        for(let gi=0;gi<6;gi++){
+          const gx=f.x+(Math.random()-0.5)*rad*1.6;
+          const gsz=35+Math.random()*55;
+          const gdelay=gi*90;
+          setTimeout(()=>{
+            const c=document.createElement('div'); c.className='skunk-gas skunk-gas-ground';
+            c.style.left=Math.round(gx)+'px';
+            c.style.top=Math.round(f.y+(Math.random()-0.5)*25)+'px';
+            c.style.width=gsz+'px'; c.style.height=Math.round(gsz*0.5)+'px';
+            gndZ2.appendChild(c); setTimeout(()=>c.remove(),GAS_DUR);
+          },gdelay);
+          // Rising variant: each bubble also floats up to air zone
+          if(f.stinkHitsFlying){
+            setTimeout(()=>{
+              const ca=document.createElement('div'); ca.className='skunk-gas skunk-gas-air';
+              ca.style.left=Math.round(gx+(Math.random()-0.5)*20)+'px';
+              ca.style.top=Math.round(20+Math.random()*50)+'px';
+              ca.style.width=Math.round(gsz*0.65)+'px'; ca.style.height=Math.round(gsz*0.3)+'px';
+              skyZ2.appendChild(ca); setTimeout(()=>ca.remove(),GAS_DUR-500);
+            },gdelay+GAS_RISE); // air clouds appear later
+          }
+        }
+        // Hits both same-lane and flying enemies (gas drifts upward)
+        // Push a gas zone object into a shared array that logicTick checks each frame
+        // Gas zone persists for 3.5s (ground) and 2s (air, with 1.5s delay)
+        const gasOwner=f;
+        if(!f._activeGasClouds) f._activeGasClouds=[];
+        f._activeGasClouds.push({
+          x:f.x, rad:rad, airRad:rad*0.7,
+          groundTimer:3.5, airTimer:0, airDelay:1.5,
+          dmgReduction:f.stinkDmgReduction||0.3,
+          atkSlow:f.stinkAtkSlow||0.5,
+          baseDps:f.stinkDmgPerSec||3,
+          hitsFlying:f.stinkHitsFlying,
+          stinkDuration:f.stinkDuration||5.0,
+          isEnemy:f.isEnemy,
+        });
+      }
+    }
+    if(f._stinked){
+      f._stinkTimer2=(f._stinkTimer2||0)-dt;
+      // Stink DoT
+      if(f._stinkDmgPerSec&&f._stinkDmgPerSec>0){
+        f._stinkDotTimer=(f._stinkDotTimer||0)+dt;
+        if(f._stinkDotTimer>=0.5){
+          f._stinkDotTimer=0;
+          f.currentHp=Math.max(0,f.currentHp-f._stinkDmgPerSec*0.5);
+          f.hpFill.style.width=Math.max(0,Math.round(f.currentHp/f.maxHp*100))+'%';
+          if(f.currentHp<=0){tryRaiseShade(f);kill(f);return;}
+        }
+      }
+      if(f._stinkTimer2<=0){
+        f._stinked=false; delete f._stinkMult; delete f._stinkDmgPerSec;
+        if(f._stinkAtkSlowed){f._stinkAtkSlowed=false; f.atkRate=f._originalAtkRate||f.atkRate;}
+      }
+    }
+
+    // Zebra speed boost
+    if(f.speedBoost){
+      f._speedBoostTimer=(f._speedBoostTimer||0)+dt;
+      if(f._speedBoostTimer>=(f.speedBoostCooldown||8)){
+        f._speedBoostTimer=0;
+        alive.filter(a=>a.isEnemy===f.isEnemy&&a!==f&&Math.abs(a.x-f.x)<=(f.speedBoostRadius||90)).forEach(a=>{
+          if(!a._speedBoosted){a._speedBoosted=true;a._speedBoostRemain=f.speedBoostDur||5;
+            a._originalSpd=a._originalSpd||a.spd;a.spd=a._originalSpd*(f.speedBoostAmt||1.3);
+            a.el.classList.add('speed-boosted');}
+        });
+        addLog((f.isEnemy?'Enemy ':'')+'Zebra stampede boosts nearby allies!','special');
+      }
+    }
+    if(f._speedBoosted){
+      f._speedBoostRemain=(f._speedBoostRemain||0)-dt;
+      if(f._speedBoostRemain<=0){f._speedBoosted=false;f.spd=f._originalSpd||f.spd;f.el.classList.remove('speed-boosted');}
+    }
+
+    // Kangaroo jump attack
+    if(f.jumpAttack&&!f._retreating){
+      f._jumpTimer=(f._jumpTimer||0)+dt;
+      if(f._jumpTimer>=(f.jumpCooldown||4)){
+        f._jumpTimer=0;
+        const opp2=alive.filter(o=>isValidTarget(f,o)&&o.lane===f.lane);
+        if(opp2.length){
+          const bt=opp2.slice().sort((a,b)=>f.isEnemy?(a.x-b.x):(b.x-a.x))[0];
+          if(bt&&Math.abs(bt.x-f.x)>60){
+            const startX=f.x, startY=f.y;
+            const endX=Math.max(62,Math.min(zW-62,bt.x+(f.isEnemy?-40:40)));
+            // Animate ballistic arc — move icon through air
+            const jz=document.getElementById(f.lane==='air'?'sky-zone':'ground-zone');
+            const arc=document.createElement('div'); arc.className='kangaroo-arc';
+            arc.textContent=f.icon||'🦘';
+            arc.style.left=startX+'px'; arc.style.top=startY+'px';
+            jz.appendChild(arc);
+            const dur=380, frames=12;
+            for(let fr=1;fr<=frames;fr++){
+              const frac=fr/frames; // capture per-iteration
+              setTimeout(()=>{
+                arc.style.left=Math.round(startX+(endX-startX)*frac)+'px';
+                arc.style.top=Math.round(startY-Math.sin(frac*Math.PI)*55)+'px';
+                if(fr===frames) arc.remove();
+              },dur*frac); // use frac here, not t
+            }
+            f.x=endX; f.atkCooldown=0;
+            addLog((f.isEnemy?'Enemy ':'')+'Kangaroo LEAPS to '+bt.name+'!','special');
+          }
+        }
+      }
+    }
+
+    // ── TIGER ROAR ──────────────────────────────────────────────────────────
+    if(f.tigerRoar&&f.alive){
+      f._roarTimer=(f._roarTimer||0)+dt;
+      if(f._roarTimer>=(f.roarCooldown||8)){
+        f._roarTimer=0;
+        f._roaring=true; f._roarPhase=0.6;
+        // Silence ALL non-tiger enemies (both lanes) — they cannot attack
+        alive.filter(o=>o.isEnemy!==f.isEnemy&&o.id!=='tiger').forEach(t=>{
+          t._silenced=true; t._silenceTimer=f.roarSilenceDur||3;
+        });
+        // Dramatic echo rings expanding from tiger position across BOTH lanes
+        for(let i=0;i<5;i++){
+          setTimeout(()=>{
+            ['ground-zone','sky-zone'].forEach(zid=>{
+              const z=document.getElementById(zid);
+              if(!z) return;
+              const ring=document.createElement('div'); ring.className='roar-ring';
+              ring.style.cssText='left:'+(f.x+14)+'px;top:50%;';
+              z.appendChild(ring); setTimeout(()=>ring.remove(),900);
+            });
+          },i*120);
+        }
+        // Shake both lanes
+        ['ground-zone','sky-zone'].forEach(zid=>{
+          const z2=document.getElementById(zid);
+          if(z2){z2.classList.add('shaking');setTimeout(()=>z2.classList.remove('shaking'),550);}
+        });
+        f.el.classList.add('tiger-roaring');
+        setTimeout(()=>f.el.classList.remove('tiger-roaring'),750);
+        addLog('🐅 Tiger ROARS! All enemies silenced for '+(f.roarSilenceDur||3)+'s!','aoe');
+      }
+      if(f._roaring){
+        f._roarPhase=(f._roarPhase||0)-dt;
+        if(f._roarPhase<=0) f._roaring=false;
+        return; // tiger stands still while roaring
+      }
+    }
+    // Silence timer countdown + visual — silenced units cannot move OR attack
+    if(f._silenced){
+      f._silenceTimer=(f._silenceTimer||0)-dt;
+      f.el.classList.add('silenced-unit');
+      if(f._silenceTimer<=0){f._silenced=false;f.el.classList.remove('silenced-unit');}
+      return; // silenced: skip movement AND attack this tick
+    }
+
+    // Whale tidal wave: hits most-forward enemy per lane, fluid animated knockback
+    if(f.tidalWave){
+      f._waveTimer=(f._waveTimer||0)+dt;
+      if(f._waveTimer>=(f.waveCooldown||7)){
+        f._waveTimer=0;
+        const waveDmg=f.waveDmg||30;
+        // Origin flash on whale
+        const skyZ=document.getElementById('sky-zone');
+        flashAoE(f.x,f.y,f.waveRadius||140,skyZ,'frost-ring');
+
+        ['ground','air'].forEach(lane=>{
+          const inLane=alive.filter(o=>o.isEnemy!==f.isEnemy&&o.lane===lane);
+          if(!inLane.length) return;
+          // Most forward = closest to whale's opponent base
+          const fwd=inLane.slice().sort((a,b)=>f.isEnemy?(a.x-b.x):(b.x-a.x))[0];
+          if(!fwd||!fwd.alive) return;
+          dealDmg(f,fwd,waveDmg);
+          const lz=document.getElementById(lane==='air'?'sky-zone':'ground-zone');
+
+          // Knockback direction: push toward their own base (enemy pushed toward enemy base, player toward player base)
+          // If whale is player: enemies are pushed rightward (toward enemy base at right)
+          // If whale is enemy: players are pushed leftward (toward player base at left)
+          // "their own base" = fwd.isEnemy ? right (zW-62) : left (62)
+          // Push AWAY from whale = toward their base
+          const theirBase=fwd.isEnemy?(zW-62):62;
+          const pushDir=fwd.isEnemy?1:-1; // enemy pushed right, player pushed left
+          const pushDist=85;
+          const startX=fwd.x;
+          const endX=Math.max(62,Math.min(zW-62,fwd.x+pushDir*pushDist));
+
+          // Drop wave drag rings along the path
+          const steps=4;
+          for(let s=0;s<steps;s++){
+            const fraction=(s+1)/steps;
+            const rippleX=startX+pushDir*pushDist*fraction;
+            const rippleY=fwd.y;
+            const delay=s*80;
+            setTimeout(()=>{
+              // Wave ring at this step
+              const wr=document.createElement('div');
+              wr.className='wave-ripple';
+              wr.style.cssText='left:'+Math.round(rippleX+14)+'px;top:'+Math.round(rippleY+14)+'px;';
+              lz.appendChild(wr); setTimeout(()=>wr.remove(),520);
+              // Drag smear
+              const wd=document.createElement('div');
+              wd.className='wave-drag';
+              const w=28+fraction*24; const h=20-fraction*8;
+              wd.style.cssText='left:'+Math.round(rippleX)+'px;top:'+Math.round(rippleY+4)+'px;width:'+w+'px;height:'+h+'px;';
+              lz.appendChild(wd); setTimeout(()=>wd.remove(),580);
+            },delay);
+          }
+
+          // Animate the fighter sliding backward smoothly
+          fwd.el.classList.add('wave-knocked');
+          fwd._knockbackTarget=endX;
+          fwd._knockbackSpeed=(endX-startX)/0.35; // px/s — covers distance in 350ms
+          fwd._knockbackRemain=0.35;
+          setTimeout(()=>fwd.el.classList.remove('wave-knocked'),650);
+        });
+
+        addLog((f.isEnemy?'Enemy ':'')+'🌊 TIDAL WAVE crashes! Most forward units swept back!','aoe');
+      }
+    }
+    // Knockback slide physics (runs every tick for wave-knocked units)
+    if(f._knockbackRemain&&f._knockbackRemain>0){
+      f._knockbackRemain-=dt;
+      const step=f._knockbackSpeed*dt;
+      f.x=Math.max(62,Math.min(zW-62,f.x+step));
+      f.el.style.left=Math.round(f.x)+'px';
+      if(f._knockbackRemain<=0){
+        f._knockbackRemain=0;
+        delete f._knockbackTarget;
+        delete f._knockbackSpeed;
+      }
+    }
+
+    // Rat contamination timer — restore dmg when expired, purple aura
+    if(f._contaminated){
+      f._contaminateTimer=(f._contaminateTimer||0)-dt;
+      if(f._contaminateTimer<=0){
+        f._contaminated=false;
+        if(f._baseDmgBackup!==undefined){ f.dmg=f._baseDmgBackup; delete f._baseDmgBackup; }
+        f.el.classList.remove('contaminated');
+        f.el.classList.remove('infected-aura');
+      } else {
+        f.el.classList.add('contaminated');
+        f.el.classList.add('infected-aura');
+      }
+    }
+    // Axolotl aura: passively heal nearest ally
+    if(f.axolotlAura&&f.alive){
+      f._axoTimer=(f._axoTimer||0)+dt;
+      if(f._axoTimer>=1.0){
+        f._axoTimer=0;
+        const range=f.axolotlAuraRange||80;
+        const allies=alive.filter(a=>a.isEnemy===f.isEnemy&&a!==f&&Math.abs(a.x-f.x)<=range);
+        const nearest=allies.sort((a,b)=>Math.abs(a.x-f.x)-Math.abs(b.x-f.x))[0];
+        if(nearest){
+          nearest.currentHp=Math.min(nearest.maxHp,nearest.currentHp+(f.axolotlAuraHeal||3));
+          nearest.hpFill.style.width=Math.round(nearest.currentHp/nearest.maxHp*100)+'%';
+        }
+      }
+    }
+
+
+    // ── SHARK PREY system ────────────────────────────────────────────────────
+    if(f.sharkPrey){
+      // Initialise prey on first tick
+      if(!f._preyInitDone){
+        f._preyInitDone=true;
+        const enemies=alive.filter(o=>o.isEnemy!==f.isEnemy);
+        if(enemies.length){
+          const pick=enemies[Math.floor(Math.random()*enemies.length)];
+          f._preyUid=pick.uid;
+          // Show prey mark on target
+          pick._isSharkPrey=true;
+          // Skull on hp bar
+          if(!pick.el.querySelector('.shark-prey-skull')){
+            const sk=document.createElement('span'); sk.className='shark-prey-skull'; sk.textContent='💀';
+            pick.el.querySelector('.unit-hp-bar').appendChild(sk);
+          }
+          // Dark blue fog animation
+          const pz5=document.getElementById(pick.lane==='air'?'sky-zone':'ground-zone');
+          const fog=document.createElement('div'); fog.className='shark-prey-fog';
+          fog.style.left=(pick.x+14)+'px'; fog.style.top=(pick.y+4)+'px';
+          pz5.appendChild(fog); setTimeout(()=>fog.remove(),850);
+          addLog((f.isEnemy?'Enemy ':'')+'🦈 Shark marks '+pick.name+' as PREY!','special');
+        }
+      }
+      // Check if current prey is dead — if so, buff shark and pick new prey
+      if(f._preyUid){
+        const prey=fighters.find(o=>o.uid===f._preyUid);
+        if(!prey||!prey.alive){
+          f._preyUid=null;
+          // Buff shark
+          f.currentHp=Math.min(f.maxHp,f.currentHp+7);
+          f.maxHp+=7; f.hp=(f.hp||f.maxHp)+7;
+          f.dmg+=2; f.spd=Math.min(f.spd+7,250);
+          f.hpFill.style.width=Math.round(f.currentHp/f.maxHp*100)+'%';
+          f.el.classList.add('shark-buffed'); setTimeout(()=>f.el.classList.remove('shark-buffed'),1200);
+          addLog((f.isEnemy?'Enemy ':'')+'🦈 Shark EVOLVES! +7 HP +2 dmg +7 spd!','aoe');
+          // Pick new prey
+          const newEnemies=alive.filter(o=>o.isEnemy!==f.isEnemy);
+          if(newEnemies.length){
+            const pick2=newEnemies[Math.floor(Math.random()*newEnemies.length)];
+            f._preyUid=pick2.uid; pick2._isSharkPrey=true;
+            pick2._isSharkPrey=true;
+            if(!pick2.el.querySelector('.shark-prey-skull')){
+              const sk2=document.createElement('span'); sk2.className='shark-prey-skull'; sk2.textContent='💀';
+              pick2.el.querySelector('.unit-hp-bar').appendChild(sk2);
+            }
+            const pz6=document.getElementById(pick2.lane==='air'?'sky-zone':'ground-zone');
+            const fog2=document.createElement('div'); fog2.className='shark-prey-fog';
+            fog2.style.left=(pick2.x+14)+'px'; fog2.style.top=(pick2.y+4)+'px';
+            pz6.appendChild(fog2); setTimeout(()=>fog2.remove(),850);
+          }
+        }
+      }
+    }
+
+    // ── GORILLA RAGE ────────────────────────────────────────────────────────
+    if(f.gorillaRage&&!f._gorillaRaged&&f.currentHp/f.maxHp<0.5){
+      f._gorillaRaged=true;
+      // Jump back 50px toward own base
+      // Retreat toward OWN base: player moves left (x↓), enemy moves right (x↑)
+      const gStartX=f.x;
+      const gRetreat=f.isEnemy?50:-50; // positive=right(enemy base), negative=left(player base)
+      f.x=Math.max(62,Math.min(zW-62,f.x+gRetreat));
+      f.el.classList.add('gorilla-jumping','gorilla-ranged');
+      setTimeout(()=>f.el.classList.remove('gorilla-jumping'),480);
+      // Animate position change
+      f.el.style.transition='left .35s cubic-bezier(.3,-.5,.7,1.5)';
+      f.el.style.left=Math.round(f.x)+'px';
+      setTimeout(()=>{f.el.style.transition='';},380);
+      // Become ranged + can hit flying
+      f.attackType='ranged'; f.engageRange=150; f.baseEngageRange=150;
+      f.canHitFlying=true;
+      const gz4=document.getElementById(f.lane==='air'?'sky-zone':'ground-zone');
+      flashAoE(f.x,f.y,40,gz4,'explode-ring',f.isEnemy);
+      addLog((f.isEnemy?'Enemy ':'')+'🦍 Gorilla RAGES! Now ranged + hits flying!','aoe');
+    }
+
+    // Bear rage: below 50% HP gains +10 dmg — dramatic growth animation
+    if(f.bearRage&&!f._bearRaged&&f.currentHp/f.maxHp<0.5){
+      f._bearRaged=true; f.dmg+=10;
+      // Growth burst: scale up icon dramatically
+      f.el.classList.add('bear-raging');
+      const bearIcon=f.el.querySelector('.fighter-icon');
+      if(bearIcon){
+        bearIcon.style.transition='transform .35s cubic-bezier(.68,-0.55,.27,1.55), border-color .35s';
+        bearIcon.style.transform='scale(1.55)';
+        bearIcon.style.borderColor='#ff4400';
+        setTimeout(()=>{bearIcon.style.transform='scale(1.2)';bearIcon.style.borderColor='';},380);
+        setTimeout(()=>{bearIcon.style.transform='';bearIcon.style.transition='';},700);
+      }
+      // Screen flash effect at bear position
+      const bearZone=document.getElementById(f.lane==='air'?'sky-zone':'ground-zone');
+      flashAoE(f.x,f.y,55,bearZone,'explode-ring');
+      addLog((f.isEnemy?'Enemy ':'')+'🐻 Bear RAGES below 50% HP! +10 permanent damage!','aoe');
+    }
+
+    // Elephant trumpet: stuns all enemies within radius every N seconds
+    if(f.trumpetCooldown){
+      f._trumpetTimer=(f._trumpetTimer||0)+dt;
+      if(f._trumpetTimer>=f.trumpetCooldown){
+        f._trumpetTimer=0;
+        const rad=f.trumpetRadius||90;
+        const zone2=document.getElementById(f.lane==='air'?'sky-zone':'ground-zone');
+        flashAoE(f.x,f.y,rad,zone2,'stun-ring',f.isEnemy);
+        // Ground shake
+        zone2.classList.add('shaking'); setTimeout(()=>zone2.classList.remove('shaking'),420);
+        const tw=document.createElement('div'); tw.className='trumpet-wave';
+        tw.style.cssText=`left:${f.x+14}px;top:${f.y+14}px;width:${rad*2}px;height:${rad*2}px;`;
+        zone2.appendChild(tw); setTimeout(()=>tw.remove(),750);
+        alive.filter(o=>o.isEnemy!==f.isEnemy&&Math.abs(o.x-f.x)<=rad).forEach(t=>{
+          t._stunned=true; t._stunTimer=(f.stunDur||1.5);
+        });
+        addLog((f.isEnemy?'Enemy ':'')+'Elephant trumpets! Nearby enemies stunned!','aoe');
+      }
+    }
+
+    // Grab lock timer (crocodile)
+    if(f._grabbing){
+      f._grabTimer=(f._grabTimer||0)-dt;
+      if(f._grabTarget&&!f._grabTarget.alive){ f._grabbing=false; delete f._grabTarget; }
+      if(f._grabTimer<=0){ f._grabbing=false; if(f._grabTarget){f._grabTarget._grabbed=false;delete f._grabTarget;} }
+    }
+    if(f._grabbed){ f.x=Math.max(62,Math.min(zW-62,f.x)); return; } // frozen — skip all movement/attacks
+
+    // Safety: clear _grabbed if grabber is dead
+    if(f._grabbed&&!fighters.some(g=>g.alive&&g._grabTarget===f)){f._grabbed=false;}
+    // Stun timer
+    if(f._stunned){
+      f._stunTimer=(f._stunTimer||0)-dt;
+      if(f._stunTimer<=0){f._stunned=false;delete f._stunTimer;}
+    }
+    if(f._stunned){f.x=Math.max(62,Math.min(zW-62,f.x));return;}
+    // Time Wizard Time Stop — unit cannot move OR attack while frozen
+    if(f._timeStopped){f.x=Math.max(62,Math.min(zW-62,f.x));return;}
+
+    // Chameleon camo cycle
+    if(f.camoCycle){
+      f._camoTimer=(f._camoTimer||0)+dt;
+      const phase=f._camoTimer%(f.camoCycle);
+      const wasCamo=f._camoActive;
+      f._camoActive=phase<(f.camoDur||4);
+      if(f._camoActive!==wasCamo){
+        f.el.classList.toggle('camo-fighter',f._camoActive);
+        if(f._camoActive) addLog((f.isEnemy?'Enemy ':'')+'Chameleon vanishes!','special');
+      }
+    }
+
+    // Viper poison: tick damage on poisoned units
+    if(f._poisoned){
+      f._poisonTimer=(f._poisonTimer||0)+dt;
+      if(f._poisonTimer>=1.0){
+        f._poisonTimer=0;
+        const pdmg=f._poisonDmg||3;
+        f.currentHp=Math.max(0,f.currentHp-pdmg);
+        f.hpFill.style.width=Math.max(0,Math.round(f.currentHp/f.maxHp*100))+'%';
+        if(f.currentHp<=0){tryRaiseShade(f);kill(f);return;}
+        const pz=document.getElementById(f.lane==='air'?'sky-zone':'ground-zone');
+        const pt=document.createElement('div');pt.className='poison-cloud';
+        pt.style.cssText=`left:${f.x+14}px;top:${f.y+14}px;`;pz.appendChild(pt);
+        setTimeout(()=>pt.remove(),620);
+      }
+      f._poisonRemaining=(f._poisonRemaining||0)-dt;
+      if(f._poisonRemaining<=0){f._poisoned=false;}
+    }
+
+    // Voidwalker phase cycle
+    if(f.id==='voidwalker'){
+      f._voidTimer=(f._voidTimer||0)+dt;
+      const cycle=f.voidCycle||5.0;
+      const dur=f.voidDuration||1.5;
+      if(!f._voidActive&&f._voidTimer>=cycle){
+        f._voidActive=true; f._voidTimer=0;
+        f.el.style.opacity='0.35';
+        addLog((f.isEnemy?'Enemy ':'')+'Voidwalker phases out!','special');
+      }
+      if(f._voidActive&&f._voidTimer>=dur){
+        f._voidActive=false; f._voidTimer=0;
+        f.el.style.opacity='1';
+      }
+      if(f._voidActive){f.x=Math.max(62,Math.min(zW-62,f.x));return;} // cannot act while phased
+    }
+
+    // ── BOMB GOBLIN ─────────────────────────────────────────────────
+    if(f.selfDestruct){
+      const targets=alive.filter(o=>o.isEnemy!==f.isEnemy&&o.alive&&o.lane===f.lane);
+      let explodeNow=false, explodeX=f.x, explodeY=f.y;
+      if(targets.length){
+        const cx=targets.reduce((s,o)=>s+o.x,0)/targets.length;
+        if(Math.abs(f.x-cx)>f.engageRange){
+          f.x+=dir*f.spd*dt;
+        } else { explodeNow=true; explodeX=cx; }
+      } else {
+        if(Math.abs(f.x-oppBaseX)>f.baseEngageRange){
+          f.x+=dir*f.spd*dt;
+        } else { explodeNow=true; explodeX=oppBaseX; }
+      }
+      if(explodeNow){
+        // Bigger mushroom boom
+        const gbRad=f.aoe?f.aoe.radius:54;
+        const gboom=document.createElement('div'); gboom.className='goblin-boom';
+        gboom.style.left=Math.round(f.x+14)+'px'; gboom.style.top=Math.round(f.y+14)+'px';
+        gboom.style.width=(gbRad*2)+'px'; gboom.style.height=(gbRad*2)+'px'; // match actual AoE radius
+        zone.appendChild(gboom); setTimeout(()=>gboom.remove(),720);
+        flashAoE(f.x,f.y,gbRad,zone,'explode-ring',f.isEnemy);
+        addLog((f.isEnemy?'Enemy ':'')+'💥 Bomb Goblin EXPLODES for '+f.dmg+' AoE!','aoe');
+        targets.filter(t=>Math.hypot(t.x-f.x,t.y-f.y)<=f.aoe.radius).forEach(t=>{
+          const resist=t.aoeResist||1.0;
+          dealDmg(f,t,f.dmg*(0.85+Math.random()*.3)*(1-Math.hypot(t.x-f.x,t.y-f.y)/f.aoe.radius*0.3)*resist);
+        });
+        if(!targets.length){
+          const d=Math.round(f.dmg*0.7);
+          if(f.isEnemy)playerBaseHP=Math.max(0,playerBaseHP-d);
+          else enemyBaseHP=Math.max(0,enemyBaseHP-d);
+          updateBaseUI();
+        }
+        kill(f); return;
+      }
+      f.x=Math.max(62,Math.min(zW-62,f.x)); return;
+    }
+
+    // ── RUSHER (cavalry, harpy) ──────────────────────────────────────
+    if(f.targeting==='rusher'){
+      const opp=alive.filter(o=>isValidTarget(f,o));
+      const airFoes=opp.filter(o=>o.lane==='air');
+      const nearAir=airFoes.sort((a,b)=>Math.abs(a.x-f.x)-Math.abs(b.x-f.x))[0];
+      if(nearAir&&Math.abs(nearAir.x-f.x)<=f.engageRange){
+        if(f.atkCooldown<=0){
+          f.atkCooldown=f.atkRate;
+          const dmg=dealDmg(f,nearAir,f.dmg*(0.85+Math.random()*.3));
+          flashHit(nearAir.x,nearAir.y,zone);
+          addLog(f.name+' clashes with '+nearAir.name+' for '+dmg,f.isEnemy?'bad':'good');
+        }
+        const dx=nearAir.x-f.x; if(Math.abs(dx)>4)f.x+=Math.sign(dx)*f.spd*dt*0.5;
+      } else {
+        // Rhino charge-through: damage units passed while rushing
+        if(f.chargeThrough){
+          const nextX=f.x+dir*f.spd*dt;
+          alive.filter(o=>o.isEnemy!==f.isEnemy&&o.alive&&o.lane===f.lane).forEach(t=>{
+            const between=dir>0?(t.x>f.x&&t.x<=nextX):(t.x<f.x&&t.x>=nextX);
+            if(between){
+              dealDmg(f,t,f.dmg*0.6);
+              // Knockback: push target toward their base
+              const kbDir=t.isEnemy?1:-1;
+              const kb=f.chargeKnockback||30;
+              t.x=Math.max(62,Math.min(zW-62,t.x+kbDir*kb));
+              t.el.style.left=Math.round(t.x)+'px';
+              // Brief visual flash
+              t.el.classList.add('damage-flash');
+              setTimeout(()=>t.el.classList.remove('damage-flash'),260);
+            }
+          });
+        }
+        if(Math.abs(f.x-oppBaseX)>f.baseEngageRange){
+          f.x+=dir*f.spd*dt;
+        } else {
+          if(f.atkCooldown<=0){
+            f.atkCooldown=f.atkRate;
+            let rawDmg=f.dmg*(0.85+Math.random()*.3);
+            if(f.id==='cavalry'&&!f.trampled){rawDmg*=2;f.trampled=true;}
+            const dmg=Math.round(rawDmg);
+            if(f.isEnemy){playerBaseHP=Math.max(0,playerBaseHP-dmg);}
+            else{enemyBaseHP=Math.max(0,enemyBaseHP-dmg);}
+            addLog(f.name+' strikes the '+(f.isEnemy?'player':'enemy')+' base for '+dmg+'!',f.isEnemy?'bad':'good');
+            updateBaseUI();
+            const baseEl2=document.getElementById(f.isEnemy?'base-p':'base-e');
+            if(baseEl2){baseEl2.classList.add('damage-flash');setTimeout(()=>baseEl2.classList.remove('damage-flash'),280);}
+          }
+        }
+      }
+      f.x=Math.max(62,Math.min(zW-62,f.x)); return;
+    }
+
+    // ── SHAMAN: follow lowest-HP ally, stay within heal range ─────
+    if(f.isShaman){
+      const HEAL_RANGE=f.healRange||120;
+      const sideAlive=alive.filter(a=>a.isEnemy===f.isEnemy&&!a.isShaman);
+      let targetX;
+      if(sideAlive.length){
+        // Primary: move toward the lowest-HP ally (most urgent to heal)
+        const neediest=sideAlive.slice().sort((a,b)=>(a.currentHp/a.maxHp)-(b.currentHp/b.maxHp))[0];
+        // Trail slightly behind that ally (toward own base) so it doesn't block melee
+        const trailDir=f.isEnemy?1:-1;
+        const rawTarget=neediest.x+trailDir*(HEAL_RANGE*0.4);
+        // Clamp: never cross midfield, never run past own base edge
+        const ownBase=f.isEnemy?(zW-62):62;
+        const mid=zW*0.5;
+        if(f.isEnemy) targetX=Math.max(mid,Math.min(zW-62,rawTarget));
+        else          targetX=Math.min(mid,Math.max(62,rawTarget));
+      } else {
+        // No allies alive — advance toward enemy base to deal what little it can
+        targetX=oppBaseX;
+      }
+      if(Math.abs(f.x-targetX)>5) f.x+=Math.sign(targetX-f.x)*f.spd*dt;
+      f.x=Math.max(62,Math.min(zW-62,f.x)); return;
+    }
+
+    // ── ASSASSIN: chain-teleports 120px per hop every 0.8s toward backline ──
+    if(f.isAssassin){
+      const HOP=85, HOP_CD=0.8;
+      f._teleTimer=(f._teleTimer||0)+dt;
+      if(f._teleTimer>=HOP_CD){
+        f._teleTimer=0;
+        const opp2=alive.filter(o=>isValidTarget(f,o));
+        if(opp2.length){
+          // Pick backline target: ranged/shaman first, else furthest back
+          const backline=opp2.filter(o=>o.attackType==='ranged'||o.isShaman);
+          const pool=backline.length?backline:opp2;
+          const bt=pool.slice().sort((a,b)=>f.isEnemy?(a.x-b.x):(b.x-a.x))[0];
+          if(bt){
+            const distToTarget=Math.abs(f.x-bt.x);
+            // Only hop if not already in melee range of the target
+            if(distToTarget>f.engageRange+8){
+              // Hop 120px toward target (capped at distance-engageRange)
+              const hop=Math.min(HOP, distToTarget-f.engageRange);
+              const prevX=f.x;
+              f.x+=Math.sign(bt.x-f.x)*hop;
+              f.x=Math.max(62,Math.min(zW-62,f.x));
+              // Small flash at new position
+              const tf=document.createElement('div'); tf.className=f.isEnemy?'enemy-teleport-flash':'teleport-flash';
+              tf.style.cssText=`left:${f.x+14}px;top:${f.y+14}px;`;
+              zone.appendChild(tf); setTimeout(()=>tf.remove(),350);
+              // Shadow trail at previous position
+              const shadow=document.createElement('div');
+              shadow.className='tele-shadow fighter '+(f.isEnemy?'enemy':'player');
+              const sIcon=document.createElement('div'); sIcon.className='fighter-icon'; sIcon.textContent=f.icon||'🗡';
+              shadow.appendChild(sIcon);
+              shadow.style.cssText=`left:${prevX}px;top:${f.y}px;`;
+              zone.appendChild(shadow); setTimeout(()=>shadow.remove(),420);
+              const hopsLeft=Math.ceil((Math.abs(bt.x-f.x)-f.engageRange)/HOP);
+              if(hopsLeft<=0){
+                addLog((f.isEnemy?'Enemy ':'')+'Assassin reaches '+bt.name+'!','special');
+                f.atkCooldown=0; // burst on arrival
+              }
+            }
+          }
+        }
+      }
+    }
+
+
+    // ── LUMBERJACK: damage scales with enemy count ────────────────────────────
+    if(f.lumberjackAxe){
+      const enemyCount=alive.filter(o=>o.isEnemy!==f.isEnemy).length;
+      f._lumberjackBonus=enemyCount; // +1 dmg per enemy alive (applied in attack)
+    }
+
+    // ── ANGEL BLESS ──────────────────────────────────────────────────────────
+    if(f.isAngel){
+      f._angelTimer=(f._angelTimer||0)+dt;
+      if(f._angelTimer>=(f.angelCooldown||2)){
+        f._angelTimer=0;
+        const groundAllies=alive.filter(a=>a.isEnemy===f.isEnemy&&a.lane==='ground'&&!a.isAngel);
+        if(groundAllies.length){
+          const t2=groundAllies[Math.floor(Math.random()*groundAllies.length)];
+          const hadBuff=t2._angelBuff>0;
+          const isDouble=hadBuff; // double only if ALREADY buffed when re-blessed
+          const mult=isDouble?2:1;
+
+          // ── STEP 1: Remove any existing angel buff cleanly ──────────────
+          if(hadBuff){
+            if(t2._angelRoll===0&&t2._angelAtkOrig!==undefined){t2.atkRate=t2._angelAtkOrig;delete t2._angelAtkOrig;}
+            if(t2._angelRoll===1&&t2._angelDmgOrig!==undefined){t2.dmg=t2._angelDmgOrig;delete t2._angelDmgOrig;}
+            if(t2._angelRoll===2){t2._angelDmgReduce=0;}
+            t2.el.classList.remove('angel-double-buffed');
+          }
+
+          // ── STEP 2: Apply new buff (to restored baseline values) ────────
+          const roll3=Math.floor(Math.random()*3);
+          t2._angelBuff=4.0;
+          t2._angelRoll=roll3;
+          if(roll3===0){
+            // -0.3 atkRate (min 0.1), doubled if re-bless → -0.6
+            t2._angelAtkOrig=t2.atkRate; // save current (baseline)
+            t2.atkRate=Math.max(0.1,t2.atkRate-(0.3*mult));
+          } else if(roll3===1){
+            // +9 dmg, doubled → +18
+            t2._angelDmgOrig=t2.dmg;
+            t2.dmg=t2.dmg+9*mult;
+          } else {
+            // -30% dmg taken, doubled → -60% (capped at -80%)
+            t2._angelDmgReduce=Math.min(0.80,0.30*mult);
+          }
+
+          // ── STEP 3: Visual feedback ─────────────────────────────────────
+          const az=document.getElementById(t2.lane==='air'?'sky-zone':'ground-zone');
+          const bp=document.createElement('div'); bp.className='angel-bless-particle';
+          bp.textContent=roll3===0?'⚡':roll3===1?'💥':'🛡';
+          bp.style.left=(t2.x+14)+'px'; bp.style.top=t2.y+'px';
+          az.appendChild(bp); setTimeout(()=>bp.remove(),730);
+          if(isDouble){ t2.el.classList.add('angel-double-buffed'); }
+          addLog((f.isEnemy?'Enemy ':'')+'🪽 Angel blesses '+t2.name+(isDouble?' ✦DOUBLED✦':'')+'! '+['Faster atk','More dmg','-30% dmg taken'][roll3],'special');
+        }
+      }
+    }
+
+    // ── GENIE WISH ──────────────────────────────────────────────────────────
+    if(f.isGenie){
+      f._wishTimer=(f._wishTimer||0)+dt;
+      if(f._wishTimer>=(f.wishCooldown||12)&&!f._wishing){
+        f._wishTimer=0; f._wishing=true;
+        f.el.classList.add('genie-wishing');
+        setTimeout(()=>{ f._wishing=false; f.el.classList.remove('genie-wishing'); },600);
+        // Count starting team units for power scaling
+        const startUnits=f._startUnits||3;
+        const pwr=Math.max(1,startUnits); // higher starting units = less powerful wishes
+        const roll=Math.random();
+        const zone2=document.getElementById(f.lane==='air'?'sky-zone':'ground-zone');
+        const flash=(cls)=>{ const el=document.createElement('div'); el.className=cls;
+          el.style.left=(f.x+14)+'px'; el.style.top=(f.y+14)+'px';
+          zone2.appendChild(el); setTimeout(()=>el.remove(),900); };
+        const friendlyCount=alive.filter(o=>o.isEnemy===f.isEnemy&&!o.isShade).length;
+        if(roll<0.25){
+          // Wish 1: Revive fallen ally — hp = max(10, 100 - allies*10)%
+          const revHp=Math.max(10,100-friendlyCount*10);
+          const dead=fighters.filter(fd=>!fd.alive&&(fd.isEnemy===f.isEnemy)&&!fd.isShade&&fd.el&&fd.el.parentNode);
+          if(dead.length){
+            const target=dead[Math.floor(Math.random()*dead.length)];
+            // Purple aura then revive
+            const aura=document.createElement('div'); aura.className='genie-aura';
+            aura.style.left=(target.x+14)+'px'; aura.style.top=(target.y+14)+'px';
+            zone2.appendChild(aura); setTimeout(()=>aura.remove(),850);
+            setTimeout(()=>{
+              target.alive=true; target.currentHp=Math.max(1,Math.round(target.maxHp*revHp/100));
+              target.hpFill.style.width=revHp+'%';
+              target.el.style.opacity='1';
+              zone2.appendChild(target.el);
+              addLog((f.isEnemy?'Enemy ':'')+'🧞 Genie REVIVES '+target.name+' at '+revHp+'% HP!','special');
+            },400);
+          } else { f._wishTimer=0; } // no dead allies — skip
+        } else if(roll<0.5){
+          // Wish 2: Purple coin rain + AoE damage = 50 - 2*friendlyCount
+          const wishDmg=Math.max(5,50-2*friendlyCount);
+          // Coin rain visual across both lanes
+          const lanes=['ground-zone','sky-zone'];
+          for(let ci=0;ci<18;ci++){
+            setTimeout(()=>{
+              const lz=document.getElementById(lanes[ci%2]);
+              if(!lz) return;
+              const coin=document.createElement('div'); coin.className='genie-coin';
+              coin.textContent='🟣'; coin.style.left=Math.round(Math.random()*640+14)+'px';
+              coin.style.top='0px';
+              lz.appendChild(coin); setTimeout(()=>coin.remove(),750);
+            },ci*35);
+          }
+          setTimeout(()=>{
+            alive.filter(o=>o.isEnemy!==f.isEnemy).forEach(t=>dealDmg(f,t,wishDmg));
+            addLog((f.isEnemy?'Enemy ':'')+'🧞 Genie rains DESTRUCTION! '+wishDmg+' dmg to all enemies!','aoe');
+          },350);
+        } else if(roll<0.75){
+          // Wish 3: Banish (kills) random enemy
+          const opp2=alive.filter(o=>o.isEnemy!==f.isEnemy);
+          if(opp2.length>1){
+            const victim=opp2[Math.floor(Math.random()*opp2.length)];
+            const aura2=document.createElement('div'); aura2.className='genie-aura';
+            aura2.style.left=(victim.x+14)+'px'; aura2.style.top=(victim.y+14)+'px';
+            zone2.appendChild(aura2); setTimeout(()=>aura2.remove(),850);
+            setTimeout(()=>{ dealDmg(f,victim,victim.currentHp*99); },300);
+            addLog((f.isEnemy?'Enemy ':'')+'🧞 Genie BANISHES '+victim.name+'!','aoe');
+          }
+        } else {
+          // Wish 4: Summon random unit — purple aura at spawn point
+          const allDefs=[...UNITS,...ANIMAL_UNITS].filter(u=>u.collection===activeCollection&&u.cost>0&&u.cost<5);
+          if(allDefs.length){
+            const sumDef=allDefs[Math.floor(Math.random()*allDefs.length)];
+            const sumX=f.isEnemy?gzW-80:80;
+            const sumHp=Math.max(20,100-friendlyCount*10);
+            const aura3=document.createElement('div'); aura3.className='genie-aura';
+            aura3.style.left=sumX+'px'; aura3.style.top='70px';
+            zone2.appendChild(aura3); setTimeout(()=>aura3.remove(),850);
+            setTimeout(()=>{
+              const sumFighter=spawnFighter(sumDef,f.isEnemy,fighters.length,fighters.length,false);
+              if(sumFighter){
+                sumFighter.currentHp=Math.max(1,Math.round(sumFighter.maxHp*sumHp/100));
+                sumFighter.hpFill.style.width=sumHp+'%';
+                sumFighter.x=sumX; sumFighter.el.style.left=sumX+'px';
+                fighters.push(sumFighter);
+                addLog((f.isEnemy?'Enemy ':'')+'🧞 Genie SUMMONS a '+sumDef.name+' at '+sumHp+'% HP!','special');
+              }
+            },500);
+          }
+        }
+      }
+    }
+    // ── TIME WIZARD SPELLS ───────────────────────────────────────────────────
+    if(f.isTimeWizard){
+      f._spellTimer=(f._spellTimer||0)+dt;
+      if(f._spellTimer>=(f.spellCooldown||6)&&!f._casting){
+        f._spellTimer=0; f._casting=true;
+        f.el.classList.add('wizard-casting');
+        setTimeout(()=>{f._casting=false;f.el.classList.remove('wizard-casting');},700);
+        const roll2=Math.floor(Math.random()*3);
+        const gz3=document.getElementById('ground-zone');
+        const sz3=document.getElementById('sky-zone');
+        if(roll2===0){
+          // Time Stop: freeze all other units for 3s
+          fighters.forEach(u=>{if(u.uid!==f.uid&&u.alive){u._timeStopped=true;u._timeStopTimer=3.0;u.el.classList.add('time-frozen');}});
+          ['ground-zone','sky-zone'].forEach(zid=>{
+            const z3=document.getElementById(zid);
+            const tr2=document.createElement('div'); tr2.className='time-stop-ring';
+            tr2.style.left=(f.x+14)+'px'; tr2.style.top='40%';
+            z3.appendChild(tr2); setTimeout(()=>tr2.remove(),750);
+          });
+          addLog((f.isEnemy?'Enemy ':'')+'⏳ Time Wizard STOPS time! All units frozen 3s!','aoe');
+        } else if(roll2===1){
+          // Time Rewind: wizard HP becomes what it was 3s ago
+          const savedHp=f._hpHistory&&f._hpHistory.length?f._hpHistory[0]:f.currentHp;
+          const prev=f.currentHp;
+          f.currentHp=Math.min(f.maxHp,Math.max(1,savedHp));
+          f.hpFill.style.width=Math.round(f.currentHp/f.maxHp*100)+'%';
+          const rr=document.createElement('div'); rr.className='time-rewind-ring';
+          rr.style.left=(f.x+14)+'px'; rr.style.top=(f.y+14)+'px';
+          gz3.appendChild(rr); setTimeout(()=>rr.remove(),850);
+          addLog((f.isEnemy?'Enemy ':'')+'⏳ Time Wizard REWINDS! HP '+Math.round(prev)+' → '+Math.round(f.currentHp)+'!','special');
+        } else {
+          // Time Accelerate: triple own speed/attack for 4s
+          if(!f._accelerated){
+            f._accelerated=true; f._accelTimer=3.0;
+            f._preAccelSpd=f.spd; f._preAccelAtk=f.atkRate;
+            f.spd=Math.min(f.spd*3,600); f.atkRate=Math.max(0.1,f.atkRate/3);
+            // Speed streak visuals
+            for(let si=0;si<4;si++){
+              const siCopy=si, fx=f.x, fy=f.y;
+              setTimeout(()=>{
+                const st=document.createElement('div'); st.className='time-accel-streak';
+                st.style.left=Math.round(fx+14)+'px'; st.style.top=Math.round(fy+8+siCopy*5)+'px';
+                st.style.width='60px';
+                gz3.appendChild(st); setTimeout(()=>st.remove(),380);
+              },siCopy*60);
+            }
+            addLog((f.isEnemy?'Enemy ':'')+'⏳ Time Wizard ACCELERATES! 3× speed for 4s!','special');
+          }
+        }
+      }
+      // HP history for rewind (record every 3 seconds)
+      if(!f._hpHistory) f._hpHistory=[];
+      f._hpHistTimer=(f._hpHistTimer||0)+dt;
+      if(f._hpHistTimer>=3){ f._hpHistTimer=0; f._hpHistory=[f.currentHp,...(f._hpHistory||[])].slice(0,2); }
+      // Tick time stop on all frozen units
+      if(f._casting!==undefined){ // only run this once (from any fighter tick)
+        alive.filter(u=>u._timeStopped).forEach(u=>{
+          u._timeStopTimer=(u._timeStopTimer||0)-dt;
+          if(u._timeStopTimer<=0){u._timeStopped=false;u.el.classList.remove('time-frozen');}
+        });
+      }
+      // Tick acceleration
+      if(f._accelerated){
+        f._accelTimer=(f._accelTimer||0)-dt;
+        if(f._accelTimer<=0){f._accelerated=false;f.spd=f._preAccelSpd;f.atkRate=f._preAccelAtk;}
+      }
+    }
+    // Time stopped units skip their tick
+    if(f._diveLanded){
+      f._diveLandTimer=(f._diveLandTimer||0)-dt;
+      if(f._diveLandTimer<=0){
+        f._diveLanded=false;
+        f._retreating=true; f._retreatDist=80;
+      }
+      // Stay still while landed — let ground units attack normally
+    }
+
+    // ── EAGLE RETREAT ─────────────────────────────────────────────
+    if(f._retreating){
+      const retreatDir=-dir;
+      const step=f.spd*dt;
+      f.x=Math.max(62,Math.min(zW-62,f.x+retreatDir*step));
+      f._retreatDist=(f._retreatDist||80)-step;
+      if(f._retreatDist<=0){ f._retreating=false; f._eagleDived=false; }
+      f.el.style.left=Math.round(f.x)+'px';
+      return; // skip rest of logic while retreating
+    }
+
+    // ── FIGHTER ─────────────────────────────────────────────────────
+    const opp=alive.filter(o=>isValidTarget(f,o));
+    const target=pickTarget(f,opp);
+    if(target){
+      const dist=Math.abs(target.x-f.x);
+      if(dist>f.engageRange){
+        f.x+=Math.sign(target.x-f.x)*f.spd*dt;
+      } else {
+        if(f.atkCooldown<=0&&!f._silenced){
+          f.atkCooldown=f.atkRate;
+          let rawDmg=f.dmg*(0.85+Math.random()*.3);
+          // Eagle dive: first hit 2× then enter retreat mode (fluid movement)
+          // Against GROUND targets, eagle must land for 0.4s (groundDiveLag) giving ground units a free atk window
+          if(f.eagleDive&&!f._eagleDived&&!f._retreating){
+            f._eagleDived=true;
+            rawDmg*=2;
+            addLog((f.isEnemy?'Enemy ':'')+'Eagle dives for double damage!','special');
+            spawnSpeedLines(f.x,f.y,zone,dir);
+            if(f.groundDiveLag&&target&&target.lane==='ground'){
+              // Pause 0._diveLanded=true; f._diveLandTimer=0.4;
+            } else {
+              f._retreating=true; f._retreatDist=80;
+            }
+          }
+
+          // Stink debuff: reduce damage dealt
+          if(f._stinked) rawDmg*=(1-(f._stinkMult||0.3));
+          // Lifesteal (other animals with lifeSteal prop)
+          if(f.lifeSteal&&f.alive){
+            f.currentHp=Math.min(f.maxHp,f.currentHp+(f.lifeSteal||5));
+            f.hpFill.style.width=Math.round(f.currentHp/f.maxHp*100)+'%';
+          }
+          // Mantis Shrimp power strike: every 3rd attack = 2× dmg + knockback 50px + stun
+          if(f.punchStun&&target){
+            f._punchCount=(f._punchCount||0)+1;
+            if(f._punchCount>=(f.punchStunEvery||3)){
+              f._punchCount=0;
+              rawDmg*=2; // double damage on power strike
+              // Knockback
+              const kbDir2=target.isEnemy?1:-1;
+              target.x=Math.max(62,Math.min(zW-62,target.x+kbDir2*50));
+              target.el.style.left=Math.round(target.x)+'px';
+              // Stun
+              target._stunned=true; target._stunTimer=0.8;
+              // Shockwave ring visual
+              const pwZone=document.getElementById(f.lane==='air'?'sky-zone':'ground-zone');
+              const pwave=document.createElement('div'); pwave.className='mantis-wave';
+              pwave.style.left=(f.x+14)+'px'; pwave.style.top=(f.y+14)+'px';
+              pwZone.appendChild(pwave); setTimeout(()=>pwave.remove(),520);
+              addLog((f.isEnemy?'Enemy ':'')+'🦐 Mantis Shrimp POWER STRIKE! 2× dmg + knockback + stun!','aoe');
+            }
+          }
+          // Crocodile grab: lock target, 2× dmg while grabbing
+          if(f.grabLock&&!f._grabbing&&target&&!target._grabbed){
+            f._grabbing=true; f._grabTimer=f.grabDur||3;
+            f._grabTarget=target; target._grabbed=true;
+            rawDmg*=2;
+            addLog((f.isEnemy?'Enemy ':'')+'Crocodile grabs '+target.name+'!','special');
+            f.el.classList.add('croc-spinning'); setTimeout(()=>f.el.classList.remove('croc-spinning'),650);
+          }
+          if(f.aoe){
+            const rad=f.aoe.radius;
+            let cls=f.id==='frostwitch'?'frost-ring':'aoe-ring';
+            const aoeZone=target.lane==='air'?document.getElementById('sky-zone'):zone;
+            // Golem double-strike: schedule a fast follow-up 300ms later
+            // Use fighters[] not alive[] so it's live at time of execution
+            if(f.golemDoubleStrike){
+              const gRef=f; const gZone=zone; const gRad=f.aoe.radius;
+              setTimeout(()=>{
+                if(!gRef.alive) return;
+                // Fresh target list at time of second hit
+                const liveOpp=fighters.filter(o=>o.alive&&isValidTarget(gRef,o));
+                const gt2=pickTarget(gRef,liveOpp);
+                if(gt2){
+                  liveOpp.filter(o=>Math.hypot(o.x-gt2.x,o.y-gt2.y)<=gRad).forEach(u=>{
+                    dealDmg(gRef,u,gRef.dmg*(0.75+Math.random()*.15));
+                  });
+                  flashAoE(gt2.x,gt2.y,gRad,gZone,'aoe-ring',gRef.isEnemy);
+                  addLog((gRef.isEnemy?'Enemy ':'Your ')+'Golem quick-stomps!','aoe');
+                }
+              },300);
+            }
+            // Siege: throw bomb projectile, delay ALL damage until bomb lands (~420ms)
+            if(f.id==='siege'){
+              const bomb=document.createElement('div');
+              bomb.className='siege-bomb'; bomb.textContent='💣';
+              const bx=target.x-f.x;
+              bomb.style.setProperty('--bx',Math.round(bx/2)+'px');
+              bomb.style.setProperty('--by','0px');
+              bomb.style.left=Math.round(f.x+14)+'px';
+              bomb.style.top=Math.round(f.y+6)+'px';
+              zone.appendChild(bomb);
+              // Capture the AoE targets NOW (before anyone dies), deliver damage on impact
+              const siegerRef=f, siegerZone=zone, siegerAoeZone=aoeZone;
+              const impactTargets=opp.filter(o=>Math.hypot(o.x-target.x,o.y-target.y)<=rad&&(o.lane!=='air'||siegerRef.canHitFlying));
+              const impactTX=target.x, impactTY=target.y;
+              setTimeout(()=>{
+                bomb.remove();
+                // Boom ring at impact
+                const boom=document.createElement('div'); boom.className=siegerRef.isEnemy?'enemy-boom-ring':'boom-ring';
+                boom.style.left=Math.round(impactTX+14)+'px'; boom.style.top=Math.round(impactTY+14)+'px';
+                boom.style.width=(rad*2)+'px'; boom.style.height=(rad*2)+'px';
+                siegerAoeZone.appendChild(boom); setTimeout(()=>boom.remove(),520);
+                // Now deal delayed damage
+                impactTargets.forEach(t=>{
+                  const d2=Math.hypot(t.x-impactTX,t.y-impactTY);
+                  const resist=t.aoeResist||1.0;
+                  dealDmg(siegerRef,t,rawDmg*(1-(d2/rad)*0.35)*resist);
+                });
+              },420);
+              // Skip the synchronous damage below — it's all handled in the timeout
+              return;  // ← IMPORTANT: skip rest of attack block for siege
+            }
+            if(f.id!=='siege') flashAoE(target.x,target.y,rad,aoeZone,cls,f.isEnemy);
+            let hit=opp.filter(o=>Math.hypot(o.x-target.x,o.y-target.y)<=rad&&(o.lane!=='air'||f.canHitFlying));
+            // Jellyfish: electric pulse hits both lanes simultaneously
+            if(f.electricPulse){
+              const crossAlive=alive.filter(o=>o.isEnemy!==f.isEnemy&&Math.abs(o.x-target.x)<=rad);
+              hit=[...new Map([...hit,...crossAlive].map(u=>[u.uid,u])).values()];
+              const otherZone=f.lane==='air'?document.getElementById('ground-zone'):document.getElementById('sky-zone');
+              flashAoE(target.x,40,rad*0.7,otherZone,'frost-ring');
+            }
+            hit.forEach(t=>{
+              const d2=Math.hypot(t.x-target.x,t.y-target.y);
+              const resist=t.aoeResist||1.0;
+              let hitDmg=rawDmg*(1-(d2/rad)*0.35)*resist;
+              // Peasant shield: if a friendly peasant is nearby and t is not itself a peasant
+              if(!t.aoeShield&&t.isEnemy===f.isEnemy){/* no-op */}
+              if(t.aoeShield===undefined||t.aoeShield===false){
+                // Check if a peasant ally is in range to absorb 40%
+                const shield=alive.filter(a=>a.aoeShield&&a.isEnemy===t.isEnemy&&a.alive&&Math.hypot(a.x-t.x,a.y-t.y)<=70)[0];
+                if(shield){
+                  const absorbed=hitDmg*0.4;
+                  hitDmg*=0.6;
+                  dealDmg(f,shield,absorbed);
+                }
+              }
+              dealDmg(f,t,hitDmg);
+            });
+            addLog(f.name+' AoE hits '+hit.length+' unit'+(hit.length!==1?'s':''),'aoe');
+          } else if(f.chainLightning&&f.chainLightning>1){
+            // Storm Drake chain lightning
+            const dmg=dealDmg(f,target,rawDmg);
+            if(dmg>0)flashHit(target.x,target.y,zone);
+            let chainDmg=rawDmg*0.55, lastHit=target;
+            const chained=new Set([target.uid]);
+            for(let c=1;c<f.chainLightning;c++){
+              const next=opp.filter(o=>!chained.has(o.uid)&&o.alive).sort((a,b)=>Math.hypot(a.x-lastHit.x,a.y-lastHit.y)-Math.hypot(b.x-lastHit.x,b.y-lastHit.y))[0];
+              if(!next)break;
+              chained.add(next.uid);
+              const cd=Math.round(chainDmg*(0.85+Math.random()*.3));
+              dealDmg(f,next,chainDmg);
+              flashHit(next.x,next.y,zone);
+              // Draw chain bolt
+              const blt=document.createElement('div'); blt.className=f.isEnemy?'enemy-chain-bolt':'chain-bolt';
+              const dx2=next.x-lastHit.x,dy2=next.y-lastHit.y;
+              const len=Math.hypot(dx2,dy2),ang=Math.atan2(dy2,dx2)*180/Math.PI;
+              // Render in battle-inner so bolt is always on top of all zone backgrounds
+              const boltParent=document.getElementById('battle-inner')||zone;
+              const skyH=document.getElementById('sky-zone')?document.getElementById('sky-zone').offsetHeight:120;
+              const srcOffY=lastHit.lane==='air'?0:skyH;
+              const tgtOffY2=next.lane==='air'?0:skyH;
+              const boltDx=next.x-lastHit.x, boltDy=(next.y+tgtOffY2)-(lastHit.y+srcOffY);
+              const boltLen=Math.hypot(boltDx,boltDy), boltAng=Math.atan2(boltDy,boltDx)*180/Math.PI;
+              blt.style.cssText='position:absolute;left:'+(lastHit.x+14)+'px;top:'+(Math.round(lastHit.y+srcOffY+14))+'px;width:'+Math.round(boltLen)+'px;transform:rotate('+Math.round(boltAng)+'deg);z-index:35;';
+              boltParent.appendChild(blt); setTimeout(()=>blt.remove(),350);
+              chainDmg*=0.55; lastHit=next;
+            }
+            addLog((f.isEnemy?'Enemy ':'Your ')+f.name+' chains lightning through '+chained.size+' targets','aoe');
+          } else {
+            const dmg=dealDmg(f,target,rawDmg);
+            if(dmg>0){
+              const targetZone=target.lane==='air'?document.getElementById('sky-zone'):zone;
+              flashHit(target.x,target.y,targetZone);
+            }
+            // Lumberjack chop animation
+            if(f.lumberjackAxe){f.el.classList.add('lumberjack-chopping');setTimeout(()=>f.el.classList.remove('lumberjack-chopping'),280);}
+            // Mirror Mage: also hits all other enemies of the same unit type
+            if(f.mirrorAll&&target&&target.id){
+              const mirrors=opp.filter(o=>o.uid!==target.uid&&o.id===target.id&&o.alive);
+              mirrors.forEach(m=>{
+                const mDmg=dealDmg(f,m,rawDmg*0.85);
+                if(mDmg>0){
+                  const mz=m.lane==='air'?document.getElementById('sky-zone'):zone;
+                  flashHit(m.x,m.y,mz);
+                  // Mirror arc visual between primary and copy targets
+                  const arc=document.createElement('div'); arc.className='mirror-arc';
+                  const dx=m.x-target.x,dy=m.y-target.y;
+                  const len=Math.hypot(dx,dy),ang=Math.atan2(dy,dx)*180/Math.PI;
+                  arc.style.cssText='left:'+(target.x+14)+'px;top:'+(target.y+14)+'px;width:'+Math.round(len)+'px;transform:rotate('+ang+'deg);';
+                  zone.appendChild(arc); setTimeout(()=>arc.remove(),350);
+                }
+              });
+              if(mirrors.length) addLog((f.isEnemy?'Enemy ':'Your ')+f.name+' mirrors attack to '+mirrors.length+' copy!','special');
+            }
+            addLog((f.isEnemy?'Enemy ':'Your ')+f.name+' hits '+(f.isEnemy?'your ':'enemy ')+target.name+' for '+dmg,f.isEnemy?'bad':'good');
+          }
+        }
+      }
+    } else {
+      // No targets — march to base
+      if(Math.abs(f.x-oppBaseX)>f.baseEngageRange){
+        f.x+=dir*f.spd*dt;
+      } else {
+        if(f.atkCooldown<=0){
+          f.atkCooldown=f.atkRate;
+          const warlordUp=fighters.some(fw=>fw.alive&&!fw.isEnemy&&fw.id==='warlord');
+          let rawDmg=f.dmg*(warlordUp&&!f.isEnemy&&f.lane==='ground'?1.4:1)*(0.85+Math.random()*.3);
+          const dmg=Math.round(rawDmg);
+          if(f.isEnemy){playerBaseHP=Math.max(0,playerBaseHP-dmg);}
+          else{enemyBaseHP=Math.max(0,enemyBaseHP-dmg);}
+          addLog((f.isEnemy?'Enemy ':'Your ')+f.name+' attacks the base for '+dmg+'!',f.isEnemy?'bad':'good');
+          updateBaseUI();
+          // Flash the base being hit
+          const baseEl=document.getElementById(f.isEnemy?'base-p':'base-e');
+          if(baseEl){baseEl.classList.add('damage-flash');setTimeout(()=>baseEl.classList.remove('damage-flash'),280);}
+        }
+      }
+    }
+    f.x=Math.max(62,Math.min(zW-62,f.x));
+  });
+}
+
+function renderTick(){fighters.forEach(f=>{if(!f.alive)return;f.el.style.left=Math.round(f.x)+'px';f.el.style.top=Math.round(f.y)+'px';});}
+
+function gameLoop(ts){
+  // Environment update
+  if(typeof envUpdate==='function') envUpdate(1/60);
+  if(typeof envShadowTick==='function') envShadowTick();
+  if(lastTs===null)lastTs=ts;
+  const rawDt=Math.min((ts-lastTs)/1000,0.1);
+  lastTs=ts; accumSec+=rawDt; battleElapsed+=rawDt;
+  document.getElementById('wave-info').textContent=Math.max(0,Math.ceil(BATTLE_LIMIT-battleElapsed))+'s remaining';
+  while(accumSec>=LOGIC_DT){
+    logicTick(LOGIC_DT); accumSec-=LOGIC_DT;
+    if(playerBaseHP<=0||enemyBaseHP<=0||battleElapsed>=BATTLE_LIMIT){
+      cancelAnimationFrame(rafId); rafId=null; setTimeout(endBattle,800); return;
+    }
+  }
+  renderTick(); rafId=requestAnimationFrame(gameLoop);
+}
+
+let _lastPlayerQty={}, _lastCollection='fantasy';
+function startBattle(){
+  // Save current team for Play Again
+  _lastPlayerQty={...qty};
+  _lastCollection=activeCollection;
+  document.getElementById('btn-play-again').style.display='inline-block';
+  showPhase('ph-battle');
+  setTimeout(scaleBattleScene,50);
+  setTimeout(scaleBattleScene,200);
+  if(typeof startEnv==='function') startEnv(); // start day/night cycle
+  playerBaseHP=100; enemyBaseHP=100;
+  logLines=[]; document.getElementById('log').innerHTML='';
+  fighters=[];
+  // Count player's starting units for genie power scaling
+  const _playerStartCount=Object.values(qty).reduce((s,n)=>s+(n||0),0); lastTs=null; accumSec=0; battleElapsed=0;
+  ['sky-zone','ground-zone'].forEach(id=>{
+    document.getElementById(id).querySelectorAll('.fighter,.aoe-ring,.frost-ring,.hit-flash,.explode-ring,.respawn-flash').forEach(e=>e.remove());
+  });
+
+  const playerDefs=getActiveUnits().filter(u=>(qty[u.id]||0)>0).flatMap(u=>{
+    const count=qty[u.id]||0;
+    const instances=[];
+    for(let i=0;i<count;i++){
+      if(u.twin){
+        // Wolf pack: spawn 2 per slot
+        instances.push(mkFighterDef(u,false,instances.length));
+        instances.push(mkFighterDef(u,false,instances.length));
+      } else {
+        instances.push(mkFighterDef(u,false,instances.length));
+      }
+    }
+    return instances;
+  });
+  const enemyDefs=buildEnemyArmyCollection(enemyDiff.budget);
+
+  const byLane=arr=>({ground:arr.filter(u=>u.lane==='ground'),air:arr.filter(u=>u.lane==='air')});
+  const pL=byLane(playerDefs),eL=byLane(enemyDefs);
+  pL.ground.forEach((u,i)=>fighters.push(spawnFighter(u,false,i,pL.ground.length,false)));
+  eL.ground.forEach((u,i)=>fighters.push(spawnFighter(u,true, i,eL.ground.length,false)));
+  pL.air.forEach((u,i)=>   fighters.push(spawnFighter(u,false,i,pL.air.length,false)));
+  eL.air.forEach((u,i)=>   fighters.push(spawnFighter(u,true, i,eL.air.length,false)));
+
+  updateBaseUI();
+  addLog('The battle begins — difficulty: '+enemyDiff.name+'!','info');
+  rafId=requestAnimationFrame(gameLoop);
+}
+
+function endBattle(){
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  fighters.forEach(f=>{if(f.el&&f.el.parentNode)f.el.parentNode.removeChild(f.el);}); fighters=[];
+  showPhase('ph-result');
+  const php=Math.max(0,Math.round(playerBaseHP)),ehp=Math.max(0,Math.round(enemyBaseHP));
+  const win=php>0&&(ehp<=0||php>ehp); // strict: must have more HP than enemy
+  const rt=document.getElementById('r-title'),rs=document.getElementById('r-sub'),rm=document.getElementById('r-mult'),rd=document.getElementById('r-diff');
+  if(!win){
+    rt.textContent='Defeated'; rt.style.color='#e53935';
+    rs.textContent='Your base has fallen. Better luck next battle.';
+    rd.textContent='Enemy difficulty: '+enemyDiff.name+' ('+enemyDiff.budget+'g)';
+    rm.textContent='×0'; rm.style.color='#e53935';
+  } else {
+    rt.textContent='Victory!'; rt.style.color='#4caf50';
+    rs.textContent=ehp<=0?'The enemy base has been obliterated!':'Your base survived with '+php+' HP remaining.';
+    rd.textContent='Difficulty beaten: '+enemyDiff.name+' ('+enemyDiff.budget+'g)';
+    rm.textContent='+'+enemyDiff.mult+'×'; rm.style.color='#4caf50';
+  }
+}
+
+function playAgain(){
+  // Restore last team and launch directly without re-drafting
+  if(Object.keys(_lastPlayerQty).length===0){reset();return;}
+  // Switch collection back
+  if(_lastCollection!==activeCollection) selectCollection(_lastCollection);
+  // Restore quantities
+  Object.keys(qty).forEach(id=>qty[id]=0);
+  Object.entries(_lastPlayerQty).forEach(([id,n])=>qty[id]=n||0);
+  // Roll new difficulty and go
+  goFormationSkip();
+}
+function reset(){
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  fighters.forEach(f=>{if(f.el&&f.el.parentNode)f.el.parentNode.removeChild(f.el);}); fighters=[];
+  UNITS.forEach(u=>qty[u.id]=0); if(typeof ANIMAL_UNITS!=='undefined')ANIMAL_UNITS.forEach(u=>qty[u.id]=0); enemyDiff=null;
+  playerBaseHP=100; enemyBaseHP=100; logLines=[];
+  document.getElementById('log').innerHTML='';
+  showPhase('ph-draft'); renderDraft();
+}
+
+function surrender(){
+  document.getElementById('surrender-overlay').classList.add('visible');
+}
+function closeSurrender(){
+  document.getElementById('surrender-overlay').classList.remove('visible');
+}
+function doSurrender(){
+  closeSurrender();
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  fighters.forEach(f=>{if(f.el&&f.el.parentNode)f.el.parentNode.removeChild(f.el);});fighters=[];
+  showPhase('ph-result');
+  document.getElementById('r-title').textContent='Surrendered';
+  document.getElementById('r-title').style.color='#888';
+  document.getElementById('r-sub').textContent='You raised the white flag.';
+  document.getElementById('r-diff').textContent='Enemy difficulty: '+(enemyDiff?enemyDiff.name+' ('+enemyDiff.budget+'g)':'?');
+  document.getElementById('r-mult').textContent='×0';
+  document.getElementById('r-mult').style.color='#888';
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ANIMAL COLLECTION
+// ════════════════════════════════════════════════════════════════════
+// Mark all fantasy units
+UNITS.forEach(u=>u.collection='fantasy');
+// Sort fantasy units by cost ascending
+UNITS.sort((a,b)=>a.cost-b.cost);
+
+const ANIMAL_UNITS = [
+  // ── 1g ─────────────────────────────────────────────────────────────────
+  {
+    id:'rat',name:'Rat',icon:'🐀',cost:1,
+    hp:22,dmg:7,spd:97,atkRate:0.3,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    ratContaminate:true,contaminateDmg:10,contaminateDur:6,
+    collection:'animals',tags:['ground','melee','special'],
+    tip:'Contaminate when the Rat hits any enemy, ALL ground enemies become contaminated — losing 10 attack damage for 6s. Very weak individually but devastating vs swarms.',
+  },
+  {
+    id:'wolfpack',name:'Wolf Pack',icon:'🐺',cost:1,
+    hp:16,dmg:5,spd:65,atkRate:0.9,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    twin:true,
+    collection:'animals',tags:['ground','melee','special'],
+    tip:'Twin spawns as a pair — two wolves per slot. Each has reduced stats but overwhelm in numbers.',
+  },
+  {
+    id:'squirrel',name:'Squirrel',icon:'🐿️',cost:1,
+    hp:28,dmg:7,spd:90,atkRate:0.8,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    dodgeChance:0.3,
+    collection:'animals',tags:['ground','melee','special'],
+    tip:'Nimble Dodge (30%): each incoming attack has a 30% chance to completely miss. The squirrel visibly wiggles out of the way. Can outlast much larger units through evasion.',
+  },
+  // ── 2g ─────────────────────────────────────────────────────────────────
+  {
+    id:'tortoise',name:'Tortoise',icon:'🐢',cost:2,
+    hp:105,dmg:6,spd:22,atkRate:1.9,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    shellBlock:0.35,
+    collection:'animals',tags:['ground','melee','special'],
+    tip:'Shell Block: takes 35% less damage from every source. Extremely slow. Very hard to kill without AoE spam.',
+  },
+  {
+    id:'eagle',name:'Eagle',icon:'🦅',cost:2,
+    hp:33,dmg:13,spd:100,atkRate:1.8,aoe:null,
+    lane:'air',attackType:'melee',targeting:'fighter',
+    canHitFlying:true,prioritiseAir:false,engageRange:30,baseEngageRange:30,
+    eagleDive:true,groundDiveLag:true,
+    collection:'animals',tags:['flying','melee','special'],
+    tip:'Eagle Dive: first strike deals 2× damage, then retreats 80px. Against ground targets, holds still 0.',
+  },
+  {
+    id:'bee',name:'Bee',icon:'🐝',cost:2,
+    hp:29,dmg:6,spd:95,atkRate:1.2,aoe:null,
+    lane:'air',attackType:'ranged',targeting:'fighter',
+    canHitFlying:true,prioritiseAir:false,engageRange:100,baseEngageRange:100,
+    beeSwarm:true,swarmDmg:4,swarmDur:6,
+    collection:'animals',tags:['flying','ranged','special'],
+    tip:'Bee Swarm: each hit launches a persistent swarm dealing 4 dmg/s for 6s. The swarm persists even after the bee dies. Stack for permanent swarms on every enemy.',
+  },
+  {
+    id:'bat',name:'Bat',icon:'🦇',cost:2,
+    hp:39,dmg:9,spd:100,atkRate:0.9,aoe:null,
+    lane:'air',attackType:'melee',targeting:'fighter',
+    canHitFlying:true,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    echolocation:true,
+    collection:'animals',tags:['flying','melee','special'],
+    tip:'Echolocation: reveals and removes camouflage from any Chameleon within 150px. Fast air melee unit.',
+  },
+  {
+    id:'kangaroo',name:'Kangaroo',icon:'🦘',cost:2,
+    hp:58,dmg:21,spd:75,atkRate:1.5,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    jumpAttack:true,jumpCooldown:4,
+    collection:'animals',tags:['ground','melee','special'],
+    tip:'Jump Attack: every 4s leaps in a ballistic arc over the frontline to strike a backline target directly.',
+  },
+  // ── 3g ─────────────────────────────────────────────────────────────────
+  {
+    id:'viper',name:'Viper',icon:'🐍',cost:3,
+    hp:62,dmg:14,spd:60,atkRate:0.8,aoe:null,
+    lane:'ground',attackType:'ranged',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:140,baseEngageRange:140,
+    poisonDmg:3,poisonDur:5,
+    collection:'animals',tags:['ground','ranged','special'],
+    tip:'Poison: each hit infects the target dealing 3 dmg/s for 5s. Stacks on multiple targets.',
+  },
+  {
+    id:'bear',name:'Bear',icon:'🐻',cost:3,
+    hp:140,dmg:18,spd:50,atkRate:1.2,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    bearRage:true,
+    collection:'animals',tags:['ground','melee','special'],
+    tip:'Bear Rage: drops below 50% HP → permanently gains +10 dmg. High HP makes it durable enough to trigger reliably.',
+  },
+  {
+    id:'chameleon',name:'Chameleon',icon:'🦎',cost:3,
+    hp:75,dmg:22,spd:65,atkRate:1.3,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    camoCycle:7,camoDur:4,
+    collection:'animals',tags:['ground','melee','special'],
+    tip:'Camouflage: invisible and untargetable for 4s every 7s. Bat echolocation can reveal it.',
+  },
+  {
+    id:'jellyfish',name:'Jellyfish',icon:'🪼',cost:3,
+    hp:44,dmg:14,spd:35,atkRate:2.0,aoe:{radius:55},
+    lane:'air',attackType:'ranged',targeting:'fighter',
+    canHitFlying:true,prioritiseAir:false,engageRange:160,baseEngageRange:160,
+    electricPulse:true,
+    collection:'animals',tags:['flying','ranged','aoe','special'],
+    tip:'Electric Pulse: AoE hits both sky and ground lanes simultaneously. Slow but consistent area denial.',
+  },
+  {
+    id:'mantisshrimp',name:'Mantis Shrimp',icon:'🦐',cost:3,
+    hp:69,dmg:24,spd:58,atkRate:0.7,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    punchStun:true,punchStunEvery:3,punchStunDur:0.6,
+    collection:'animals',tags:['ground','melee','special'],
+    tip:'Power Strike every 3rd attack fires a shockwave dealing 2× damage, knocking the target back 50px, and stunning them for 0.8s.',
+  },
+  {
+    id:'scorpion',name:'Scorpion',icon:'🦂',cost:3,
+    hp:81,dmg:20,spd:71,atkRate:0.7,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    poisonDmg:2,poisonDur:8,slowOnHit:1.5,
+    collection:'animals',tags:['ground','melee','special'],
+    tip:'Dual Sting: each hit both poisons (2 dmg/s for 8s) AND slows (50% speed for 1.5s) simultaneously.',
+  },
+  {
+    id:'skunk',name:'Skunk',icon:'🦨',cost:3,
+    hp:94,dmg:11,spd:48,atkRate:1.8,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    stinkCloud:true,stinkCooldown:6,stinkRadius:85,stinkDmgReduction:0.3,stinkDmgPerSec:3,stinkAtkSlow:0.5,stinkHitsFlying:true,
+    collection:'animals',tags:['ground','melee','aoe','special'],
+    tip:'Stink Cloud: every 6s emits a green cloud reducing enemy damage AND attack speed by 30% for 3s. Deals 3 dmg/s DoT. Gas drifts upward also hitting flying units.',
+  },
+  {
+    id:'zebra',name:'Zebra',icon:'🦓',cost:3,
+    hp:133,dmg:14,spd:80,atkRate:1.4,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    speedBoost:true,speedBoostAmt:1.3,speedBoostCooldown:8,speedBoostRadius:90,speedBoostDur:5,
+    collection:'animals',tags:['ground','melee','special'],
+    tip:'Stampede Boost: every 8s boosts speed of all friendly units within 90px by 30% for 5s. Blue aura shows boosted allies.',
+  },
+  // ── 4g ─────────────────────────────────────────────────────────────────
+  {
+    id:'rhino',name:'Rhino',icon:'🦏',cost:4,
+    hp:106,dmg:24,spd:100,atkRate:2.5,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'rusher',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    chargeThrough:true,chargeKnockback:30,
+    collection:'animals',tags:['ground','melee','rusher','special'],
+    tip:'Charge Through: deals damage to every enemy unit it passes while charging. Also pushes them back 30px.',
+  },
+  {
+    id:'crocodile',name:'Crocodile',icon:'🐊',cost:4,
+    hp:103,dmg:27,spd:45,atkRate:0.8,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    grabLock:true,grabDur:3.0,
+    collection:'animals',tags:['ground','melee','special'],
+    tip:'Death Roll: grabs the first enemy, locking both for 3s while dealing 2× dmg. Cannot be interrupted.',
+  },
+  {
+    id:'giraffe',name:'Giraffe',icon:'🦒',cost:4,
+    hp:106,dmg:20,spd:46,atkRate:1.3,aoe:null,
+    lane:'ground',attackType:'ranged',targeting:'fighter',
+    canHitFlying:true,prioritiseAir:true,engageRange:200,baseEngageRange:200,
+    collection:'animals',tags:['ground','ranged','special'],
+    tip:'Long Neck 200px range — hits flying units. Prioritises air targets. Shows a 🎯 target lock before each strike. Slow but outranges everything.',
+  },
+  {
+    id:'tiger',name:'Tiger',icon:'🐅',cost:4,
+    hp:102,dmg:24,spd:72,atkRate:0.8,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    tigerRoar:true,roarCooldown:8,roarSilenceDur:3,
+    collection:'animals',tags:['ground','melee','special'],
+    tip:'ROAR: every 8s the Tiger stops and unleashes a thunderous roar. ALL non-tiger enemy units (ground and air) are silenced for 3 seconds — they cannot attack. Devastating echo rings out across both lanes.',
+  },
+  {
+    id:'gorilla',name:'Gorilla',icon:'🦍',cost:4,
+    hp:161,dmg:28,spd:65,atkRate:1.3,aoe:null,
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    gorillaRage:true,
+    collection:'animals',tags:['ground','melee','special'],
+    tip:'Gorilla Rage when HP drops below 50%, leaps back 50px, becomes ranged (150px range) and gains the ability to hit flying units. High HP frontliner that transforms into a back-line threat.',
+  },
+  {
+    id:'shark',name:'Shark',icon:'🦈',cost:5,
+    hp:108,dmg:31,spd:68,atkRate:1.2,aoe:null,
+    lane:'air',attackType:'melee',targeting:'fighter',
+    canHitFlying:true,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    sharkPrey:true,
+    collection:'animals',tags:['flying','melee','special'],
+    tip:'Shark Prey flying melee. At start of battle, marks a random enemy as Prey and hunts it exclusively. When prey dies, gains +7 HP, +2 dmg, +7 spd and a new prey is marked. Stacks indefinitely.',
+  },
+  // ── 5g ─────────────────────────────────────────────────────────────────
+  {
+    id:'elephant',name:'Elephant',icon:'🐘',cost:5,
+    hp:254,dmg:24,spd:37,atkRate:1.8,aoe:{radius:50},
+    lane:'ground',attackType:'melee',targeting:'fighter',
+    canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
+    trumpetCooldown:8,trumpetRadius:90,stunDur:1.5,
+    collection:'animals',tags:['ground','melee','aoe','special'],
+    tip:'Trumpet: every 8s stuns all enemies within 90px for 1.5s. Cannot attack while stunned. Massive HP.',
+  },
+  // ── 6g ─────────────────────────────────────────────────────────────────
+  {
+    id:'whale',name:'Whale',icon:'🐋',cost:6,
+    hp:314,dmg:20,spd:25,atkRate:2.1,aoe:{radius:50},
+    lane:'air',attackType:'ranged',targeting:'fighter',
+    canHitFlying:true,prioritiseAir:false,engageRange:160,baseEngageRange:160,
+    tidalWave:true,waveRadius:140,waveCooldown:7,waveDmg:28,waveForward:true,
+    collection:'animals',tags:['flying','ranged','aoe','special'],
+    tip:'Tidal Wave: every 7s crashes a wave hitting the most-forward enemy in each lane for 30 dmg and pushing them back 85px. Massive HP.',
+  },
+]
+ANIMAL_UNITS.forEach(u=>u.collection='animals');
+
+// Active collection
+let activeCollection='fantasy';
+function selectCollection(col){
+  activeCollection=col;
+  document.getElementById('col-fantasy').classList.toggle('active',col==='fantasy');
+  document.getElementById('col-animals').classList.toggle('active',col==='animals');
+  UNITS.forEach(u=>qty[u.id]=0); if(typeof ANIMAL_UNITS!=='undefined')ANIMAL_UNITS.forEach(u=>qty[u.id]=0);
+  ANIMAL_UNITS.forEach(u=>qty[u.id]=0);
+  renderDraft();
+}
+function getActiveUnits(){
+  return activeCollection==='fantasy'?UNITS:ANIMAL_UNITS;
+}
+function buildEnemyArmyCollection(budget){
+  // enemy uses same collection as player, with anti-mirror bias
+  const pool=getActiveUnits();
+  // Units the player has picked get 1/3 weight (still possible, just less likely)
+  const playerOwned=new Set(Object.entries(qty).filter(([,n])=>n>0).map(([id])=>id));
+  const weightedPick=(avail)=>{
+    const weights=avail.map(u=>playerOwned.has(u.id)?1:3);
+    const total=weights.reduce((a,b)=>a+b,0);
+    let roll=Math.random()*total;
+    for(let i=0;i<avail.length;i++){roll-=weights[i];if(roll<=0)return avail[i];}
+    return avail[avail.length-1];
+  };
+  const army=[]; let rem=budget,tries=0;
+  while(rem>0&&tries<80&&army.length<MAX_SLOTS+2){
+    tries++;
+    const p=pool.filter(u=>u.cost<=rem);
+    if(!p.length)break;
+    const pick=weightedPick(p);
+    if(pick.twin){
+      army.push(mkFighterDef(pick,true,army.length));
+      army.push(mkFighterDef(pick,true,army.length));
+    } else {
+      army.push(mkFighterDef(pick,true,army.length));
+    }
+    rem-=pick.cost;
+  }
+  return army;
+}
+
+renderDraft();
+
+// ── Scale battle-inner to fill battle-scene width ────────────────────────────
+// Game logic always uses 680px coordinates internally.
+// We CSS-scale the .battle-inner wrapper to fill the container visually.
+function scaleBattleScene(){
+  const scene=document.getElementById('battle-scene');
+  const inner=document.getElementById('battle-inner');
+  if(!scene||!inner) return;
+  // Remove previous height override to measure natural size
+  scene.style.height='';
+  inner.style.transform='';
+  const sceneW=scene.offsetWidth;
+  if(!sceneW||sceneW<1) return;
+  const scale=Math.min(2.0, sceneW/680); // cap at 2× to avoid excessive scaling
+  inner.style.transform='scale('+scale+')';
+  inner.style.transformOrigin='top left';
+  // Shrink scene to exact scaled height so nothing below overflows
+  const naturalH=inner.offsetHeight;
+  scene.style.height=Math.round(naturalH*scale)+'px';
+}
+let _scaleTimer=null;
+window.addEventListener('resize',()=>{clearTimeout(_scaleTimer);_scaleTimer=setTimeout(scaleBattleScene,80);});
+// Call on battle start
+
+
+// ─── ENVIRONMENT SYSTEM ────────────────────────────────────────────────────
+const ENV_CYCLE = 60000; // full day = 60 seconds
+let envStartTime = null;
+let envPhase = 0; // 0..1 = fraction of day
+
+let _envFirstUpdate=false;
+function envUpdate(dt){
+  if(!envStartTime) return;
+  const elapsed=(Date.now()-envStartTime)%ENV_CYCLE;
+  envPhase=elapsed/ENV_CYCLE; // 0..1
+
+  const sunEl=document.getElementById('cel-sun');
+  const moonEl=document.getElementById('cel-moon');
+  if(!sunEl||!moonEl) return;
+  const skyZone=document.getElementById('sky-zone');
+  const sw=680, sh=skyZone?skyZone.offsetHeight:130;
+  const bSize=28; // celestial body size in px
+
+  // INVISIBLE CIRCLE: both bodies rotate at constant speed on a shared circle.
+  // Circle centre is placed AT the horizon line so bodies emerge smoothly from it.
+  // Radius is slightly larger than half the sky height so both bodies are well separated.
+  const cx=sw/2; // horizontal centre
+  const cy=sh;   // circle centre ON the horizon line — half circle visible above
+  const r=sh*1.05; // radius slightly larger than sky height
+
+  // Phase angle: 0 = midnight. At envPhase=0.5 sun is at top (noon).
+  // sunAngle starts at π (bottom) and sweeps clockwise.
+  // Using standard math coords where 0=right, π/2=down.
+  // We want sun to arc from left (morning) to right (afternoon):
+  //   at envPhase=0:   sunAngle=0  → right side → sun rising from right horizon
+  //   at envPhase=0.5: sunAngle=π  → left of centre? No.
+  // Actually: let angle θ = envPhase*2π. 
+  //   sunX = cx + r*cos(θ + π/2) = cx - r*sin(θ)
+  //   sunY = cy + r*sin(θ + π/2) ... hmm let's use a direct formula:
+  // 
+  // Simple clean formula: at envPhase=0 (midnight), sun is at BOTTOM (below horizon).
+  // At envPhase=0.25 (sunrise), sun rises from right.
+  // At envPhase=0.5  (noon),    sun is at TOP of arc.
+  // At envPhase=0.75 (sunset),  sun sinks left.
+  //
+  // θ_sun = envPhase * 2π - π/2   (shift so 0 = bottom of circle)
+  // x_sun = cx + r * cos(θ_sun)
+  // y_sun = cy - r * sin(θ_sun)   (y inverted: up = negative y in CSS)
+  const theta=envPhase*2*Math.PI - Math.PI/2;
+  const sunX=Math.round(cx+r*Math.cos(theta)-bSize/2);
+  const sunY=Math.round(cy-r*Math.sin(theta)-bSize/2);
+  // Moon is exactly opposite on the circle:
+  const moonX=Math.round(cx-r*Math.cos(theta)-bSize/2);
+  const moonY=Math.round(cy+r*Math.sin(theta)-bSize/2);
+
+  // Position both elements. Sky-zone overflow:hidden clips bodies below the zone.
+  sunEl.style.left=sunX+'px'; sunEl.style.top=sunY+'px';
+  moonEl.style.left=moonX+'px'; moonEl.style.top=moonY+'px';
+
+  // Track sun for shadow direction
+  const sunAbove=sunY<sh-bSize;
+  envSunNorm=sunAbove?(sunX+bSize/2)/sw:0.5;
+
+  // Enable smooth CSS transitions after the very first frame (prevents startup teleport)
+  if(!_envFirstUpdate){
+    _envFirstUpdate=true;
+    setTimeout(()=>{
+      [sunEl,moonEl].forEach(el=>{if(el)el.style.transition='left .4s linear,top .4s linear,background 1.5s ease,box-shadow 1.5s ease';});
+    },50);
+  }
+
+  // Cloud visibility based on sun height above horizon
+  const sunHeight=sunAbove?Math.max(0,1-sunY/sh):0;
+  ['cloud1','cloud2','cloud3'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.opacity=(sunHeight*0.6).toFixed(2);
+  });
+}
+let envSunNorm=0.5; // 0=sun far left, 1=sun far right
+
+function generateMountains(){
+  // Unique silhouette each battle
+  const peaks=5+Math.floor(Math.random()*4); // 5-8 peaks
+  let d='M0,180 ';
+  let x=0;
+  const W=680, H=180;
+  const baseY=H*0.45+Math.random()*H*0.2; // horizon
+  const pts=[];
+  // Place peaks at random x positions
+  for(let i=0;i<=peaks+1;i++){
+    const px=Math.round(i*(W/(peaks+1))+( Math.random()-0.5)*(W/(peaks+1)*0.6));
+    const isMajor=Math.random()<0.5;
+    const py=isMajor?Math.round(baseY-H*(0.18+Math.random()*0.22)):Math.round(baseY-H*(0.04+Math.random()*0.10));
+    pts.push([Math.max(0,Math.min(W,px)),py]);
+  }
+  pts.unshift([0,baseY]); pts.push([W,baseY]);
+  d='M0,'+H+' L0,'+pts[0][1]+' ';
+  for(let i=1;i<pts.length;i++){
+    const cp=[(pts[i-1][0]+pts[i][0])/2,(pts[i-1][1]+pts[i][1])/2];
+    d+='Q'+pts[i-1][0]+','+pts[i-1][1]+' '+cp[0]+','+cp[1]+' ';
+  }
+  d+='L'+W+','+H+' Z';
+  const path=document.getElementById('mountain-path');
+  if(path) path.setAttribute('d',d);
+  // Second layer — farther hills, lighter
+  const path2=document.getElementById('mountain-path2');
+  if(path2){
+    // Shift hills slightly
+    let d2='M0,'+H+' ';
+    pts.forEach((p,i)=>{if(i>0&&i<pts.length-1)pts[i]=[p[0],p[1]+20+Math.random()*15];});
+    for(let i=1;i<pts.length;i++){
+      const cp=[(pts[i-1][0]+pts[i][0])/2,(pts[i-1][1]+pts[i][1]+5)/2];
+      d2+='Q'+pts[i-1][0]+','+(pts[i-1][1]+10)+' '+cp[0]+','+cp[1]+' ';
+    }
+    d2+='L'+W+','+H+' Z';
+    path2.setAttribute('d',d2);
+  }
+}
+
+// Flying unit shadows — updated every frame in envShadowTick
+const flyShadows=new Map(); // uid → shadowEl
+function envShadowTick(){
+  const gzEl=document.getElementById('ground-zone');
+  if(!gzEl) return;
+  const gz_h=gzEl.offsetHeight||180;
+  // Remove shadows for dead/non-flying units
+  flyShadows.forEach((el,uid)=>{
+    const f=fighters.find(f=>f.uid===uid);
+    if(!f||!f.alive||f.lane!=='air'){el.remove();flyShadows.delete(uid);}
+  });
+  // Add/update shadows for living air units
+  fighters.filter(f=>f.alive&&f.lane==='air').forEach(f=>{
+    if(!flyShadows.has(f.uid)){
+      const sh=document.createElement('div'); sh.className='fly-shadow';
+      gzEl.appendChild(sh); flyShadows.set(f.uid,sh);
+    }
+    const sh=flyShadows.get(f.uid);
+    // Shadow position: under unit projected onto ground, shifted opposite sun
+    const shadowOffX=Math.round((envSunNorm-0.5)*40); // offset based on sun angle
+    const shadowW=22; const shadowH=8;
+    sh.style.width=shadowW+'px'; sh.style.height=shadowH+'px';
+    sh.style.left=Math.round(f.x+14-shadowOffX-shadowW/2)+'px';
+    sh.style.top=(gz_h-14)+'px'; // near bottom of ground zone
+    // Daytime = more visible shadow
+    const dayFactor=Math.max(0.12,Math.sin(envPhase*Math.PI));
+    sh.style.opacity=(dayFactor*0.45).toFixed(2);
+    sh.style.transform='scaleX('+(0.7+dayFactor*0.5).toFixed(2)+')';
+  });
+}
+
+// Start environment when battle starts
+function startEnv(){
+  envStartTime=Date.now();
+  generateMountains();
+  // Clear old shadows
+  flyShadows.forEach(el=>el.remove()); flyShadows.clear();
+}
+
+</script>
+</body>
+</html>

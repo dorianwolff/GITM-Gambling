@@ -39,18 +39,17 @@ on conflict (key) do nothing;
 drop function if exists public.spawn_emoji_hunt();
 drop function if exists public.spawn_emoji_hunt(text, integer);
 
--- Manual spawn (used by the page UI, no longer admin-only). Anyone can ask
--- for a hunt to appear; abuse is prevented by the per-user rate limit
--- enforced in `auto_spawn_emoji_hunt`. The manual variant is open because
--- it's behind a button that respects local UX (admins still see the panel,
--- but normal users could trigger one too — they're just spawning value
--- for everyone).
+-- Manual spawn (used by the page UI). This is admin-only; regular users see
+-- the hunt list but not the spawn controls, and the server also enforces the
+-- restriction here.
 create or replace function public.spawn_emoji_hunt(
   p_page    text default null,
   p_size_px integer default null
 ) returns uuid
 language plpgsql security definer set search_path = public as $$
 declare
+  uid    uuid := auth.uid();
+  prof   public.profiles%rowtype;
   pool   text[] := array['💎','🪙','🎰','🍀','⭐','🔥','🚀','👑','🦄','🎲','💸','🎁','🏆','🎯','🍒'];
   routes text[] := array[
     '/', '/dashboard',
@@ -67,6 +66,8 @@ declare
   new_id uuid;
 begin
   if uid is null then raise exception 'Not authenticated'; end if;
+  select * into prof from public.profiles where id = uid;
+  if not prof.is_admin then raise exception 'Admins only'; end if;
   emo  := pool[1 + floor(random()*array_length(pool,1))::int];
   page := coalesce(p_page, routes[1 + floor(random()*array_length(routes,1))::int]);
   sz   := greatest(32, least(128, coalesce(p_size_px, 36 + floor(random()*64)::int)));

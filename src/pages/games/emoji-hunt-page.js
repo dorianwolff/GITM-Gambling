@@ -11,6 +11,7 @@ import { listActiveHunts, spawnHunt } from '../../services/emoji-hunt-service.js
 import { toastError, toastSuccess } from '../../ui/components/toast.js';
 import { spinner } from '../../ui/components/spinner.js';
 import { timeAgo } from '../../utils/format.js';
+import { isAdmin } from '../../state/user-store.js';
 
 export function renderEmojiHunt(ctx) {
 
@@ -141,6 +142,7 @@ export function renderEmojiHunt(ctx) {
       ]
     ),
   ]);
+  const spawnSection = isAdmin() ? spawnPanel : null;
 
   return appShell(
     h('div.flex.flex-col.gap-4', {}, [
@@ -155,7 +157,7 @@ export function renderEmojiHunt(ctx) {
           h('h2.text-sm.text-muted.uppercase.tracking-widest', {}, ['Active hunts']),
           listEl,
         ]),
-        spawnPanel,
+        spawnSection,
       ]),
     ])
   );

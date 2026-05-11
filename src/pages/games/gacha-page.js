@@ -311,7 +311,7 @@ export function renderGacha(ctx) {
             ),
           ]),
           h('div.text-[11px].text-muted.leading-relaxed', {}, [
-            'House edge ≈ 5%. Mythic ≈ 1.5%, one-of-one ≈ 0.4% (and shrinking — once a trophy is gone it never returns).',
+            'Mythic ≈ 1.5%, one-of-one ≈ 0.4% (and shrinking — once a trophy is gone it never returns).',
           ]),
         ]),
       ]),

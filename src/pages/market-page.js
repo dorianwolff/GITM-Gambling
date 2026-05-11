@@ -372,7 +372,7 @@ function shopTab(s, rarity, category, onBuy) {
 }
 
 function shopCard(item, onBuy) {
-  const meta = ITEM_RARITY[item.rarity];
+  const meta = ITEM_RARITY[item.rarity] ?? ITEM_RARITY.common;
   const canAfford = (userStore.get().profile?.credits ?? 0) >= item.shop_price;
   return h(
     'div.relative.glass.neon-border.p-4.flex.flex-col.gap-2.transition-transform.hover:-translate-y-0.5',

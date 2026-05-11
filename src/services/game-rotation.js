@@ -25,6 +25,7 @@ export const GAME_ID_TO_ROUTE = Object.freeze({
   candy:     ROUTES.CANDY,
   plinko:    ROUTES.PLINKO,
   lottery:   ROUTES.LOTTERY,
+  warfront:  ROUTES.WARFRONT,
 });
 
 // Reverse lookup: route → game id, used by the route guard.

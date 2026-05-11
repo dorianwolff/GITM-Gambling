@@ -32,6 +32,7 @@ const ROTATING = {
   candy:     { title: 'Candy',     desc: 'Match-3 cascades. Chain clears for runaway payouts.',         icon: '🍬', grad: 'from-accent-magenta/40 to-accent-lime/40' },
   plinko:    { title: 'Plinko',    desc: 'Drop through pegs, land in a multiplier. Pure tension.',      icon: '🔴', grad: 'from-accent-cyan/40 to-accent-rose/40' },
   lottery:   { title: 'Neon Lotto', desc: 'Pick 5 lucky numbers. Match drawn balls for up to 8,000×.',   icon: '🎱', grad: 'from-accent-lime/40 to-accent-violet/40' },
+  warfront:  { title: 'Warfront',  desc: 'Draft a 6-unit army, beat the enemy, and cash out by difficulty.', icon: '⚔️', grad: 'from-accent-amber/40 to-accent-violet/40' },
 };
 
 // Always-on games (not part of the rotation), shown beneath the rotating row.

@@ -3,6 +3,7 @@
  * Read events / event_bets and call the create / bet / resolve RPCs.
  */
 import { supabase } from '../lib/supabase.js';
+import { rpc } from '../lib/rpc.js';
 
 export async function listEvents({ status = 'all', limit = 50 } = {}) {
   let q = supabase
@@ -38,7 +39,7 @@ export async function listBetsForEvent(eventId) {
 }
 
 export async function createEvent({ title, description, options, closesAt }) {
-  const { data, error } = await supabase.rpc('create_event', {
+  const { data, error } = await rpc('create_event', {
     p_title: title,
     p_description: description ?? '',
     p_options: options,
@@ -49,7 +50,7 @@ export async function createEvent({ title, description, options, closesAt }) {
 }
 
 export async function placeBet(eventId, optionIdx, amount) {
-  const { data, error } = await supabase.rpc('place_event_bet', {
+  const { data, error } = await rpc('place_event_bet', {
     p_event: eventId,
     p_option: optionIdx,
     p_amount: amount,
@@ -59,7 +60,7 @@ export async function placeBet(eventId, optionIdx, amount) {
 }
 
 export async function resolveEvent(eventId, winningOption) {
-  const { error } = await supabase.rpc('resolve_event', {
+  const { error } = await rpc('resolve_event', {
     p_event: eventId,
     p_winning_option: winningOption,
   });

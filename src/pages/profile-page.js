@@ -173,7 +173,10 @@ export function renderProfile() {
             h('div.text-xl.font-semibold.truncate', {}, [shortName(p?.display_name, p?.email)]),
             equippedTitle
               ? h('div.text-sm.font-mono', {
-                  style: { color: ITEM_RARITY[equippedTitle.item.rarity].color },
+                  style: {
+                    color: (ITEM_RARITY[equippedTitle.item.rarity] ?? ITEM_RARITY.common).color,
+                    textShadow: `0 0 6px ${(ITEM_RARITY[equippedTitle.item.rarity] ?? ITEM_RARITY.common).glow}`,
+                  },
                 }, [equippedTitle.item?.metadata?.text ?? equippedTitle.item?.name])
               : h('div.text-sm.text-muted', {}, [p?.email]),
             equippedBadges.length > 0
@@ -259,6 +262,7 @@ function badgeChip(item) {
         background: `${r.color}18`,
         color: r.color,
         border: `1px solid ${r.color}55`,
+        boxShadow: `0 0 6px ${r.glow}`,
       },
     },
     [
