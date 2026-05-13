@@ -18,8 +18,16 @@ import { formatCredits, initials, shortName } from '../utils/format.js';
 import { spinner } from '../ui/components/spinner.js';
 import {
   ITEM_RARITY, RARITY_ORDER, CATEGORY_LABEL, CATEGORIES,
+  CATEGORY_ICON,
   listInventoryFor,
 } from '../games/market/market-api.js';
+import {
+  buildCollectibleParticles,
+  buildCollectibleRings,
+  buildCollectibleBackdrop,
+  getCollectibleVisual,
+} from '../games/collectibles/collectibles.js';
+import { getProfileEffectScene } from '../games/collectibles/profile-effects/effect-scenes.js';
 import { logger } from '../lib/logger.js';
 
 export function renderPublicProfile(ctx) {
@@ -86,73 +94,92 @@ export function renderPublicProfile(ctx) {
     const equippedFrame = equipped.find((r) => r.item?.category === 'frame');
     const equippedTitle = equipped.find((r) => r.item?.category === 'title');
     const equippedBadges = equipped.filter((r) => r.item?.category === 'badge');
+    const activeEffect = equipped.find((r) => r.item?.category === 'effect') ?? null;
+    const effectScene = getProfileEffectScene(activeEffect?.item);
 
-    return h('div.flex.flex-col.gap-5', {}, [
-      // Header
-      h('div.flex.items-center.justify-between.gap-3.flex-wrap', {}, [
-        h('a.btn-ghost.h-9.px-3.text-xs', {
-          href: '/leaderboard', 'data-link': '',
-        }, ['← Leaderboard']),
-      ]),
+    return h('div.relative', {
+      style: {
+        isolation: 'isolate',
+        ...effectScene?.pageStyle,
+      },
+    }, [
+      buildCollectibleBackdrop(activeEffect ? [activeEffect] : []),
+      h('div.relative.z-10.flex.flex-col.gap-5', {}, [
+        // Header
+        h('div.flex.items-center.justify-between.gap-3.flex-wrap', {}, [
+          h('a.btn-ghost.h-9.px-3.text-xs', {
+            href: '/leaderboard', 'data-link': '',
+          }, ['← Leaderboard']),
+        ]),
 
-      // Hero card
-      h(
-        'div.glass.neon-border.p-6.flex.items-center.gap-5.flex-wrap',
-        {
-          style: equippedFrame
-            ? {
-                border: `2px solid ${equippedFrame.item?.metadata?.color ?? '#22e1ff'}`,
-                boxShadow: `0 0 24px ${equippedFrame.item?.metadata?.color ?? '#22e1ff'}55`,
-              }
-            : {},
-        },
-        [
-          // Avatar with equipped frame effect
-          h(
-            'div.relative.w-24.h-24.rounded-2xl.flex.items-center.justify-center.text-3xl.font-bold.shrink-0',
-            {
-              style: {
-                background: profile.avatar_url
-                  ? `center/cover no-repeat url(${profile.avatar_url})`
-                  : 'linear-gradient(145deg,#1a1e2a,#0a0d14)',
-                border: `2px solid ${equippedFrame ? (equippedFrame.item?.metadata?.color ?? '#22e1ff') : 'rgba(255,255,255,0.1)'}`,
-                boxShadow: equippedFrame
-                  ? `0 0 16px ${equippedFrame.item?.metadata?.color ?? '#22e1ff'}88`
-                  : 'none',
-              },
+        // Hero card
+        h(
+          'div.glass.neon-border.p-6.flex.items-center.gap-5.flex-wrap',
+          {
+            style: {
+              ...(equippedFrame
+                ? {
+                  border: `2px solid ${equippedFrame.item?.metadata?.color ?? '#22e1ff'}`,
+                  boxShadow: `0 0 24px ${equippedFrame.item?.metadata?.color ?? '#22e1ff'}55`,
+                }
+                : {}),
+              ...effectScene?.heroStyle,
             },
-            profile.avatar_url ? [] : [initials(profile.display_name, profile.email)]
-          ),
-          h('div.flex.flex-col.gap-1.min-w-0.flex-1', {}, [
-            h('h1.text-3xl.font-semibold.heading-grad.truncate', {}, [
-              shortName(profile.display_name, profile.email),
+          },
+          [
+            // Avatar with equipped frame effect
+            h(
+              'div.relative.w-24.h-24.rounded-2xl.flex.items-center.justify-center.text-3xl.font-bold.shrink-0',
+              {
+                style: {
+                  background: profile.avatar_url
+                    ? `center/cover no-repeat url(${profile.avatar_url})`
+                    : 'linear-gradient(145deg,#1a1e2a,#0a0d14)',
+                  border: `2px solid ${equippedFrame ? (equippedFrame.item?.metadata?.color ?? '#22e1ff') : 'rgba(255,255,255,0.1)'}`,
+                  boxShadow: equippedFrame
+                    ? `0 0 16px ${equippedFrame.item?.metadata?.color ?? '#22e1ff'}88`
+                    : 'none',
+                },
+              },
+              profile.avatar_url ? [] : [initials(profile.display_name, profile.email)]
+            ),
+            h('div.flex.flex-col.gap-1.min-w-0.flex-1', {}, [
+              h('h1.text-3xl.font-semibold.heading-grad.truncate', {
+                style: effectScene?.titleStyle ?? {},
+              }, [
+                shortName(profile.display_name, profile.email),
+              ]),
+              equippedTitle
+                ? h('div.text-sm.font-mono', { style: { color: ITEM_RARITY[equippedTitle.item.rarity].color } }, [
+                    equippedTitle.item?.metadata?.text ?? equippedTitle.item?.name,
+                  ])
+                : h('div.text-xs.text-muted', {}, ['No title equipped']),
+              equippedBadges.length > 0
+                ? h('div.flex.gap-1.mt-2.flex-wrap', {},
+                    equippedBadges.map((b) => badgeChip(b.item)))
+                : null,
+              h('div.text-[10px].text-muted.mt-1', {}, [
+                `Joined ${new Date(profile.created_at).toLocaleDateString()}`,
+              ]),
             ]),
-            equippedTitle
-              ? h('div.text-sm.font-mono', { style: { color: ITEM_RARITY[equippedTitle.item.rarity].color } }, [
-                  equippedTitle.item?.metadata?.text ?? equippedTitle.item?.name,
-                ])
-              : h('div.text-xs.text-muted', {}, ['No title equipped']),
-            equippedBadges.length > 0
-              ? h('div.flex.gap-1.mt-2.flex-wrap', {},
-                  equippedBadges.map((b) => badgeChip(b.item)))
-              : null,
-            h('div.text-[10px].text-muted.mt-1', {}, [
-              `Joined ${new Date(profile.created_at).toLocaleDateString()}`,
-            ]),
-          ]),
-        ]
-      ),
+          ]
+        ),
 
-      // Stats grid
-      h('div.grid.grid-cols-2.md:grid-cols-4.gap-3', {}, [
-        stat('Credits', formatCredits(profile.credits), '#22e1ff'),
-        stat('Peak credits', formatCredits(profile.peak_credits ?? 0), '#ffd96b'),
-        stat('Wagered total', formatCredits(profile.total_wagered ?? 0), '#b06bff'),
-        stat('Won total', formatCredits(profile.total_won ?? 0), '#3ddc7e'),
+        // Stats grid
+        h('div.grid.grid-cols-2.md:grid-cols-4.gap-3', {}, [
+          stat('Credits', formatCredits(profile.credits), '#22e1ff'),
+          stat('Peak credits', formatCredits(profile.peak_credits ?? 0), '#ffd96b'),
+          stat('Wagered total', formatCredits(profile.total_wagered ?? 0), '#b06bff'),
+          stat('Won total', formatCredits(profile.total_won ?? 0), '#3ddc7e'),
+        ]),
+
+        // Collection
+        h('div.flex.flex-col.gap-4', {
+          style: effectScene?.sectionStyle ?? {},
+        }, [
+          collectionView(inventory),
+        ]),
       ]),
-
-      // Collection
-      collectionView(inventory),
     ]);
   }
 
@@ -212,7 +239,6 @@ function collectionView(inventory) {
   }
 
   return h('div.flex.flex-col.gap-4', {}, [
-    h('h2.text-xl.font-semibold.heading-grad', {}, ['Collection']),
     ...CATEGORIES
       .filter((c) => byCat[c]?.length)
       .map((cat) =>
@@ -234,16 +260,20 @@ function collectionView(inventory) {
 function itemTile(row) {
   const item = row.item;
   const meta = ITEM_RARITY[item?.rarity] ?? ITEM_RARITY.common;
+  const visual = getCollectibleVisual(item);
+  const icon = item?.metadata?.emoji ?? CATEGORY_ICON[item?.category] ?? '❔';
+  const effectLayers = visual.isEffect ? renderEffectLayers(item, visual) : null;
   return h(
     'div.relative.rounded-xl.p-3.flex.flex-col.gap-1.items-center.text-center',
     {
       style: {
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))',
-        border: `1px solid ${meta.color}55`,
-        boxShadow: `inset 0 0 12px ${meta.glow}22`,
+        background: visual.background,
+        border: visual.border,
+        boxShadow: visual.shadow,
       },
     },
     [
+      effectLayers,
       row.qty > 1
         ? h('span.absolute.top-1.right-1.text-[10px].font-mono.px-1.rounded', {
             style: { background: 'rgba(0,0,0,0.5)', color: '#fff' },
@@ -256,18 +286,74 @@ function itemTile(row) {
         : null,
       item?.image_url
         ? h('img', {
-            src: item.image_url, alt: item.name,
-            style: { width: '48px', height: '48px', objectFit: 'contain' },
+            src: item.image_url,
+            alt: item.name,
+            style: {
+              width: '48px',
+              height: '48px',
+              objectFit: 'contain',
+              marginTop: '10px',
+              filter: visual.isEffect ? `drop-shadow(0 0 14px ${visual.accent}aa)` : 'none',
+              animation: visual.isEffect ? `${visual.floatAnimation} ${Math.max(1.8, 3.2 - visual.intensity * 0.6)}s ease-in-out infinite` : undefined,
+            },
           })
-        : h('span.text-3xl', {}, [item?.metadata?.emoji ?? categoryIcon(item?.category)]),
+        : h('span.text-3xl.mt-2', {
+            style: visual.isEffect
+              ? {
+                  filter: `drop-shadow(0 0 14px ${visual.accent}cc)`,
+                  animation: `${visual.floatAnimation} ${Math.max(1.8, 3.0 - visual.intensity * 0.6)}s ease-in-out infinite`,
+                }
+              : {},
+          }, [icon]),
       h('span.text-xs.font-semibold.leading-tight.line-clamp-2', {
-        style: { color: meta.color },
+        style: { color: visual.accent, textShadow: visual.titleShadow },
       }, [item?.name ?? 'Unknown item']),
       h('span.text-[9px].uppercase.tracking-widest.text-muted', {}, [meta.label]),
     ]
   );
 }
 
-function categoryIcon(c) {
-  return { badge: '🏅', frame: '🖼️', title: '📜', effect: '✨', trophy: '🏆' }[c] ?? '❔';
+function renderEffectLayers(item, visual) {
+  const rings = buildCollectibleRings(item).map((ring, index) =>
+    h('span.absolute.pointer-events-none.rounded-2xl', {
+      style: {
+        inset: `${10 + index * 3}%`,
+        border: `1px solid ${ring.accent}55`,
+        boxShadow: `0 0 18px ${ring.accent}30`,
+        opacity: ring.opacity,
+        animation: `${visual.ringAnimation} ${ring.duration}s linear ${ring.delay}s infinite`,
+      },
+    }, [])
+  );
+
+  const particles = buildCollectibleParticles(item).map((particle, index) =>
+    h('span.absolute.pointer-events-none.flex.items-center.justify-center.text-[10px].font-bold', {
+      style: {
+        left: particle.left,
+        top: particle.top,
+        width: `${particle.size}px`,
+        height: `${particle.size}px`,
+        color: particle.accent,
+        textShadow: `0 0 10px ${particle.accent}aa`,
+        animation: `${visual.sparkleAnimation} ${particle.duration}s ease-in-out ${particle.delay}s infinite`,
+        opacity: 0.9,
+      },
+    }, [index % 2 === 0 ? particle.glyph : '·'])
+  );
+
+  return h('div.absolute.inset-0.pointer-events-none.overflow-hidden.rounded-xl', {
+    style: {
+      background: `radial-gradient(circle at 50% 18%, ${visual.accent}18, transparent 58%)`,
+      animation: `${visual.auraAnimation} ${Math.max(2.2, 4.2 - visual.intensity)}s ease-in-out infinite`,
+    },
+  }, [
+    h('div.absolute.inset-[12%].rounded-[1rem].pointer-events-none', {
+      style: {
+        border: `1px solid ${visual.accent}22`,
+        boxShadow: `inset 0 0 18px ${visual.accent}22`,
+      },
+    }, []),
+    ...rings,
+    ...particles,
+  ]);
 }

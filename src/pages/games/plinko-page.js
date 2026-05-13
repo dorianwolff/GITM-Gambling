@@ -142,7 +142,6 @@ export function renderPlinko() {
       const settled = await settlePlinkoBatch(batch.batchId, batch.landedBins);
       const results = Array.isArray(settled) && settled.length > 0 ? settled : batch.localResults;
       const finalBalance = results[results.length - 1]?.newBalance;
-      if (typeof finalBalance === 'number') patchProfile({ credits: finalBalance });
 
       const totalPay = results.reduce((s, r) => s + r.payout, 0);
       const profit   = totalPay - batch.total;
@@ -163,6 +162,10 @@ export function renderPlinko() {
 
       resultEl.textContent = '';
       resultEl.className = 'hidden';
+
+      await new Promise((resolve) => setTimeout(resolve, profit > 0 ? (bestMult >= 20 ? 1450 : 1150) : 900));
+
+      if (typeof finalBalance === 'number') patchProfile({ credits: finalBalance });
 
       batch.revealed = true;
       pendingBatches.delete(batch.id);

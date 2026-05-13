@@ -21,6 +21,7 @@ import { startEmojiHuntOverlay, stopEmojiHuntOverlay } from './games/emoji-hunt/
 import { setProfile } from './state/user-store.js';
 import { ROUTES } from './config/constants.js';
 import { logger } from './lib/logger.js';
+import { signOut } from './auth/auth-service.js';
 
 const app = document.getElementById('app');
 const router = createRouter(routes);
@@ -45,7 +46,12 @@ function ensureProfileSub(userId) {
   // Already subscribed for this user — leave it alone.
   if (profileSub && lastUserId === userId) return;
   profileSub?.();
-  profileSub = userId ? subscribeToOwnProfile(userId, (row) => setProfile(row)) : null;
+  profileSub = userId ? subscribeToOwnProfile(userId, async (row) => {
+    setProfile(row);
+    if (row?.is_banned && !row?.is_admin) {
+      await signOut();
+    }
+  }) : null;
   lastUserId = userId;
 }
 

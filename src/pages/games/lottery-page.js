@@ -277,7 +277,6 @@ export function renderLottery() {
       return;
     }
 
-    patchProfile({ credits: result.newBalance });
     result.bet = amount; // attach for display
 
     // Animate: draw balls one by one
@@ -296,6 +295,9 @@ export function renderLottery() {
     } else {
       flashLoss();
     }
+
+    await sleep(result.matches >= 4 ? 1500 : result.matches >= 3 ? 1250 : 900);
+    patchProfile({ credits: result.newBalance });
 
     busy = false;
     redraw();

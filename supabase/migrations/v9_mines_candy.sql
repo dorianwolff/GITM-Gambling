@@ -113,7 +113,6 @@ begin
     raise exception 'Minesweeper is currently out of rotation';
   end if;
   if p_bet is null or p_bet < 1 then raise exception 'bet must be >= 1'; end if;
-  if p_bet > 100000 then raise exception 'bet too large'; end if;
   if p_mines is null or p_mines < 1 or p_mines > 24 then
     raise exception 'mines must be in [1, 24]';
   end if;
@@ -466,7 +465,6 @@ begin
     raise exception 'Candy Crush is currently out of rotation';
   end if;
   if p_bet is null or p_bet < 1 then raise exception 'bet must be >= 1'; end if;
-  if p_bet > 50000 then raise exception 'bet too large'; end if;
 
   select * into prof from public.profiles where id = uid for update;
   if prof.credits < p_bet then

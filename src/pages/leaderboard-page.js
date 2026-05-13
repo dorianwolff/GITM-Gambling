@@ -173,6 +173,8 @@ function secondaryLine(r, board) {
   switch (board.id) {
     case 'credits':
       return `Wagered ${formatCredits(r.total_wagered ?? 0)} · Won ${formatCredits(r.total_won ?? 0)}`;
+    case 'weekly':
+      return `Current balance ${formatCredits(r.credits ?? 0)} · Resets every Monday morning`;
     case 'peak':
       return `Now ${formatCredits(r.credits ?? 0)} · Won ${formatCredits(r.total_won ?? 0)}`;
     case 'biggest':

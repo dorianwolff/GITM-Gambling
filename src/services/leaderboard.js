@@ -28,6 +28,16 @@ export const LEADERBOARDS = [
     icon:     '💰',
   },
   {
+    id:       'weekly',
+    label:    'Weekly credits',
+    blurb:    'Who earned the most credits this week. Resets every Monday morning.',
+    view:     'v_lb_weekly_credits',
+    valueKey: 'value',
+    suffix:   'cr',
+    accent:   '#3ddc7e',
+    icon:     '📆',
+  },
+  {
     id:       'peak',
     label:    'Peak credits',
     blurb:    'Highest balance anyone has ever hit. Whales only.',

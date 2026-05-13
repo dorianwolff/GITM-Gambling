@@ -31,6 +31,7 @@ const ROTATING = {
   mines:     { title: 'Mines',     desc: 'Pick safe tiles, stack multiplier, cash out before the boom.', icon: '💣', grad: 'from-accent-rose/40 to-accent-amber/40' },
   candy:     { title: 'Candy',     desc: 'Match-3 cascades. Chain clears for runaway payouts.',         icon: '🍬', grad: 'from-accent-magenta/40 to-accent-lime/40' },
   plinko:    { title: 'Plinko',    desc: 'Drop through pegs, land in a multiplier. Pure tension.',      icon: '🔴', grad: 'from-accent-cyan/40 to-accent-rose/40' },
+  pinball:   { title: 'Pinball',   desc: 'Futuristic flipper chaos with three random tables.',          icon: '🛸', grad: 'from-accent-lime/40 to-accent-magenta/40' },
   lottery:   { title: 'Neon Lotto', desc: 'Pick 5 lucky numbers. Match drawn balls for up to 8,000×.',   icon: '🎱', grad: 'from-accent-lime/40 to-accent-violet/40' },
   warfront:  { title: 'Warfront',  desc: 'Draft a 6-unit army, beat the enemy, and cash out by difficulty.', icon: '⚔️', grad: 'from-accent-amber/40 to-accent-violet/40' },
 };
@@ -110,7 +111,7 @@ export function renderGamesHub(ctx) {
       ]),
 
       h('p.text-[11px].text-muted.max-w-3xl', {}, [
-        'House edges: dice/crash/plinko ~3% · coinflip 2.5% · roulette 2.7% · blackjack varies by play · cases tier-dependent · gacha ~5%. Every roll, card and pull is decided server-side.',
+        'House edges: dice/crash/plinko ~3% · coinflip 2.5% · roulette 2.7% · blackjack varies by play · cases tier-dependent · gacha ~5% · pinball is tuned to be high-variance and mostly negative EV. Every roll, card and pull is decided server-side.',
       ]),
     ]);
   }

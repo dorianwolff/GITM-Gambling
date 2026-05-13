@@ -83,7 +83,6 @@ export function renderRoulette() {
 
     try {
       const r = await playRoulette(bets);
-      patchProfile({ credits: r.newBalance });
 
       // Visual spin BEFORE revealing outcome
       await spinWheel(r.roll);
@@ -110,6 +109,13 @@ export function renderRoulette() {
         // Total wipe — light sting, the wheel itself already telegraphs it.
         flashLoss();
       }
+
+      const balanceDelay = r.totalPayout > r.totalWager
+        ? ((r.totalPayout / Math.max(1, r.totalWager)) >= 10 ? 1700 : 1350)
+        : 900;
+      await sleep(balanceDelay);
+
+      patchProfile({ credits: r.newBalance });
     } catch (e) {
       toastError(e.message);
     } finally {
@@ -171,19 +177,47 @@ export function renderRoulette() {
           slipPanel(bets, removeBet, currentWager()),
           h('div.grid.grid-cols-2.gap-2', {}, [
             h(
-              'button.btn-ghost.h-10',
-              { onclick: clearBets, disabled: busy || !bets.length },
+              'button.h-10.rounded-xl.font-mono.text-xs.uppercase.tracking-[0.25em].transition-all',
+              {
+                onclick: clearBets,
+                disabled: busy || !bets.length,
+                style: {
+                  background: 'linear-gradient(180deg, rgba(255,59,107,0.10), rgba(255,59,107,0.04))',
+                  border: '1px solid rgba(255,59,107,0.24)',
+                  boxShadow: '0 0 14px rgba(255,59,107,0.08), inset 0 0 10px rgba(255,255,255,0.03)',
+                  color: '#ff7f9d',
+                },
+              },
               ['Clear']
             ),
             h(
-              'button.btn-ghost.h-10',
-              { onclick: repeatLast, disabled: busy || !lastBets.length },
+              'button.h-10.rounded-xl.font-mono.text-xs.uppercase.tracking-[0.25em].transition-all',
+              {
+                onclick: repeatLast,
+                disabled: busy || !lastBets.length,
+                style: {
+                  background: 'linear-gradient(180deg, rgba(34,225,255,0.12), rgba(176,107,255,0.08))',
+                  border: '1px solid rgba(34,225,255,0.28)',
+                  boxShadow: '0 0 16px rgba(34,225,255,0.10), inset 0 0 10px rgba(255,255,255,0.03)',
+                  color: '#baf7ff',
+                },
+              },
               ['Repeat last']
             ),
           ]),
           h(
-            'button.btn-primary.h-12.w-full.text-base',
-            { onclick: spin, disabled: busy || !bets.length },
+            'button.h-12.w-full.rounded-2xl.font-mono.text-base.font-bold.uppercase.tracking-[0.22em].transition-all',
+            {
+              onclick: spin,
+              disabled: busy || !bets.length,
+              style: {
+                background: 'linear-gradient(90deg, rgba(34,225,255,0.95), rgba(176,107,255,0.95))',
+                border: '1px solid rgba(255,255,255,0.14)',
+                boxShadow: '0 0 24px rgba(34,225,255,0.25), 0 0 40px rgba(176,107,255,0.18), inset 0 0 16px rgba(255,255,255,0.08)',
+                color: '#08101f',
+                textShadow: 'none',
+              },
+            },
             [busy ? 'Spinning…' : `Spin · ${formatCredits(currentWager())} cr`]
           ),
         ]),
@@ -383,21 +417,22 @@ function tableView({ bets, addBet, removeBet, lastWinning }) {
     const placed = bets
       .filter((b) => b.type === type && String(b.value) === String(value ?? ''))
       .reduce((s, b) => s + b.amount, 0);
+    const tone = outsideTone(type);
     return h(
-      'button.relative.h-10.text-xs.font-semibold.uppercase.tracking-widest.text-white.transition-transform.hover:scale-105',
+      'button.relative.min-h-[68px].rounded-2xl.px-3.py-2.text-xs.font-semibold.uppercase.tracking-[0.18em].transition-transform.hover:scale-105.flex.flex-col.items-center.justify-center.gap-1',
       {
         onclick: () => addBet(type, value ?? ''),
         style: {
-          background: 'linear-gradient(180deg, #102612, #0a1c0e)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 4,
+          background: tone.background,
+          border: tone.border,
+          boxShadow: tone.shadow,
+          color: tone.color,
+          textShadow: tone.textShadow,
         },
       },
       [
-        h('div.flex.flex-col.items-center.justify-center.leading-tight', {}, [
-          h('span', {}, [label]),
-          sub ? h('span.text-[9px].text-muted.normal-case.tracking-normal', {}, [sub]) : null,
-        ]),
+        h('span', {}, [label]),
+        sub ? h('span.text-[9px].normal-case.tracking-normal.opacity-80', {}, [sub]) : null,
         placed > 0 ? chipMark(placed) : null,
       ]
     );
@@ -480,22 +515,18 @@ function tableView({ bets, addBet, removeBet, lastWinning }) {
   // Outside bets: dozens row, then even-money row. Both rows share the
   // same min-width as the grid above so they line up under it inside the
   // horizontal scroller.
-  const dozensRow = h('div.flex.gap-1.px-3', { style: { minWidth: '640px' } }, [
-    h('div.w-[46px].shrink-0', {}, []),
-    h('div.flex-1', {}, [outsideCell('1st 12', 'dozen', 1, 'Pays 2:1')]),
-    h('div.flex-1', {}, [outsideCell('2nd 12', 'dozen', 2, 'Pays 2:1')]),
-    h('div.flex-1', {}, [outsideCell('3rd 12', 'dozen', 3, 'Pays 2:1')]),
-    h('div.w-[56px].shrink-0', {}, []),
+  const dozensRow = h('div.grid.grid-cols-3.gap-2.px-3', { style: { minWidth: '640px' } }, [
+    h('div', {}, [outsideCell('1st 12', 'dozen', 1, 'Pays 2:1')]),
+    h('div', {}, [outsideCell('2nd 12', 'dozen', 2, 'Pays 2:1')]),
+    h('div', {}, [outsideCell('3rd 12', 'dozen', 3, 'Pays 2:1')]),
   ]);
-  const evensRow = h('div.flex.gap-1.px-3.pb-3', { style: { minWidth: '640px' } }, [
-    h('div.w-[46px].shrink-0', {}, []),
-    h('div.flex-1', {}, [outsideCell('1–18', 'low', '', 'Pays 1:1')]),
-    h('div.flex-1', {}, [outsideCell('Even', 'even', '', 'Pays 1:1')]),
-    h('div.flex-1', {}, [outsideCell('Red', 'red', '', 'Pays 1:1')]),
-    h('div.flex-1', {}, [outsideCell('Black', 'black', '', 'Pays 1:1')]),
-    h('div.flex-1', {}, [outsideCell('Odd', 'odd', '', 'Pays 1:1')]),
-    h('div.flex-1', {}, [outsideCell('19–36', 'high', '', 'Pays 1:1')]),
-    h('div.w-[56px].shrink-0', {}, []),
+  const evensRow = h('div.grid.grid-cols-6.gap-2.px-3.pb-3', { style: { minWidth: '640px' } }, [
+    h('div', {}, [outsideCell('1–18', 'low', '', 'Pays 1:1')]),
+    h('div', {}, [outsideCell('Even', 'even', '', 'Pays 1:1')]),
+    h('div', {}, [outsideCell('Red', 'red', '', 'Pays 1:1')]),
+    h('div', {}, [outsideCell('Black', 'black', '', 'Pays 1:1')]),
+    h('div', {}, [outsideCell('Odd', 'odd', '', 'Pays 1:1')]),
+    h('div', {}, [outsideCell('19–36', 'high', '', 'Pays 1:1')]),
   ]);
 
   return h(
@@ -505,11 +536,87 @@ function tableView({ bets, addBet, removeBet, lastWinning }) {
   );
 }
 
+function outsideTone(type) {
+  switch (type) {
+    case 'red':
+      return {
+        background: 'linear-gradient(180deg, rgba(255,59,107,0.22), rgba(92,9,30,0.94))',
+        border: '1px solid rgba(255,59,107,0.32)',
+        shadow: '0 0 16px rgba(255,59,107,0.18), inset 0 0 16px rgba(255,255,255,0.04)',
+        color: '#ffd9df',
+        textShadow: '0 0 10px rgba(255,59,107,0.45)',
+      };
+    case 'black':
+      return {
+        background: 'linear-gradient(180deg, rgba(44,44,59,0.96), rgba(6,7,12,0.98))',
+        border: '1px solid rgba(255,255,255,0.08)',
+        shadow: '0 0 14px rgba(0,0,0,0.28), inset 0 0 16px rgba(255,255,255,0.03)',
+        color: '#f3f5ff',
+        textShadow: '0 0 8px rgba(255,255,255,0.2)',
+      };
+    case 'odd':
+      return {
+        background: 'linear-gradient(180deg, rgba(176,107,255,0.20), rgba(30,11,54,0.96))',
+        border: '1px solid rgba(176,107,255,0.28)',
+        shadow: '0 0 16px rgba(176,107,255,0.16), inset 0 0 16px rgba(255,255,255,0.04)',
+        color: '#f2e7ff',
+        textShadow: '0 0 10px rgba(176,107,255,0.35)',
+      };
+    case 'even':
+      return {
+        background: 'linear-gradient(180deg, rgba(34,225,255,0.18), rgba(10,22,42,0.96))',
+        border: '1px solid rgba(34,225,255,0.28)',
+        shadow: '0 0 16px rgba(34,225,255,0.14), inset 0 0 16px rgba(255,255,255,0.04)',
+        color: '#d8fbff',
+        textShadow: '0 0 10px rgba(34,225,255,0.35)',
+      };
+    case 'low':
+    case 'high':
+      return {
+        background: 'linear-gradient(180deg, rgba(61,220,126,0.18), rgba(7,22,12,0.96))',
+        border: '1px solid rgba(61,220,126,0.26)',
+        shadow: '0 0 16px rgba(61,220,126,0.12), inset 0 0 16px rgba(255,255,255,0.04)',
+        color: '#d8ffe9',
+        textShadow: '0 0 10px rgba(61,220,126,0.3)',
+      };
+    case 'dozen':
+    case 'column':
+      return {
+        background: 'linear-gradient(180deg, rgba(255,217,107,0.18), rgba(36,21,8,0.96))',
+        border: '1px solid rgba(255,217,107,0.24)',
+        shadow: '0 0 16px rgba(255,217,107,0.14), inset 0 0 16px rgba(255,255,255,0.04)',
+        color: '#fff3bf',
+        textShadow: '0 0 10px rgba(255,217,107,0.3)',
+      };
+    default:
+      return {
+        background: 'linear-gradient(180deg, rgba(16,38,18,0.96), rgba(10,28,14,0.96))',
+        border: '1px solid rgba(255,255,255,0.08)',
+        shadow: '0 0 12px rgba(0,0,0,0.25), inset 0 0 12px rgba(255,255,255,0.03)',
+        color: '#fff',
+        textShadow: '0 0 8px rgba(255,255,255,0.14)',
+      };
+  }
+}
+
 function chipMark(amount) {
   return h(
-    'span.absolute.right-1.top-1.bg-accent-amber.text-[#0a0a0a].text-[9px].font-bold.font-mono.rounded-full.px-1.5.py-0.5.shadow',
-    { style: { boxShadow: '0 0 6px rgba(255,179,71,0.6)' } },
-    [formatCredits(amount)]
+    'span.absolute.right-1.top-1.inline-flex.items-center.justify-center.rounded-full.font-mono.font-black.text-[9px].leading-none',
+    {
+      style: {
+        width: '28px',
+        height: '28px',
+        color: '#0a1120',
+        background: 'radial-gradient(circle at 30% 28%, #fff7cf 0%, #ffd96b 24%, #c87f16 76%, #7a4410 100%)',
+        border: '1px solid rgba(255,255,255,0.22)',
+        boxShadow: '0 0 12px rgba(255,217,107,0.65), inset 0 0 0 2px rgba(255,255,255,0.22)',
+        textShadow: 'none',
+      },
+    },
+    [
+      h('span.absolute.inset-1.rounded-full.border.border-white/25', { style: { boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.18)' } }, []),
+      h('span.relative.z-10', {}, [formatCredits(amount)]),
+    ]
   );
 }
 
@@ -518,8 +625,16 @@ function chipMark(amount) {
 // ---------------------------------------------------------------------------
 
 function chipPicker(current, onPick) {
-  return h('div.glass.neon-border.p-4.flex.flex-col.gap-3', {}, [
-    h('h3.text-sm.text-muted.uppercase.tracking-widest', {}, ['Chip']),
+  return h('div.glass.neon-border.p-4.flex.flex-col.gap-3', {
+    style: {
+      background: 'linear-gradient(180deg, rgba(10,12,24,0.94), rgba(12,15,28,0.88))',
+      boxShadow: '0 0 0 1px rgba(34,225,255,0.08), 0 0 30px rgba(176,107,255,0.14)',
+    },
+  }, [
+    h('div.flex.items-center.justify-between.gap-2', {}, [
+      h('h3.text-sm.uppercase.tracking-widest.text-accent-cyan', {}, ['Chip']),
+      h('span.text-[10px].font-mono.text-muted.uppercase.tracking-[0.25em]', {}, ['Neon stack']),
+    ]),
     h(
       'div.grid.grid-cols-5.gap-2',
       {},
@@ -530,9 +645,14 @@ function chipPicker(current, onPick) {
           {
             onclick: () => onPick(v),
             style: {
-              background: chipGradient(v),
-              border: sel ? '2px solid #22e1ff' : '2px dashed rgba(255,255,255,0.25)',
-              boxShadow: sel ? '0 0 12px rgba(34,225,255,0.6)' : 'inset 0 0 6px rgba(0,0,0,0.3)',
+              background: sel
+                ? `radial-gradient(circle at 30% 28%, rgba(255,255,255,0.25), transparent 34%), ${chipGradient(v)}`
+                : `radial-gradient(circle at 30% 28%, rgba(255,255,255,0.10), transparent 34%), ${chipGradient(v)}`,
+              border: sel ? '2px solid #22e1ff' : '1px solid rgba(255,255,255,0.16)',
+              boxShadow: sel
+                ? '0 0 18px rgba(34,225,255,0.65), inset 0 0 12px rgba(255,255,255,0.14)'
+                : '0 0 12px rgba(0,0,0,0.25), inset 0 0 10px rgba(255,255,255,0.08)',
+              textShadow: sel ? '0 0 10px rgba(34,225,255,0.9)' : '0 0 6px rgba(255,255,255,0.25)',
             },
           },
           [String(v)]
@@ -551,9 +671,14 @@ function chipGradient(v) {
 }
 
 function slipPanel(bets, removeBet, totalWager) {
-  return h('div.glass.neon-border.p-4.flex.flex-col.gap-2', {}, [
+  return h('div.glass.neon-border.p-4.flex.flex-col.gap-2', {
+    style: {
+      background: 'linear-gradient(180deg, rgba(9,11,21,0.94), rgba(12,15,29,0.88))',
+      boxShadow: '0 0 0 1px rgba(176,107,255,0.10), 0 0 24px rgba(34,225,255,0.08)',
+    },
+  }, [
     h('div.flex.items-center.justify-between', {}, [
-      h('h3.text-sm.text-muted.uppercase.tracking-widest', {}, ['Bet slip']),
+      h('h3.text-sm.uppercase.tracking-widest.text-accent-lime', {}, ['Bet slip']),
       h('span.text-xs.text-muted.font-mono', {}, [
         `${bets.length} ${bets.length === 1 ? 'bet' : 'bets'} · ${formatCredits(totalWager)} cr`,
       ]),
@@ -564,7 +689,12 @@ function slipPanel(bets, removeBet, totalWager) {
           'div.flex.flex-col.gap-1.max-h-60.overflow-auto',
           {},
           bets.map((b) =>
-            h('div.flex.items-center.justify-between.text-xs.glass.p-2', {}, [
+            h('div.flex.items-center.justify-between.text-xs.rounded-xl.p-2.border.border-white/5', {
+              style: {
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02))',
+                boxShadow: 'inset 0 0 12px rgba(0,0,0,0.28)',
+              },
+            }, [
               h('div.flex.flex-col.leading-tight', {}, [
                 h('span.font-mono.text-white', {}, [betLabel(b)]),
                 h('span.text-[10px].text-muted', {}, [`pays ${betPayout(b)}×`]),
@@ -572,8 +702,8 @@ function slipPanel(bets, removeBet, totalWager) {
               h('div.flex.items-center.gap-2', {}, [
                 h('span.font-mono.text-accent-cyan', {}, [`${formatCredits(b.amount)}`]),
                 h(
-                  'button.text-muted.hover:text-accent-rose.text-base.leading-none',
-                  { onclick: () => removeBet(b.id) },
+                  'button.w-7.h-7.rounded-full.border.border-white/10.text-white/70.hover:text-accent-rose.transition',
+                  { onclick: () => removeBet(b.id), style: { background: 'rgba(255,255,255,0.03)' } },
                   ['×']
                 ),
               ]),

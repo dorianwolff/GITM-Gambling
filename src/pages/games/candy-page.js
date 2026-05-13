@@ -78,7 +78,6 @@ export function renderCandy(ctx) {
       return toastError(e.message);
     }
 
-    patchProfile({ credits: result.newBalance });
     lastCascades = result.cascades;
 
     // Replay snapshots.
@@ -129,6 +128,13 @@ export function renderCandy(ctx) {
     } else {
       flashLoss({ label: `−${formatCredits(bet)} cr` });
     }
+
+    await new Promise((resolve) => setTimeout(
+      resolve,
+      result.payout > bet * 2 ? 1450 : (result.payout > bet ? 1200 : 900)
+    ));
+
+    patchProfile({ credits: result.newBalance });
 
     busy = false;
     redraw();

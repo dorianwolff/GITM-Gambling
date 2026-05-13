@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase.js';
 import { logger } from '../lib/logger.js';
 import { userStore, setUser, setProfile, clearUser } from '../state/user-store.js';
 import { fetchOrCreateProfile } from '../services/profile-service.js';
+import { signOut } from './auth-service.js';
 import { isAllowedDomain } from '../utils/validation.js';
 import { env } from '../config/env.js';
 
@@ -49,6 +50,12 @@ async function applySession(session) {
   setUser(user);
   try {
     const profile = await fetchOrCreateProfile(user);
+    if (profile?.is_banned && !profile?.is_admin) {
+      logger.warn('signing out suspended user', user.id);
+      await signOut();
+      clearUser();
+      return;
+    }
     setProfile(profile);
   } catch (e) {
     logger.error('failed to load profile', e);

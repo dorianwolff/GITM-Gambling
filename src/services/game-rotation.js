@@ -24,6 +24,7 @@ export const GAME_ID_TO_ROUTE = Object.freeze({
   mines:     ROUTES.MINES,
   candy:     ROUTES.CANDY,
   plinko:    ROUTES.PLINKO,
+  pinball:   ROUTES.PINBALL,
   lottery:   ROUTES.LOTTERY,
   warfront:  ROUTES.WARFRONT,
 });

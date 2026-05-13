@@ -82,6 +82,8 @@ export function renderGacha(ctx) {
   let cascading = false;
   let uniques = [];
   let uniquesLoading = true;
+  let pendingBalance = null;
+  let pendingBalanceTimer = null;
 
   // The reveal order used by "flip all": indexes into `hand`, sorted so
   // the highest-rarity card is flipped LAST. Recomputed each pull.
@@ -122,6 +124,11 @@ export function renderGacha(ctx) {
     hand = [];
     revealOrder = [];
     redraw();
+    if (pendingBalanceTimer) {
+      clearTimeout(pendingBalanceTimer);
+      pendingBalanceTimer = null;
+    }
+    pendingBalance = null;
 
     try {
       let pulls = [];
@@ -138,7 +145,7 @@ export function renderGacha(ctx) {
 
       // Authoritative balance from the last row.
       const last = pulls[pulls.length - 1];
-      if (last) patchProfile({ credits: last.newBalance });
+      if (last) pendingBalance = last.newBalance;
 
       // Build the face-down hand in the order the server returned them.
       hand = pulls.map((p) => ({ pull: p, flipped: false }));
@@ -169,6 +176,7 @@ export function renderGacha(ctx) {
     fireFxFor(hand[idx].pull);
     if (hand[idx].pull.isUnique) refreshUniques();
     redraw();
+    queueFinalBalanceIfComplete();
   }
 
   async function flipAll() {
@@ -187,6 +195,23 @@ export function renderGacha(ctx) {
     }
     cascading = false;
     redraw();
+    queueFinalBalanceIfComplete();
+  }
+
+  function queueFinalBalanceIfComplete() {
+    if (pendingBalance == null) return;
+    if (!(hand.length > 0 && hand.every((c) => c.flipped))) return;
+    if (pendingBalanceTimer) clearTimeout(pendingBalanceTimer);
+    const bestTier = hand.reduce((max, card) => {
+      const tier = GACHA_RARITY_META[card.pull.rarity].tier;
+      return Math.max(max, tier);
+    }, 0);
+    const delay = bestTier >= 5 ? 2200 : bestTier >= 3 ? 1500 : 900;
+    pendingBalanceTimer = setTimeout(() => {
+      if (pendingBalance != null) patchProfile({ credits: pendingBalance });
+      pendingBalance = null;
+      pendingBalanceTimer = null;
+    }, delay);
   }
 
   function fireFxFor(pull) {

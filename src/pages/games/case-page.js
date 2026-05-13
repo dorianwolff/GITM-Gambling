@@ -98,7 +98,6 @@ export function renderCase(ctx) {
         const rpcPromise = openCase(selectedTier, useKey);
         await sleep(MIN_SPIN_MS);
         const result = await rpcPromise;
-        patchProfile({ credits: result.newBalance, case_pity: result.pity });
 
         // One continuous motion → cubic ease-out onto the server rarity.
         await reel.landOn(result.rarity);
@@ -108,10 +107,11 @@ export function renderCase(ctx) {
         flashToast(result.reward - result.cost, result.rarity);
         // Cosmetic drop? Fetch its metadata and show a follow-up toast.
         if (result.droppedItem) announceItemDrop(result.droppedItem);
+        await sleep(1150);
+        patchProfile({ credits: result.newBalance, case_pity: result.pity });
       } else {
         const batch = await openCaseBatch(selectedTier, useKey, count);
         const credDelta = batch.reduce((s, r) => s + r.reward, 0) - total;
-        patchProfile({ credits: (userStore.get().profile?.credits ?? 0) + credDelta });
         lastBatch = batch;
         history = [
           ...batch.slice().reverse().map((r) => ({
@@ -138,6 +138,8 @@ export function renderCase(ctx) {
             }
           }, 400);
         }
+        await sleep(1150);
+        patchProfile({ credits: (userStore.get().profile?.credits ?? 0) + credDelta });
       }
     } catch (e) {
       reel.abort();

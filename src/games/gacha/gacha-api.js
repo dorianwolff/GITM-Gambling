@@ -2,29 +2,16 @@
  * gacha-api.js
  * Thin client wrapper around the v8 `gacha_pull` and `gacha_remaining_uniques`
  * RPCs. The server is fully authoritative — this module only marshals
- * arguments/results and exposes the rarity metadata used by the UI.
+ * arguments/results and re-exports the shared collectible catalog metadata.
  */
 import { supabase } from '../../lib/supabase.js';
+import {
+  GACHA_RARITY_ORDER,
+  GACHA_RARITY_META,
+  GACHA_POOL_SPECS,
+} from '../collectibles/collectibles.js';
 
-// Rarity ladder, mirrored from the v8 gacha_pool check constraint.
-// Order matters: indexes determine sort order on the showcase strip.
-export const GACHA_RARITY_ORDER = [
-  'common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'one_of_one',
-];
-
-// Visual metadata, lifted from `RARITY_META` in the case-api but tuned for
-// the gacha wheel (hotter, more saturated for mythic+). Kept local to the
-// gacha module so the case page's tone doesn't get pulled along when we
-// inevitably tweak gacha visuals.
-export const GACHA_RARITY_META = Object.freeze({
-  common:    { label: 'Common',     color: '#9aa3b2', glow: 'rgba(154,163,178,0.55)', tier: 0 },
-  uncommon:  { label: 'Uncommon',   color: '#5ad17e', glow: 'rgba(90,209,126,0.55)',  tier: 1 },
-  rare:      { label: 'Rare',       color: '#5aa9ff', glow: 'rgba(90,169,255,0.65)',  tier: 2 },
-  epic:      { label: 'Epic',       color: '#c779ff', glow: 'rgba(199,121,255,0.7)',  tier: 3 },
-  legendary: { label: 'Legendary',  color: '#ffb347', glow: 'rgba(255,179,71,0.8)',   tier: 4 },
-  mythic:    { label: 'Mythic',     color: '#ff5dc8', glow: 'rgba(255,93,200,0.85)',  tier: 5 },
-  one_of_one:{ label: 'ONE OF ONE', color: '#ffea00', glow: 'rgba(255,234,0,0.95)',   tier: 6 },
-});
+export { GACHA_RARITY_ORDER, GACHA_RARITY_META, GACHA_POOL_SPECS };
 
 // Pull cost: keep in sync with v8 gacha_pull body.
 export const GACHA_COST_SINGLE = 100;

@@ -25,7 +25,15 @@ import {
   RARITY_ORDER,
   CATEGORY_LABEL,
   CATEGORIES,
+  CATEGORY_ICON,
 } from '../games/market/market-api.js';
+import {
+  buildCollectibleParticles,
+  buildCollectibleRings,
+  buildCollectibleBackdrop,
+  getCollectibleVisual,
+} from '../games/collectibles/collectibles.js';
+import { getProfileEffectScene } from '../games/collectibles/profile-effects/effect-scenes.js';
 import { logger } from '../lib/logger.js';
 
 export function renderProfile() {
@@ -119,6 +127,9 @@ export function renderProfile() {
     const equippedFrame = equipped.find((r) => r.item?.category === 'frame');
     const equippedTitle = equipped.find((r) => r.item?.category === 'title');
     const equippedBadges = equipped.filter((r) => r.item?.category === 'badge');
+    const activeEffect = equipped.find((r) => r.item?.category === 'effect') ?? null;
+    const backdropRows = activeEffect ? [activeEffect] : [];
+    const effectScene = getProfileEffectScene(activeEffect?.item);
 
     const nameInput = h('input.input', { value: p?.display_name ?? '', maxlength: 40 });
     const saveBtn = h(
@@ -157,85 +168,102 @@ export function renderProfile() {
       [initials(p?.display_name, p?.email)]
     );
 
-    return h('div.flex.flex-col.gap-5', {}, [
-      h('h1.text-3xl.font-semibold.heading-grad', {}, ['Profile']),
+    return h('div.relative', {
+      style: {
+        isolation: 'isolate',
+        ...effectScene?.pageStyle,
+      },
+    }, [
+      buildCollectibleBackdrop(backdropRows),
+      h('div.relative.z-10.flex.flex-col.gap-5', {}, [
+        h('h1.text-3xl.font-semibold.heading-grad', {
+          style: effectScene?.titleStyle ?? {},
+        }, ['Profile']),
 
-      // Identity + name edit
-      h('div.glass.neon-border.p-6.flex.flex-col.gap-5', {
-        style: equippedFrame ? {
-          border: `1px solid ${frameColor}55`,
-          boxShadow: `0 0 16px ${frameColor}22`,
-        } : {},
-      }, [
-        h('div.flex.items-center.gap-4.flex-wrap', {}, [
-          avatar,
-          h('div.flex.flex-col.min-w-0.flex-1', {}, [
-            h('div.text-xl.font-semibold.truncate', {}, [shortName(p?.display_name, p?.email)]),
-            equippedTitle
-              ? h('div.text-sm.font-mono', {
-                  style: {
-                    color: (ITEM_RARITY[equippedTitle.item.rarity] ?? ITEM_RARITY.common).color,
-                    textShadow: `0 0 6px ${(ITEM_RARITY[equippedTitle.item.rarity] ?? ITEM_RARITY.common).glow}`,
-                  },
-                }, [equippedTitle.item?.metadata?.text ?? equippedTitle.item?.name])
-              : h('div.text-sm.text-muted', {}, [p?.email]),
-            equippedBadges.length > 0
-              ? h('div.flex.gap-1.mt-2.flex-wrap', {}, equippedBadges.map((b) => badgeChip(b.item)))
-              : null,
-            p?.is_admin
-              ? h('span.chip.mt-2.bg-accent-magenta/20.border-accent-magenta/40.text-accent-magenta', {}, ['ADMIN'])
-              : null,
-          ]),
-        ]),
-
-        h('div.flex.flex-col.gap-2', {}, [
-          h('label.text-xs.text-muted.uppercase.tracking-widest', {}, ['Display name']),
-          nameInput,
-          h('div.flex.gap-2', {}, [saveBtn]),
-        ]),
-
-        h('div.grid.grid-cols-2.sm:grid-cols-4.gap-3.pt-4.border-t.border-white/5', {}, [
-          stat('Balance',       formatCredits(p?.credits ?? 0), 'text-accent-cyan'),
-          stat('Peak credits',  formatCredits(p?.peak_credits ?? p?.credits ?? 0), 'text-accent-amber'),
-          stat('Total wagered', formatCredits(p?.total_wagered ?? 0)),
-          stat('Total won',     formatCredits(p?.total_won ?? 0), 'text-accent-lime'),
-        ]),
-        h('div.grid.grid-cols-2.sm:grid-cols-4.gap-3', {}, [
-          stat('Biggest win', formatCredits(p?.biggest_single_win ?? 0), 'text-accent-amber'),
-          stat('Cases opened', String(p?.cases_opened ?? 0)),
-          stat('Unique items', String(p?.items_unique ?? 0), 'text-accent-cyan'),
-          stat('Total pieces', String(p?.items_total ?? 0)),
-        ]),
-
-        h('div.flex.justify-end.pt-2', {}, [
-          h('button.btn-danger.h-10', { onclick: () => signOut() }, ['Sign out']),
-        ]),
-      ]),
-
-      // Collection
-      h('div.flex.flex-col.gap-3', {}, [
-        h('div.flex.items-end.justify-between.gap-3.flex-wrap', {}, [
-          h('div', {}, [
-            h('h2.text-xl.font-semibold.heading-grad', {}, ['Your collection']),
-            h('p.text-xs.text-muted', {}, [
-              'Equip cosmetics to show them on your profile, or list duplicates in the auction house.',
+        // Identity + name edit
+        h('div.glass.neon-border.p-6.flex.flex-col.gap-5', {
+          style: {
+            ...(equippedFrame ? {
+              border: `1px solid ${frameColor}55`,
+              boxShadow: `0 0 16px ${frameColor}22`,
+            } : {}),
+            ...effectScene?.heroStyle,
+          },
+        }, [
+          h('div.flex.items-center.gap-4.flex-wrap', {}, [
+            avatar,
+            h('div.flex.flex-col.min-w-0.flex-1', {}, [
+              h('div.text-xl.font-semibold.truncate', {}, [shortName(p?.display_name, p?.email)]),
+              equippedTitle
+                ? h('div.text-sm.font-mono', {
+                    style: {
+                      color: (ITEM_RARITY[equippedTitle.item.rarity] ?? ITEM_RARITY.common).color,
+                      textShadow: `0 0 6px ${(ITEM_RARITY[equippedTitle.item.rarity] ?? ITEM_RARITY.common).glow}`,
+                    },
+                  }, [equippedTitle.item?.metadata?.text ?? equippedTitle.item?.name])
+                : h('div.text-sm.text-muted', {}, [p?.email]),
+              equippedBadges.length > 0
+                ? h('div.flex.gap-1.mt-2.flex-wrap', {}, equippedBadges.map((b) => badgeChip(b.item)))
+                : null,
+              p?.is_admin
+                ? h('span.chip.mt-2.bg-accent-magenta/20.border-accent-magenta/40.text-accent-magenta', {}, ['ADMIN'])
+                : null,
             ]),
           ]),
-          h('a.btn-ghost.h-9.px-3.text-xs', { href: '/market', 'data-link': '' }, ['Market →']),
+
+          h('div.flex.flex-col.gap-2', {}, [
+            h('label.text-xs.text-muted.uppercase.tracking-widest', {}, ['Display name']),
+            nameInput,
+            h('div.flex.gap-2', {}, [saveBtn]),
+          ]),
+
+          h('div.grid.grid-cols-2.sm:grid-cols-4.gap-3.pt-4.border-t.border-white/5', {}, [
+            stat('Balance',       formatCredits(p?.credits ?? 0), 'text-accent-cyan'),
+            stat('Peak credits',  formatCredits(p?.peak_credits ?? p?.credits ?? 0), 'text-accent-amber'),
+            stat('Total wagered', formatCredits(p?.total_wagered ?? 0)),
+            stat('Total won',     formatCredits(p?.total_won ?? 0), 'text-accent-lime'),
+          ]),
+          h('div.grid.grid-cols-2.sm:grid-cols-4.gap-3', {}, [
+            stat('Biggest win', formatCredits(p?.biggest_single_win ?? 0), 'text-accent-amber'),
+            stat('Cases opened', String(p?.cases_opened ?? 0)),
+            stat('Unique items', String(p?.items_unique ?? 0), 'text-accent-cyan'),
+            stat('Total pieces', String(p?.items_total ?? 0)),
+          ]),
+
+          h('div.flex.justify-end.pt-2', {}, [
+            h('button.btn-danger.h-10', { onclick: () => signOut() }, ['Sign out']),
+          ]),
         ]),
-        invLoading
-          ? h('div.flex.items-center.gap-3.text-muted.py-10.justify-center', {}, [spinner(), 'Loading…'])
-          : invError
-            ? h('div.glass.neon-border.p-6.text-center.text-accent-rose', {}, [invError])
-            : inventory.length === 0
-              ? h('div.glass.neon-border.p-10.text-center', {}, [
-                  h('p.text-sm.text-muted', {}, ['No items yet. Open some cases or visit the shop.']),
-                  h('div.flex.gap-2.justify-center.mt-4', {}, [
-                    h('a.btn-primary.h-10.px-4.text-sm', { href: '/games/cases', 'data-link': '' }, ['Open a case']),
-                    h('a.btn-ghost.h-10.px-4.text-sm',   { href: '/market',       'data-link': '' }, ['Browse shop']),
-                  ]),
-                ])
-              : inventoryByCategory(inventory, doEquip, doList),
+
+        // Collection
+        h('div.flex.flex-col.gap-3', {
+          style: effectScene?.sectionStyle ?? {},
+        }, [
+          h('div.flex.items-end.justify-between.gap-3.flex-wrap', {}, [
+            h('div', {}, [
+              h('h2.text-xl.font-semibold.heading-grad', {
+                style: effectScene?.titleStyle ?? {},
+              }, ['Your collection']),
+              h('p.text-xs.text-muted', {}, [
+                'Equip cosmetics to show them on your profile, or list duplicates in the auction house.',
+              ]),
+            ]),
+            h('a.btn-ghost.h-9.px-3.text-xs', { href: '/market', 'data-link': '' }, ['Market →']),
+          ]),
+          invLoading
+            ? h('div.flex.items-center.gap-3.text-muted.py-10.justify-center', {}, [spinner(), 'Loading…'])
+            : invError
+              ? h('div.glass.neon-border.p-6.text-center.text-accent-rose', {}, [invError])
+              : inventory.length === 0
+                ? h('div.glass.neon-border.p-10.text-center', {}, [
+                    h('p.text-sm.text-muted', {}, ['No items yet. Open some cases or visit the shop.']),
+                    h('div.flex.gap-2.justify-center.mt-4', {}, [
+                      h('a.btn-primary.h-10.px-4.text-sm', { href: '/games/cases', 'data-link': '' }, ['Open a case']),
+                      h('a.btn-ghost.h-10.px-4.text-sm',   { href: '/market',       'data-link': '' }, ['Browse shop']),
+                    ]),
+                  ])
+                : inventoryByCategory(inventory, doEquip, doList),
+        ]),
       ]),
     ]);
   }
@@ -294,27 +322,32 @@ function inventoryByCategory(inventory, onEquip, onList) {
             h('h3.text-sm.uppercase.tracking-widest.text-muted', {}, [CATEGORY_LABEL[cat]]),
             h('span.text-[10px].text-muted', {}, [`${byCat[cat].length} unique`]),
           ]),
-          h('div.grid.grid-cols-2.sm:grid-cols-3.md:grid-cols-4.gap-2', {},
-            byCat[cat].map((row) => tile(row, onEquip, onList))),
+          h(
+            'div.grid.grid-cols-2.sm:grid-cols-3.md:grid-cols-4.gap-2',
+            {},
+            byCat[cat].map((row) => itemTile(row, onEquip, onList))),
         ])
       )
   );
 }
 
-function tile(row, onEquip, onList) {
+function itemTile(row, onEquip, onList) {
   const item = row.item;
-  if (!item) return null;
-  const meta = ITEM_RARITY[item.rarity] ?? ITEM_RARITY.common;
+  const meta = ITEM_RARITY[item?.rarity] ?? ITEM_RARITY.common;
+  const visual = getCollectibleVisual(item);
+  const icon = item?.metadata?.emoji ?? CATEGORY_ICON[item?.category] ?? '❔';
+  const effectLayers = visual.isEffect ? renderEffectLayers(item, visual) : null;
   return h(
-    'div.relative.rounded-xl.p-3.flex.flex-col.gap-2.items-center.text-center',
+    'div.relative.rounded-xl.p-3.flex.flex-col.gap-1.items-center.text-center',
     {
       style: {
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))',
-        border: `1px solid ${meta.color}55`,
-        boxShadow: row.equipped ? `0 0 14px ${meta.glow}` : `inset 0 0 10px ${meta.glow}22`,
+        background: visual.background,
+        border: visual.border,
+        boxShadow: row.equipped ? `0 0 18px ${visual.accent}55` : visual.shadow,
       },
     },
     [
+      effectLayers,
       row.qty > 1
         ? h('span.absolute.top-1.right-1.text-[10px].font-mono.font-bold.px-1.rounded', {
             style: { background: 'rgba(0,0,0,0.7)', color: '#fff' },
@@ -327,12 +360,32 @@ function tile(row, onEquip, onList) {
         : null,
 
       item.image_url
-        ? h('img', { src: item.image_url, alt: item.name,
-            style: { width: '48px', height: '48px', objectFit: 'contain', marginTop: '10px' } })
-        : h('span.text-3xl.mt-2', {}, [item.metadata?.emoji ?? categoryEmoji(item.category)]),
+        ? h('img', {
+            src: item.image_url,
+            alt: item.name,
+            style: {
+              width: '48px',
+              height: '48px',
+              objectFit: 'contain',
+              marginTop: '10px',
+              filter: visual.isEffect ? `drop-shadow(0 0 14px ${visual.accent}aa)` : 'none',
+              animation: visual.isEffect ? `${visual.floatAnimation} ${Math.max(1.8, 3.2 - visual.intensity * 0.6)}s ease-in-out infinite` : undefined,
+            },
+          })
+        : h('span.text-3xl.mt-2', {
+            style: visual.isEffect
+              ? {
+                  filter: `drop-shadow(0 0 14px ${visual.accent}cc)`,
+                  animation: `${visual.floatAnimation} ${Math.max(1.8, 3.0 - visual.intensity * 0.6)}s ease-in-out infinite`,
+                }
+              : {},
+          }, [icon]),
 
       h('span.text-xs.font-semibold.leading-tight.line-clamp-2', {
-        style: { color: meta.color },
+        style: {
+          color: visual.accent,
+          textShadow: visual.titleShadow,
+        },
       }, [item.name]),
       h('span.text-[9px].uppercase.tracking-widest.text-muted', {}, [meta.label]),
 
@@ -358,6 +411,47 @@ function tile(row, onEquip, onList) {
   );
 }
 
-function categoryEmoji(c) {
-  return { badge: '🏅', frame: '🖼️', title: '📜', effect: '✨', trophy: '🏆' }[c] ?? '❔';
+function renderEffectLayers(item, visual) {
+  const rings = buildCollectibleRings(item).map((ring, index) =>
+    h('span.absolute.pointer-events-none.rounded-2xl', {
+      style: {
+        inset: `${10 + index * 3}%`,
+        border: `1px solid ${ring.accent}55`,
+        boxShadow: `0 0 18px ${ring.accent}30`,
+        opacity: ring.opacity,
+        animation: `${visual.ringAnimation} ${ring.duration}s linear ${ring.delay}s infinite`,
+      },
+    }, [])
+  );
+
+  const particles = buildCollectibleParticles(item).map((particle, index) =>
+    h('span.absolute.pointer-events-none.flex.items-center.justify-center.text-[10px].font-bold', {
+      style: {
+        left: particle.left,
+        top: particle.top,
+        width: `${particle.size}px`,
+        height: `${particle.size}px`,
+        color: particle.accent,
+        textShadow: `0 0 10px ${particle.accent}aa`,
+        animation: `${visual.sparkleAnimation} ${particle.duration}s ease-in-out ${particle.delay}s infinite`,
+        opacity: 0.9,
+      },
+    }, [index % 2 === 0 ? particle.glyph : '·'])
+  );
+
+  return h('div.absolute.inset-0.pointer-events-none.overflow-hidden.rounded-xl', {
+    style: {
+      background: `radial-gradient(circle at 50% 18%, ${visual.accent}18, transparent 58%)`,
+      animation: `${visual.auraAnimation} ${Math.max(2.2, 4.2 - visual.intensity)}s ease-in-out infinite`,
+    },
+  }, [
+    h('div.absolute.inset-[12%].rounded-[1rem].pointer-events-none', {
+      style: {
+        border: `1px solid ${visual.accent}22`,
+        boxShadow: `inset 0 0 18px ${visual.accent}22`,
+      },
+    }, []),
+    ...rings,
+    ...particles,
+  ]);
 }

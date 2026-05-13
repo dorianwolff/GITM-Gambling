@@ -18,7 +18,6 @@ export function validateBet(amount, balance) {
   const n = Number(amount);
   if (!Number.isFinite(n) || !Number.isInteger(n)) return 'Bet must be a whole number';
   if (n < LIMITS.MIN_BET) return `Minimum bet is ${LIMITS.MIN_BET}`;
-  if (n > LIMITS.MAX_BET) return `Maximum bet is ${LIMITS.MAX_BET}`;
   if (balance != null && n > balance) return 'Not enough credits';
   return null;
 }

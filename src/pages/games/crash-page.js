@@ -89,11 +89,6 @@ export function renderCrash() {
           return;
         }
 
-        // Force-patch the new balance immediately. Don't rely on realtime
-        // to deliver — if the websocket is dead, we still want the UI to
-        // reflect the authoritative payout the server just confirmed.
-        patchProfile({ credits: result.newBalance });
-
         // Animate up to whichever multiplier landed: cashout (win) or
         // crashPoint (loss). The animation duration is determined by the
         // curve, so visually a 1.5× round finishes faster than a 5× one.
@@ -141,7 +136,11 @@ export function renderCrash() {
           else                          flashLoss();
         }
 
-        // Re-patch in case any racing realtime event briefly overwrote.
+        await new Promise((resolve) => setTimeout(
+          resolve,
+          result.won ? 1450 : (result.crashPoint < 1.3 ? 1600 : 1000)
+        ));
+
         patchProfile({ credits: result.newBalance });
         launchBtn.disabled = false;
       },

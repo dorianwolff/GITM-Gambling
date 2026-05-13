@@ -90,7 +90,6 @@ export function renderMines(ctx) {
     busy = true; redraw();
     try {
       const r = await minesReveal(game.id, cell);
-      patchProfile({ credits: r.newBalance });
       if (r.hitMine) {
         game = {
           ...game,
@@ -116,6 +115,9 @@ export function renderMines(ctx) {
         else if (m >= 3)  flashSuccessMajor();
         else              flashSuccess();
       }
+
+      await new Promise((resolve) => setTimeout(resolve, r.hitMine ? 900 : (r.currentMulti >= 10 ? 1400 : (r.currentMulti >= 3 ? 1100 : 850))));
+      patchProfile({ credits: r.newBalance });
     } catch (e) {
       toastError(e.message);
     } finally {
@@ -130,7 +132,6 @@ export function renderMines(ctx) {
     busy = true; redraw();
     try {
       const r = await minesCashout(game.id);
-      patchProfile({ credits: r.newBalance });
       game = {
         ...game,
         status: 'cashed_out',
@@ -142,6 +143,9 @@ export function renderMines(ctx) {
       else if (m >= 3)  flashSuccessMajor({ label: `+${formatCredits(r.payout)} cr` });
       else              flashSuccess({ label: `+${formatCredits(r.payout)} cr` });
       toastSuccess(`Cashed out ${formatCredits(r.payout)} cr @ ${m.toFixed(2)}×`);
+
+      await new Promise((resolve) => setTimeout(resolve, m >= 10 ? 1450 : (m >= 3 ? 1150 : 850)));
+      patchProfile({ credits: r.newBalance });
     } catch (e) {
       toastError(e.message);
     } finally {

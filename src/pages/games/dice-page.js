@@ -201,8 +201,6 @@ export function renderDice() {
       await sleep(650);
       clearInterval(tumble);
 
-      patchProfile({ credits: result.newBalance });
-
       die.textContent = String(result.roll);
       dieEl.style.transform = 'rotate(0)';
       dieEl.style.boxShadow = result.won
@@ -237,6 +235,13 @@ export function renderDice() {
       } else {
         flashLoss();
       }
+
+      await new Promise((resolve) => setTimeout(
+        resolve,
+        result.won ? (result.payout / amount >= 5 ? 1400 : 1200) : 900
+      ));
+
+      patchProfile({ credits: result.newBalance });
 
       history = [
         { roll: result.roll, won: result.won, target, over,

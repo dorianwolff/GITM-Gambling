@@ -123,20 +123,25 @@ declare
   pool_specs jsonb := jsonb_build_array(
     -- (slug, name, category, rarity, emoji, weight, unique)
     -- Common (~52% combined)
-    jsonb_build_array('gacha_glitter_dust',     'Glitter Dust',     'effect','common',    '✨', 520, false),
-    jsonb_build_array('gacha_neon_sticker',     'Neon Sticker',     'badge', 'common',    '🟢', 520, false),
+    jsonb_build_array('gacha_glitter_dust',     'Glitter Dust',     'effect','common',    '✨', 347, false),
+    jsonb_build_array('gacha_neon_sticker',     'Neon Sticker',     'badge', 'common',    '🟢', 347, false),
+    jsonb_build_array('gacha_bubble_pop',       'Bubble Pop',       'effect','common',    '🫧', 346, false),
     -- Uncommon (~24%)
-    jsonb_build_array('gacha_pixel_frame',      'Pixel Frame',      'frame', 'uncommon',  '🟦', 240, false),
-    jsonb_build_array('gacha_lucky_clover',     'Lucky Clover',     'badge', 'uncommon',  '🍀', 240, false),
+    jsonb_build_array('gacha_pixel_frame',      'Pixel Frame',      'frame', 'uncommon',  '🟦', 160, false),
+    jsonb_build_array('gacha_lucky_clover',     'Lucky Clover',     'badge', 'uncommon',  '🍀', 160, false),
+    jsonb_build_array('gacha_meteor_shard',     'Meteor Shard',     'badge', 'uncommon',  '☄️', 160, false),
     -- Rare (~13%)
-    jsonb_build_array('gacha_holo_frame',       'Holo Frame',       'frame', 'rare',      '💠', 130, false),
-    jsonb_build_array('gacha_lightning_title',  '“Lightning”',      'title', 'rare',      '⚡', 130, false),
+    jsonb_build_array('gacha_holo_frame',       'Holo Frame',       'frame', 'rare',      '💠', 87, false),
+    jsonb_build_array('gacha_lightning_title',  '“Lightning”',      'title', 'rare',      '⚡', 87, false),
+    jsonb_build_array('gacha_orbit_token',      'Orbit Token',      'frame', 'rare',      '🪐', 86, false),
     -- Epic (~6%)
-    jsonb_build_array('gacha_chrome_frame',     'Chrome Frame',     'frame', 'epic',       '🪞', 60,  false),
-    jsonb_build_array('gacha_voidwalker_title', '“Voidwalker”',     'title', 'epic',       '🌀', 60,  false),
+    jsonb_build_array('gacha_chrome_frame',     'Chrome Frame',     'frame', 'epic',       '🪞', 40,  false),
+    jsonb_build_array('gacha_voidwalker_title', '“Voidwalker”',     'title', 'epic',       '🌀', 40,  false),
+    jsonb_build_array('gacha_prism_veil',       'Prism Veil',       'effect','epic',       '🌈', 40,  false),
     -- Legendary (~3%)
-    jsonb_build_array('gacha_solar_aura',       'Solar Aura',       'effect','legendary',  '🌞', 30,  false),
-    jsonb_build_array('gacha_cosmic_frame',     'Cosmic Frame',     'frame', 'legendary',  '🌌', 30,  false),
+    jsonb_build_array('gacha_solar_aura',       'Solar Aura',       'effect','legendary',  '🌞', 20,  false),
+    jsonb_build_array('gacha_cosmic_frame',     'Cosmic Frame',     'frame', 'legendary',  '🌌', 20,  false),
+    jsonb_build_array('gacha_lunar_crown',      'Lunar Crown',      'title', 'legendary',  '🌙', 20,  false),
     -- Mythic (~1.5%) — extremely rare but repeatable
     jsonb_build_array('gacha_phoenix_title',    '“Phoenix”',        'title', 'mythic',     '🔥', 15,  false),
     jsonb_build_array('gacha_dragonfire_aura',  'Dragonfire Aura',  'effect','mythic',     '🐉', 15,  false),
@@ -326,7 +331,7 @@ begin
     -- accumulate normally.
     insert into public.user_items (user_id, item_id, qty)
       values (uid, picked.item_id, 1)
-      on conflict (user_id, item_id) do update
+      on conflict on constraint user_items_user_id_item_id_key do update
         set qty = user_items.qty + 1;
 
     insert into public.gacha_pulls
@@ -340,7 +345,7 @@ begin
       cur_pity := 0;
     end if;
 
-    select * into it from public.market_items where id = picked.item_id;
+    select mi.* into it from public.market_items mi where mi.id = picked.item_id;
     pulls_made := pulls_made || jsonb_build_object(
       'pull_index', i,
       'item_id',    it.id,

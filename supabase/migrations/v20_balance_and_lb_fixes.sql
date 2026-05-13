@@ -143,7 +143,7 @@ begin
 
     insert into public.user_items (user_id, item_id, qty)
       values (uid, picked.item_id, 1)
-      on conflict (user_id, item_id) do update
+      on conflict on constraint user_items_user_id_item_id_key do update
         set qty = user_items.qty + 1;
 
     insert into public.gacha_pulls
@@ -159,7 +159,7 @@ begin
       cur_pity := 0;
     end if;
 
-    select * into it from public.market_items where id = picked.item_id;
+    select mi.* into it from public.market_items mi where mi.id = picked.item_id;
     pulls_made := pulls_made || jsonb_build_object(
       'pull_index', i,
       'item_id',    it.id,
@@ -480,6 +480,7 @@ on conflict (rows_count, risk, bin_index) do update set multiplier = excluded.mu
 --    landed on. Total credit delta is applied once at start (-bet*count)
 --    and once at end (+sum_payouts), keeping the transaction log tidy.
 -- ---------------------------------------------------------------------------
+drop function if exists public.play_plinko_batch(integer,integer,text,integer);
 create or replace function public.play_plinko_batch(
   p_bet   integer,
   p_rows  integer default 8,
@@ -525,7 +526,6 @@ begin
   end if;
 
   if p_bet is null or p_bet < 1 then raise exception 'bet must be >= 1'; end if;
-  if p_bet > 100000 then raise exception 'bet too large'; end if;
   if rows_ < 4 or rows_ > 12 then raise exception 'rows must be 4..12'; end if;
   if risk_ not in ('low','medium','high') then raise exception 'risk must be low/medium/high'; end if;
   if cnt < 1 or cnt > 50 then raise exception 'count must be 1..50'; end if;

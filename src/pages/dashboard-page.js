@@ -11,6 +11,7 @@ import { canClaimToday, claimDailyCredits } from '../services/daily-claim.js';
 import { toast, toastError, toastSuccess } from '../ui/components/toast.js';
 import { formatCredits, shortName } from '../utils/format.js';
 import { listEvents } from '../services/events-service.js';
+import { getActiveGames, GAME_ID_TO_ROUTE } from '../services/game-rotation.js';
 import { logger } from '../lib/logger.js';
 
 export function renderDashboard() {
@@ -20,7 +21,7 @@ export function renderDashboard() {
   const claim = createClaimCard();
   const stats = createStatsCard();
   const events = createRotatingEventsCard();
-  const features = createFeatureGrid();
+  const games = createGameGrid();
 
   const greeting = h('section.flex.flex-col.gap-1', {}, [
     h('div.text-xs.tracking-[0.3em].text-accent-cyan/80.uppercase', {}, ['Welcome back']),
@@ -33,7 +34,7 @@ export function renderDashboard() {
     stats,
   ]);
 
-  const content = h('div.flex.flex-col.gap-8', {}, [greeting, top, events, features]);
+  const content = h('div.flex.flex-col.gap-8', {}, [greeting, top, events, games]);
   return appShell(content);
 }
 
@@ -124,6 +125,152 @@ function eventMiniCard(e) {
       h('div.text-[11px].text-muted.line-clamp-2', {}, [e.description ?? '']),
     ]
   );
+}
+
+const ACTIVE_GAME_META = Object.freeze({
+  coinflip: { title: 'Coinflip', desc: 'Heads or tails — instant 1.95× payout.', icon: '🪙', grad: 'from-accent-amber/40 to-accent-rose/40' },
+  dice: { title: 'Dice', desc: 'Pick your win chance. Set your multiplier.', icon: '🎲', grad: 'from-accent-lime/40 to-accent-cyan/40' },
+  roulette: { title: 'Roulette', desc: 'European single-zero. Stack your chips.', icon: '🎡', grad: 'from-accent-rose/40 to-accent-violet/40' },
+  blackjack: { title: 'Blackjack', desc: 'Hit, stand, beat the dealer to 21.', icon: '🃏', grad: 'from-accent-violet/40 to-accent-magenta/40' },
+  crash: { title: 'Crash', desc: 'Cash out before the rocket explodes.', icon: '🚀', grad: 'from-accent-magenta/40 to-accent-cyan/40' },
+  cases: { title: 'Cases', desc: 'Bronze, silver, gold. Pity + golden keys.', icon: '📦', grad: 'from-accent-amber/40 to-accent-rose/40' },
+  gacha: { title: 'Gacha', desc: 'Pull the wheel. Chase one-of-one cosmetics.', icon: '🎰', grad: 'from-accent-cyan/40 to-accent-violet/40' },
+  mines: { title: 'Mines', desc: 'Pick safe tiles, stack multiplier, cash out before the boom.', icon: '💣', grad: 'from-accent-rose/40 to-accent-amber/40' },
+  candy: { title: 'Candy', desc: 'Match-3 cascades. Chain clears for runaway payouts.', icon: '🍬', grad: 'from-accent-magenta/40 to-accent-lime/40' },
+  plinko: { title: 'Plinko', desc: 'Drop through pegs, land in a multiplier. Pure tension.', icon: '🔴', grad: 'from-accent-cyan/40 to-accent-rose/40' },
+  lottery: { title: 'Neon Lotto', desc: 'Pick 5 lucky numbers. Match drawn balls for up to 8,000×.', icon: '🎱', grad: 'from-accent-lime/40 to-accent-violet/40' },
+  warfront: { title: 'Warfront', desc: 'Draft a 6-unit army, beat the enemy, and cash out by difficulty.', icon: '⚔️', grad: 'from-accent-amber/40 to-accent-violet/40' },
+});
+
+const PVP_GAME_CARDS = Object.freeze([
+  {
+    title: 'Chaos TTT',
+    desc: 'Two-player tic-tac-toe with a random locked cell every turn.',
+    icon: '🌀',
+    grad: 'from-accent-violet/40 to-accent-cyan/40',
+    to: ROUTES.LOBBY,
+    badge: 'PvP',
+  },
+  {
+    title: 'Fade TTT',
+    desc: 'Tic-tac-toe where your oldest piece disappears after the fourth move.',
+    icon: '👻',
+    grad: 'from-accent-rose/40 to-accent-amber/40',
+    to: ROUTES.LOBBY,
+    badge: 'PvP',
+  },
+]);
+
+function createGameGrid() {
+  const card = h('section.glass.neon-border.p-6.flex.flex-col.gap-3', {}, []);
+  let activeGames = [];
+  let loading = true;
+
+  const render = () => {
+    const activeCards = activeGames.slice(0, 6).map(activeGameCard).filter(Boolean);
+    const body = loading
+      ? h('div.grid.grid-cols-1.sm:grid-cols-2.lg:grid-cols-4.gap-3', {}, Array.from({ length: 8 }, () => gameLoadingCard()))
+      : h('div.grid.grid-cols-1.sm:grid-cols-2.lg:grid-cols-4.gap-3', {}, [
+          ...activeCards,
+          ...PVP_GAME_CARDS.map(pvpGameCard),
+        ]);
+
+    mount(card, h('div.flex.flex-col.gap-3', {}, [
+      h('div.flex.items-end.justify-between.gap-3.flex-wrap', {}, [
+        h('div', {}, [
+          h('div.text-xs.text-muted.uppercase.tracking-widest', {}, ['Active games']),
+          h('div.text-lg.font-semibold', {}, ['Six live games + two PvP slots']),
+        ]),
+        h('div.text-xs.text-muted.font-mono', {}, [loading ? 'Loading…' : `${activeCards.length} / 6 active`]),
+      ]),
+      body,
+    ]));
+  };
+
+  render();
+  getActiveGames({ force: true })
+    .then((rows) => {
+      activeGames = rows ?? [];
+      loading = false;
+      render();
+    })
+    .catch((e) => {
+      logger.warn('dashboard active games load failed', e);
+      loading = false;
+      render();
+    });
+
+  return card;
+}
+
+function activeGameCard(game) {
+  const meta = ACTIVE_GAME_META[game.gameId] ?? {
+    title: game.gameId,
+    desc: 'Open the game.',
+    icon: '🎮',
+    grad: 'from-accent-cyan/40 to-accent-violet/40',
+  };
+  const route = GAME_ID_TO_ROUTE[game.gameId] ?? ROUTES.GAMES;
+  const remaining = formatRemaining(game.endsAt);
+
+  return h(
+    'a.relative.glass.neon-border.p-6.flex.flex-col.gap-3.h-full.overflow-hidden.transition.hover:-translate-y-1.hover:shadow-glow',
+    { href: route, 'data-link': '' },
+    [
+      h(`div.absolute.inset-0.opacity-50.bg-gradient-to-br.${meta.grad}.pointer-events-none`, {}, []),
+      h('div.relative.flex.items-center.justify-between', {}, [
+        h('span.text-4xl', {}, [meta.icon]),
+        h('span.text-xs.text-accent-lime.uppercase.tracking-widest.font-mono', {}, [
+          remaining ? `${remaining} left` : 'Play →',
+        ]),
+      ]),
+      h('div.relative.flex.flex-col.gap-1', {}, [
+        h('div.font-semibold.text-xl', {}, [meta.title]),
+        h('div.text-sm.text-white/70', {}, [meta.desc]),
+      ]),
+    ]
+  );
+}
+
+function pvpGameCard(game) {
+  return h(
+    'a.relative.glass.neon-border.p-6.flex.flex-col.gap-3.h-full.overflow-hidden.transition.hover:-translate-y-1.hover:shadow-glow',
+    { href: game.to, 'data-link': '' },
+    [
+      h(`div.absolute.inset-0.opacity-50.bg-gradient-to-br.${game.grad}.pointer-events-none`, {}, []),
+      h('div.relative.flex.items-center.justify-between', {}, [
+        h('span.text-4xl', {}, [game.icon]),
+        h('span.text-xs.text-accent-cyan.uppercase.tracking-widest.font-mono', {}, [
+          game.badge ?? 'PvP',
+        ]),
+      ]),
+      h('div.relative.flex.flex-col.gap-1', {}, [
+        h('div.font-semibold.text-xl', {}, [game.title]),
+        h('div.text-sm.text-white/70', {}, [game.desc]),
+      ]),
+      h('div.relative.text-xs.text-muted.uppercase.tracking-widest.font-mono', {}, ['Open lobby →']),
+    ]
+  );
+}
+
+function gameLoadingCard() {
+  return h('div.glass.neon-border.p-6.flex.flex-col.gap-3.h-full.overflow-hidden.animate-pulse', {}, [
+    h('div.h-10.w-10.rounded-full.bg-white/10', {}, []),
+    h('div.h-4.w-24.rounded-full.bg-white/10', {}, []),
+    h('div.h-3.w-5/6.rounded-full.bg-white/10', {}, []),
+    h('div.h-3.w-2/3.rounded-full.bg-white/10', {}, []),
+  ]);
+}
+
+function formatRemaining(endsAt) {
+  const ms = Math.max(0, endsAt.getTime() - Date.now());
+  const totalMin = Math.round(ms / 60_000);
+  if (totalMin >= 60) {
+    const h_ = Math.floor(totalMin / 60);
+    const m_ = totalMin % 60;
+    return `${h_}h ${m_.toString().padStart(2, '0')}m`;
+  }
+  return `${totalMin}m`;
 }
 
 // Deterministic shuffle + slice: same `bucket` → same slice for every
@@ -274,6 +421,16 @@ function createFeatureGrid() {
       icon: '🏆',
     },
   ];
+
+  if (userStore.get().profile?.is_admin) {
+    features.unshift({
+      to: ROUTES.ADMIN,
+      title: 'Admin panel',
+      desc: 'Suspend accounts, grant credits and reset the world.',
+      grad: 'from-accent-rose/30 to-accent-magenta/30',
+      icon: '🛡️',
+    });
+  }
 
   return h(
     'section.grid.grid-cols-1.sm:grid-cols-2.lg:grid-cols-4.gap-4',

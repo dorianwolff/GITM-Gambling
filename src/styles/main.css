@@ -256,9 +256,136 @@ body::before {
   50%      { opacity: 1;    transform: scale(1.015); }
 }
 
+/* ---------- Collectibles ---------- */
+@keyframes collectible-aura {
+  0%, 100% { opacity: 0.72; transform: scale(1); filter: saturate(1); }
+  50%      { opacity: 1;    transform: scale(1.02); filter: saturate(1.2); }
+}
+@keyframes collectible-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-4px) rotate(-1deg); }
+}
+@keyframes collectible-ring {
+  from { transform: rotate(0deg) scale(1); }
+  to   { transform: rotate(360deg) scale(1); }
+}
+@keyframes collectible-sparkle {
+  0%, 100% { opacity: 0.45; transform: scale(0.95) translateY(0); }
+  40%      { opacity: 1;    transform: scale(1.12) translateY(-2px); }
+  70%      { opacity: 0.75;  transform: scale(1) translateY(1px); }
+}
+@keyframes collectible-bubble-rise {
+  0%   { transform: translate3d(0, 18vh, 0) scale(0.72); opacity: 0; }
+  12%  { opacity: 0.98; }
+  48%  { transform: translate3d(2vw, -28vh, 0) scale(1.05); }
+  100% { transform: translate3d(-2vw, -120vh, 0) scale(1.15); opacity: 0; }
+}
+@keyframes collectible-bubble-wobble {
+  0%, 100% { transform: translateX(0) translateY(0) rotate(0deg); }
+  25%      { transform: translateX(8px) translateY(-10px) rotate(8deg); }
+  50%      { transform: translateX(-6px) translateY(-18px) rotate(-10deg); }
+  75%      { transform: translateX(10px) translateY(-8px) rotate(6deg); }
+}
+@keyframes collectible-bubble-pulse {
+  0%, 100% { transform: scale(0.98); opacity: 0.52; }
+  50%      { transform: scale(1.08); opacity: 0.86; }
+}
+@keyframes collectible-bubble-sheen {
+  0%, 100% { transform: translateX(-1.5%) translateY(0) scale(1); }
+  50%      { transform: translateX(1.5%) translateY(-1%) scale(1.03); }
+}
+@keyframes collectible-bubble-shaft {
+  0%, 100% { transform: translateY(0) skewX(-2deg); opacity: 0.22; }
+  50%      { transform: translateY(2vh) skewX(2deg); opacity: 0.42; }
+}
+@keyframes collectible-bubble-caustic {
+  0%   { transform: translateY(0) scale(1.06); background-position: 0 0; }
+  50%  { transform: translateY(-1.5vh) scale(1.08); background-position: 80px 120px; }
+  100% { transform: translateY(0) scale(1.06); background-position: 160px 240px; }
+}
+@keyframes collectible-ember-rise {
+  0%   { transform: translate3d(0, 24vh, 0) scale(0.7); opacity: 0; }
+  18%  { opacity: 1; }
+  100% { transform: translate3d(0, -120vh, 0) scale(1.35); opacity: 0; }
+}
+@keyframes collectible-ember-flicker {
+  0%, 100% { filter: brightness(1); }
+  30%      { filter: brightness(1.45); }
+  55%      { filter: brightness(0.95); }
+  80%      { filter: brightness(1.55); }
+}
+@keyframes collectible-ember-wave {
+  0%, 100% { transform: translateY(0) rotate(-18deg) scaleX(1); opacity: 0.44; }
+  50%      { transform: translateY(3vh) rotate(-15deg) scaleX(1.04); opacity: 0.72; }
+}
+@keyframes collectible-ember-aura {
+  0%, 100% { transform: scale(1); filter: blur(0px) saturate(1.1); }
+  50%      { transform: scale(1.025); filter: blur(1px) saturate(1.35); }
+}
+@keyframes collectible-dragon-ember {
+  0%   { transform: translate3d(0, 20vh, 0) scale(0.66) rotate(0deg); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translate3d(10px, -130vh, 0) scale(1.45) rotate(40deg); opacity: 0; }
+}
+@keyframes collectible-dragon-ribbon {
+  0%, 100% { transform: translateY(0) rotate(var(--dragon-angle, -20deg)) scaleY(1); opacity: 0.45; }
+  50%      { transform: translateY(-2.5vh) rotate(var(--dragon-angle, -20deg)) scaleY(1.08); opacity: 0.86; }
+}
+@keyframes collectible-dragon-wing {
+  0%, 100% { transform: rotate(-18deg) scale(1); filter: blur(18px) saturate(1.15); }
+  50%      { transform: rotate(-12deg) scale(1.06); filter: blur(14px) saturate(1.35); }
+}
+@keyframes collectible-dragon-core {
+  0%, 100% { transform: translate(-50%, -50%) scale(0.94) rotate(0deg); opacity: 0.85; }
+  50%      { transform: translate(-50%, -50%) scale(1.06) rotate(14deg); opacity: 1; }
+}
+@keyframes collectible-cosmic-pulse {
+  0%, 100% { transform: scale(1); filter: hue-rotate(0deg) saturate(1.1); }
+  50%      { transform: scale(1.02); filter: hue-rotate(22deg) saturate(1.45); }
+}
+@keyframes collectible-cosmic-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(1vw, -1.8vh, 0) scale(1.08); }
+}
+@keyframes collectible-cosmic-orbit {
+  from { transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+  to   { transform: translate(-50%, -50%) rotate(360deg) scale(1); }
+}
+@keyframes collectible-cosmic-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  45%      { opacity: 1;    transform: scale(1.5); }
+  60%      { opacity: 0.78; transform: scale(1); }
+}
+@keyframes collectible-prism-wave {
+  0%, 100% { transform: scale(1) rotate(0deg); filter: saturate(1.2); }
+  50%      { transform: scale(1.03) rotate(6deg); filter: saturate(1.65) hue-rotate(24deg); }
+}
+@keyframes collectible-prism-shift {
+  0%, 100% { transform: translateX(0) translateY(0) rotate(var(--prism-rot, 0deg)); }
+  50%      { transform: translateX(1.5vw) translateY(-1vh) rotate(calc(var(--prism-rot, 0deg) + 6deg)); }
+}
+@keyframes collectible-prism-glint {
+  0%, 100% { opacity: 0.28; transform: translate(-50%, -50%) scale(0.86); }
+  45%      { opacity: 1;    transform: translate(-50%, -50%) scale(1.16); }
+  70%      { opacity: 0.72; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes collectible-spark-pulse {
+  0%, 100% { transform: scale(1); filter: saturate(1.1); }
+  50%      { transform: scale(1.02); filter: saturate(1.4); }
+}
+@keyframes collectible-spark-streak {
+  0%, 100% { transform: rotate(var(--spark-angle, 0deg)) translateX(0); opacity: 0.28; }
+  50%      { transform: rotate(var(--spark-angle, 0deg)) translateX(1.2vw); opacity: 0.9; }
+}
+@keyframes collectible-spark-twinkle {
+  0%, 100% { opacity: 0.25; transform: translate3d(0, 0, 0) scale(0.8); }
+  40%      { opacity: 1;    transform: translate3d(0.5vw, -0.7vh, 0) scale(1.4); }
+  75%      { opacity: 0.7;  transform: translate3d(-0.4vw, 0.4vh, 0) scale(1); }
+}
+
 /* ---------- Candy Crush ---------- */
 /* Matched gems pop-pulse briefly before disappearing so the eye tracks
-   which cells are about to clear. Pairs with inline box-shadow glow. */
+   the clear chain. */
 @keyframes candy-pop {
   0%, 100% { transform: scale(1.08); filter: brightness(1.15); }
   50%      { transform: scale(1.18); filter: brightness(1.5); }

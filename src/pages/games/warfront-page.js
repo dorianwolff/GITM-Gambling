@@ -1,6 +1,6 @@
 import { h, mount } from '../../utils/dom.js';
 import { appShell } from '../../ui/layout/app-shell.js';
-import { GAMES, LIMITS } from '../../config/constants.js';
+import { GAMES } from '../../config/constants.js';
 import { getCredits } from '../../state/user-store.js';
 import { formatCredits } from '../../utils/format.js';
 import { createBetInput } from '../../ui/components/bet-input.js';
@@ -35,7 +35,6 @@ export function renderWarfront(ctx) {
   const betInput = createBetInput({
     value: bet,
     min: GAMES.WARFRONT.minBet,
-    max: LIMITS.MAX_BET,
     step: 1,
     onChange: (v) => {
       bet = v;

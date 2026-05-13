@@ -18,16 +18,53 @@ const LINKS = [
 ];
 
 export function createNavbar() {
+  const pathname = window.location.pathname;
+  const isActive = (href) => {
+    if (href === ROUTES.DASHBOARD) return pathname === ROUTES.DASHBOARD;
+    if (href === ROUTES.GAMES) return pathname === ROUTES.GAMES || pathname.startsWith(`${ROUTES.GAMES}/`);
+    if (href === ROUTES.EVENTS) return pathname === ROUTES.EVENTS || pathname.startsWith(`${ROUTES.EVENTS}/`);
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
+  const navLink = (l) => {
+    const active = isActive(l.href);
+    return h(
+      `a.px-3.py-2.text-sm.transition.rounded-lg${active ? '.font-semibold.text-white' : '.font-medium.text-white/70.hover:text-white.hover:bg-white/[0.06]'}`,
+      {
+        href: l.href,
+        'data-link': '',
+        'aria-current': active ? 'page' : undefined,
+        style: active ? { textShadow: '0 0 12px rgba(34, 225, 255, 0.75)' } : {},
+      },
+      [l.label]
+    );
+  };
+
   const linksEl = h(
     'nav.hidden.md:flex.items-center.gap-1',
     {},
-    LINKS.map((l) =>
-      h(
-        'a.px-3.py-2.text-sm.font-medium.text-white/70.hover:text-white.transition.rounded-lg.hover:bg-white/[0.06]',
-        { href: l.href, 'data-link': '' },
-        [l.label]
-      )
-    )
+    LINKS.map(navLink)
+  );
+
+  const adminLink = h(
+    `a.px-3.py-2.text-sm.transition.rounded-lg.hidden${window.location.pathname === ROUTES.ADMIN ? '.font-semibold.text-white' : '.font-medium.text-white/70.hover:text-white.hover:bg-white/[0.06]'}`,
+    {
+      href: ROUTES.ADMIN,
+      'data-link': '',
+      'aria-current': window.location.pathname === ROUTES.ADMIN ? 'page' : undefined,
+      style: { textShadow: '0 0 12px rgba(255, 109, 138, 0.65)' },
+    },
+    ['Admin']
+  );
+  const adminDrawerLink = h(
+    `a.px-3.py-3.text-sm.rounded-lg.hidden${window.location.pathname === ROUTES.ADMIN ? '.font-semibold.text-white' : '.font-medium.text-white/90.hover:text-white.hover:bg-white/[0.08]'}`,
+    {
+      href: ROUTES.ADMIN,
+      'data-link': '',
+      'aria-current': window.location.pathname === ROUTES.ADMIN ? 'page' : undefined,
+      style: { textShadow: '0 0 12px rgba(255, 109, 138, 0.65)' },
+    },
+    ['Admin']
   );
 
   // --- Mobile hamburger + slide-down drawer ---------------------------------
@@ -56,13 +93,19 @@ export function createNavbar() {
         // (bg-bg-900) + a subtle border and a backdrop-blur fallback.
         'nav.mx-4.rounded-2xl.border.border-white/10.bg-bg-900.shadow-2xl.shadow-black/60.p-2.flex.flex-col.gap-1',
         {},
-        LINKS.map((l) =>
-          h(
-            'a.px-3.py-3.text-sm.font-medium.text-white/90.hover:text-white.rounded-lg.hover:bg-white/[0.08]',
-            { href: l.href, 'data-link': '' },
+        LINKS.map((l) => {
+          const active = isActive(l.href);
+          return h(
+            `a.px-3.py-3.text-sm.rounded-lg${active ? '.font-semibold.text-white' : '.font-medium.text-white/90.hover:text-white.hover:bg-white/[0.08]'}`,
+            {
+              href: l.href,
+              'data-link': '',
+              'aria-current': active ? 'page' : undefined,
+              style: active ? { textShadow: '0 0 12px rgba(34, 225, 255, 0.75)' } : {},
+            },
             [l.label]
-          )
-        )
+          );
+        }).concat([adminDrawerLink])
       ),
     ]
   );
@@ -119,7 +162,7 @@ export function createNavbar() {
   });
   document.addEventListener('click', () => (menu.style.display = 'none'));
 
-  const userBox = h('div.relative.flex.items-center.gap-3', {}, [badge.el, avatar, menu]);
+  const userBox = h('div.relative.flex.items-center.gap-3', {}, [adminLink, badge.el, avatar, menu]);
 
   const brand = h(
     'a.flex.items-center.gap-2.font-semibold.text-lg.tracking-tight',
@@ -158,6 +201,9 @@ export function createNavbar() {
     const p = userStore.get().profile;
     avatar.textContent = initials(p?.display_name, p?.email);
     avatar.title = shortName(p?.display_name, p?.email);
+    adminLink.style.display = p?.is_admin ? '' : 'none';
+    adminLink.classList.toggle('hidden', !p?.is_admin);
+    adminDrawerLink.classList.toggle('hidden', !p?.is_admin);
   };
   update();
   const off = userStore.subscribe(update);

@@ -201,8 +201,6 @@ export function renderCoinflip() {
           return;
         }
 
-        patchProfile({ credits: r.newBalance });
-
         // One continuous motion — decelerate onto the correct face.
         await landOn(r.result);
 
@@ -228,6 +226,10 @@ export function renderCoinflip() {
             `${new Date().toLocaleTimeString()} · bet ${side} → ${r.result} · ${r.won ? '+' + (r.payout - amount) : '-' + amount}`,
           ])
         );
+
+        await new Promise((resolve) => setTimeout(resolve, r.won ? 1450 : 900));
+
+        patchProfile({ credits: r.newBalance });
 
         busy = false;
         flipBtn.disabled = false;

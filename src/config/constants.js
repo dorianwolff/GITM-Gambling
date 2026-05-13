@@ -13,7 +13,6 @@ export const ECONOMY = Object.freeze({
 
 export const LIMITS = Object.freeze({
   MIN_BET: 1,
-  MAX_BET: 10_000,
   EVENTS_PER_DAY_PER_USER: 1,
   EVENT_TITLE_MIN: 6,
   EVENT_TITLE_MAX: 120,
@@ -29,6 +28,7 @@ export const GAMES = Object.freeze({
   BLACKJACK: { id: 'blackjack', name: 'Blackjack' },
   CRASH: { id: 'crash', name: 'Crash', maxMultiplier: 100 },
   PLINKO: { id: 'plinko', name: 'Plinko', minBet: 1 },
+  PINBALL: { id: 'pinball', name: 'Pinball', minBet: 10 },
   LOTTERY: { id: 'lottery', name: 'Neon Lotto', minBet: 1 },
   WARFRONT: { id: 'warfront', name: 'Warfront', minBet: 10 },
   EMOJI_HUNT: { id: 'emoji_hunt', name: 'Emoji Hunt', reward: 25 },
@@ -55,6 +55,7 @@ export const ROUTES = Object.freeze({
   BLACKJACK: '/games/blackjack',
   CRASH: '/games/crash',
   PLINKO: '/games/plinko',
+  PINBALL: '/games/pinball',
   LOTTERY: '/games/lottery',
   WARFRONT: '/games/warfront',
   EMOJI_HUNT: '/games/emoji-hunt',
@@ -65,6 +66,7 @@ export const ROUTES = Object.freeze({
   LOBBY: '/games/lobby',
   MP_GAME: '/games/mp/:id',
   PROFILE: '/profile',
+  ADMIN: '/admin',
   PLAYER_PROFILE: '/players/:id',
   LEADERBOARD: '/leaderboard',
   HISTORY: '/history',

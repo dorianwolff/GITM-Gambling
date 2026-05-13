@@ -4,7 +4,7 @@
  * applies the appropriate guard.
  */
 import { ROUTES } from '../config/constants.js';
-import { requireAuth, redirectIfAuthed, requireActiveGame } from '../auth/auth-guard.js';
+import { requireAuth, requireAdmin, redirectIfAuthed, requireActiveGame } from '../auth/auth-guard.js';
 
 import { renderLogin } from '../pages/login-page.js';
 import { renderAuthCallback } from '../pages/auth-callback-page.js';
@@ -13,6 +13,7 @@ import { renderEvents } from '../pages/events-page.js';
 import { renderEventDetail } from '../pages/event-detail-page.js';
 import { renderCreateEvent } from '../pages/create-event-page.js';
 import { renderProfile } from '../pages/profile-page.js';
+import { renderAdmin } from '../pages/admin-page.js';
 import { renderLeaderboard } from '../pages/leaderboard-page.js';
 import { renderHistory } from '../pages/history-page.js';
 import { renderGamesHub } from '../pages/games/games-hub-page.js';
@@ -22,6 +23,7 @@ import { renderRoulette } from '../pages/games/roulette-page.js';
 import { renderBlackjack } from '../pages/games/blackjack-page.js';
 import { renderCrash } from '../pages/games/crash-page.js';
 import { renderPlinko } from '../pages/games/plinko-page.js';
+import { renderPinball } from '../pages/games/pinball-page.js';
 import { renderLottery } from '../pages/games/lottery-page.js';
 import { renderWarfront } from '../pages/games/warfront-page.js';
 import { renderEmojiHunt } from '../pages/games/emoji-hunt-page.js';
@@ -58,6 +60,7 @@ export const routes = [
   { path: ROUTES.MINES,     render: requireActiveGame('mines',     renderMines) },
   { path: ROUTES.CANDY,     render: requireActiveGame('candy',     renderCandy) },
   { path: ROUTES.PLINKO,    render: requireActiveGame('plinko',    renderPlinko) },
+  { path: ROUTES.PINBALL,   render: requireActiveGame('pinball',   renderPinball) },
   { path: ROUTES.LOTTERY,   render: requireActiveGame('lottery',   renderLottery) },
   { path: ROUTES.WARFRONT,  render: requireActiveGame('warfront',  renderWarfront) },
   { path: ROUTES.EMOJI_HUNT, render: requireAuth(renderEmojiHunt) },
@@ -65,6 +68,7 @@ export const routes = [
   { path: ROUTES.MP_GAME,   render: requireAuth(renderMpTtt) },
 
   { path: ROUTES.PROFILE, render: requireAuth(renderProfile) },
+  { path: ROUTES.ADMIN, render: requireAdmin(renderAdmin) },
   { path: ROUTES.PLAYER_PROFILE, render: requireAuth(renderPublicProfile) },
   { path: ROUTES.LEADERBOARD, render: requireAuth(renderLeaderboard) },
   { path: ROUTES.HISTORY, render: requireAuth(renderHistory) },

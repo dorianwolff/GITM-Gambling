@@ -10,9 +10,14 @@ import { toastError } from '../ui/components/toast.js';
 
 export function requireAuth(render) {
   return (ctx) => {
-    const { user, loading } = userStore.get();
+    const { user, profile, loading } = userStore.get();
     if (loading) return { html: '<div class="p-10 text-muted">Loading…</div>' };
     if (!user) {
+      ctx.navigate(ROUTES.LOGIN, { replace: true });
+      return null;
+    }
+    if (profile?.is_banned && !profile?.is_admin) {
+      toastError('Your account has been suspended.');
       ctx.navigate(ROUTES.LOGIN, { replace: true });
       return null;
     }

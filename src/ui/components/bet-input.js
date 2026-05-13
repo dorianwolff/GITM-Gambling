@@ -15,13 +15,12 @@ export function createBetInput({ value = 10, onChange, max, min } = {}) {
   const input = h('input.input.text-center.font-mono.text-lg', {
     type: 'number',
     min: String(currentMin),
-    max: String(LIMITS.MAX_BET),
     step: '1',
     value: String(current),
   });
 
   const set = (n) => {
-    const lim = Math.min(max ?? Infinity, LIMITS.MAX_BET, userStore.get().profile?.credits ?? Infinity);
+    const lim = Math.min(max ?? Infinity, userStore.get().profile?.credits ?? Infinity);
     n = Math.max(currentMin, Math.min(lim, Math.floor(Number(n) || 0)));
     current = n;
     input.value = String(n);
@@ -43,7 +42,7 @@ export function createBetInput({ value = 10, onChange, max, min } = {}) {
   const row = h('div.flex.items-center.gap-2', {}, [
     btn('½', () => set(Math.floor(current / 2))),
     btn('2×', () => set(current * 2)),
-    btn('Max', () => set(userStore.get().profile?.credits ?? LIMITS.MAX_BET)),
+    btn('Max', () => set(userStore.get().profile?.credits ?? current)),
   ]);
 
   const wrap = h('div.flex.flex-col.gap-2', {}, [
