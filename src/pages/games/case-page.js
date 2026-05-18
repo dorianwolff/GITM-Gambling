@@ -75,7 +75,7 @@ export function renderCase(ctx) {
   async function doOpen() {
     if (busy) return;
     const tier = CASE_TIERS.find((t) => t.id === selectedTier);
-    const perCost = useKey ? Math.floor((tier.cost * 3) / 2) : tier.cost;
+    const perCost = useKey ? Math.floor((tier.cost * 195) / 100) : tier.cost;
     const count = batchSize;
     const total = perCost * count;
     if ((userStore.get().profile?.credits ?? 0) < total) {
@@ -192,7 +192,7 @@ export function renderCase(ctx) {
   // --------------------------------------------------------------------------
   function view() {
     const tier = CASE_TIERS.find((t) => t.id === selectedTier);
-    const perCost = useKey ? Math.floor((tier.cost * 3) / 2) : tier.cost;
+    const perCost = useKey ? Math.floor((tier.cost * 195) / 100) : tier.cost;
     const totalCost = perCost * batchSize;
     const pity = userStore.get().profile?.case_pity ?? 0;
     const pityLeft = Math.max(0, PITY_THRESHOLD - pity);
@@ -262,7 +262,7 @@ export function renderCase(ctx) {
                 h('span.text-xl', {}, ['🗝️']),
                 h('div.flex.flex-col.items-start.leading-tight', {}, [
                   h(`span.text-xs.uppercase.tracking-widest.${useKey ? 'text-[#ffd96b]' : 'text-muted'}`, {}, ['Golden key']),
-                  h('span.text-[10px].text-muted', {}, ['+50% cost · reroll commons']),
+                  h('span.text-[10px].text-muted', {}, ['+95% cost · reroll commons']),
                 ]),
               ]
             ),

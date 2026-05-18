@@ -1,7 +1,7 @@
 import { h, mount } from '../../utils/dom.js';
 import { appShell } from '../../ui/layout/app-shell.js';
 import { GAMES } from '../../config/constants.js';
-import { getCredits, isAdmin } from '../../state/user-store.js';
+import { getCredits } from '../../state/user-store.js';
 import { formatCredits } from '../../utils/format.js';
 import { createBetInput } from '../../ui/components/bet-input.js';
 import { toast, toastSuccess } from '../../ui/components/toast.js';
@@ -9,6 +9,7 @@ import { openModal } from '../../ui/components/modal.js';
 import { supabase } from '../../lib/supabase.js';
 import {
   DIFF_TABLE, getWarfrontUnits, getActiveDraftUnits, playWarfront, resolveWarfront, getUnitById,
+  fetchWarfrontOverrides,
 } from '../../games/warfront/warfront-api.js';
 import { flashSuccess, flashSuccessMajor, flashGold, flashLoss } from '../../ui/fx/feedback-fx.js';
 import {
@@ -26,6 +27,7 @@ export function renderWarfront(ctx) {
   let phase = PHASES.DRAFT, bet = 10, qty = {};
   let activeCollection = 'fantasy';
   let result = null, loading = false, historyRows = [];
+  let overrides = { fantasyPool: null, animalPool: null };
   let battleRaf = null;
   let battleCleanup = null;
   let betInputReady = false;
@@ -39,8 +41,12 @@ export function renderWarfront(ctx) {
   };
 
   function getDisplayUnits(collection = activeCollection) {
-    if (isAdmin()) {
-      return getWarfrontUnits(collection).slice().sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
+    const pool = collection === 'animals' ? overrides.animalPool : overrides.fantasyPool;
+    if (pool && pool.length > 0) {
+      const poolSet = new Set(pool);
+      return getWarfrontUnits(collection)
+        .filter((u) => poolSet.has(u.id))
+        .sort((a, b) => a.cost - b.cost || a.name.localeCompare(b.name));
     }
     return getActiveDraftUnits(collection);
   }
@@ -240,6 +246,7 @@ export function renderWarfront(ctx) {
     historyRows = data || []; redraw();
   }
   fetchHistory();
+  fetchWarfrontOverrides().then((o) => { overrides = o; redraw(); });
 
   function battleStage() {
     const army = getDraftArmy();

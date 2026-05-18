@@ -29,6 +29,8 @@ import {
   pvpCreate,
   pvpJoin,
   pvpCommit,
+  pvpResolve,
+  pvpSurrender,
   pvpCancel,
   getPvpGame,
   subscribeToPvpGame,
@@ -41,6 +43,16 @@ import { refreshProfile } from '../../services/profile-service.js';
 //  LOBBY  (/games/warfront-pvp)
 // ─────────────────────────────────────────────────────────────────────────────
 
+const COLLECTION_OPTIONS = [
+  { value: 'fantasy', label: '⚔ Fantasy',  desc: 'Fantasy units only'        },
+  { value: 'animals', label: '🐾 Animals',  desc: 'Animal units only'          },
+  { value: 'mixed',   label: '🔀 Mixed',    desc: 'Each player picks a side'   },
+];
+
+function collectionLabel(c) {
+  return COLLECTION_OPTIONS.find((o) => o.value === c)?.label ?? c;
+}
+
 export function renderMpWarfrontLobby(ctx) {
   injectWarfrontStylesOnce();
 
@@ -48,6 +60,7 @@ export function renderMpWarfrontLobby(ctx) {
   let loading = true;
   let creating = false;
   let selectedAnte = 25;
+  let selectedCollection = 'fantasy';
 
   const root = h('div.flex.flex-col.gap-4', {}, []);
   const redraw = () => mount(root, lobbyView());
@@ -66,7 +79,7 @@ export function renderMpWarfrontLobby(ctx) {
   async function handleCreate() {
     creating = true; redraw();
     try {
-      const game = await pvpCreate(selectedAnte);
+      const game = await pvpCreate(selectedAnte, selectedCollection);
       ctx.navigate(`/games/warfront-pvp/${game.id}`);
     } catch (e) {
       toastError(e.message);
@@ -110,18 +123,43 @@ export function renderMpWarfrontLobby(ctx) {
       // Create a room
       h('div.glass.neon-border.p-5.flex.flex-col.gap-4', {}, [
         h('span.text-xs.uppercase.tracking-widest.text-muted', {}, ['Create a room']),
-        h('div.flex.flex-wrap.gap-2', {},
-          WF_PVP_ANTE_CHOICES.map((v) =>
-            h('button', {
-              class: `px-3 h-8 rounded-lg text-sm font-mono font-bold transition-colors ${
-                selectedAnte === v
-                  ? 'bg-accent-cyan text-black'
-                  : 'bg-white/5 text-white hover:bg-white/10'
-              }`,
-              onclick: () => { selectedAnte = v; redraw(); },
-            }, [`${formatCredits(v)} cr`])
-          )
-        ),
+
+        // Collection selector
+        h('div.flex.flex-col.gap-1', {}, [
+          h('span.text-xs.text-muted', {}, ['Collection']),
+          h('div.flex.gap-2', {},
+            COLLECTION_OPTIONS.map((opt) =>
+              h('button', {
+                class: `px-3 h-8 rounded-lg text-sm font-bold transition-colors flex-1 ${
+                  selectedCollection === opt.value
+                    ? 'bg-accent-cyan text-black'
+                    : 'bg-white/5 text-white hover:bg-white/10'
+                }`,
+                onclick: () => { selectedCollection = opt.value; redraw(); },
+              }, [opt.label])
+            )
+          ),
+          h('p.text-xs.text-white/40', {},
+            [COLLECTION_OPTIONS.find((o) => o.value === selectedCollection)?.desc ?? '']),
+        ]),
+
+        // Ante selector
+        h('div.flex.flex-col.gap-1', {}, [
+          h('span.text-xs.text-muted', {}, ['Ante']),
+          h('div.flex.flex-wrap.gap-2', {},
+            WF_PVP_ANTE_CHOICES.map((v) =>
+              h('button', {
+                class: `px-3 h-8 rounded-lg text-sm font-mono font-bold transition-colors ${
+                  selectedAnte === v
+                    ? 'bg-accent-cyan text-black'
+                    : 'bg-white/5 text-white hover:bg-white/10'
+                }`,
+                onclick: () => { selectedAnte = v; redraw(); },
+              }, [`${formatCredits(v)} cr`])
+            )
+          ),
+        ]),
+
         h('div.flex.items-center.gap-3.flex-wrap', {}, [
           h('span.text-xs.text-muted', {}, [`Pot: ${formatCredits(selectedAnte * 2)} cr · Balance: ${formatCredits(credits)} cr`]),
           h('button.btn-main.h-9.px-5', {
@@ -151,9 +189,16 @@ export function renderMpWarfrontLobby(ctx) {
 
 function roomCard(r, me, credits, onJoin) {
   const canAfford = credits >= r.ante;
+  const colBadge  = collectionLabel(r.room_collection ?? 'fantasy');
   return h('div.glass.neon-border.p-4.flex.items-center.justify-between.gap-3.flex-wrap', {}, [
     h('div.flex.flex-col.gap-0.5', {}, [
-      h('span.text-sm.font-semibold', {}, [shortName(r.x_name, '') || 'Player']),
+      h('div.flex.items-center.gap-2', {}, [
+        h('span.text-sm.font-semibold', {}, [shortName(r.x_name, '') || 'Player']),
+        h('span.text-xs.px-2.py-0.5.rounded-full', {
+          style: { background: 'rgba(34,225,255,0.12)', color: '#22e1ff',
+                   border: '1px solid rgba(34,225,255,0.3)', fontWeight: '600' },
+        }, [colBadge]),
+      ]),
       h('span.text-xs.text-muted', {}, [
         `Ante: ${formatCredits(r.ante)} cr · Pot: ${formatCredits(r.ante * 2)} cr`,
       ]),
@@ -186,15 +231,19 @@ export function renderMpWarfront(ctx) {
 
   let phase = PHASES.LOADING;
   let game = null;
-  let mySeat = null;          // 0 = X, 1 = O
+  let mySeat = null;              // 0 = X, 1 = O
   let myCollection = 'fantasy';
-  let qty = {};               // id → count
+  let collectionInitialized = false;
+  let qty = {};                   // id → count
   let battleCleanup = null;
   let hudPortal = null;
   let hudInnerEl = null;
 
   const root = h('div.flex.flex-col.gap-4', {}, []);
-  const redraw = () => mount(root, view());
+  // During BATTLE the live canvas owns the DOM — any redraw would destroy it.
+  // Phase transitions always render (via renderNow); background updates skip.
+  const renderNow = () => mount(root, view());
+  const redraw    = () => { if (phase !== PHASES.BATTLE) renderNow(); };
 
   // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -268,6 +317,17 @@ export function renderMpWarfront(ctx) {
         else if (game.player_o === me) mySeat = 1;
       }
 
+      // Initialize myCollection from room setting (once only).
+      if (!collectionInitialized && game.room_collection) {
+        collectionInitialized = true;
+        // In mixed rooms keep 'fantasy' as default (player can switch freely).
+        // In locked rooms, force the correct collection.
+        if (game.room_collection !== 'mixed') {
+          myCollection = game.room_collection; // 'fantasy' or 'animals'
+          resetQty(myCollection);
+        }
+      }
+
       // Detect status transitions.
       const wasWaiting = prev?.status === 'waiting';
       const nowDrafting = game?.status === 'drafting';
@@ -315,7 +375,7 @@ export function renderMpWarfront(ctx) {
       battleCleanup(); battleCleanup = null;
     }
     phase = p;
-    redraw();
+    renderNow(); // bypass BATTLE guard — phase transitions always render
   }
 
   load();
@@ -350,6 +410,7 @@ export function renderMpWarfront(ctx) {
   }
 
   function selectCollection(col) {
+    if (game?.room_collection !== 'mixed') return; // locked in single-collection rooms
     if (myCollection === col) return;
     myCollection = col;
     resetQty(col);
@@ -374,7 +435,30 @@ export function renderMpWarfront(ctx) {
     }
   }
 
-  function handleBattleEnd() {
+  async function handleBattleEnd(result) {
+    // result = { playerBaseHp, enemyBaseHp } from the animation.
+    // Report to server so it can determine winner by HP comparison.
+    try {
+      const updated = await pvpResolve(
+        gameId,
+        result?.playerBaseHp ?? 0,
+        result?.enemyBaseHp ?? 0,
+      );
+      if (updated) game = updated;
+    } catch (e) {
+      logger.warn('wf-pvp resolve failed', e);
+      toastError(e.message);
+    }
+    setPhase(PHASES.RESULT);
+  }
+
+  async function handleSurrender() {
+    try {
+      const updated = await pvpSurrender(gameId);
+      if (updated) game = updated;
+    } catch (e) {
+      logger.warn('wf-pvp surrender failed', e);
+    }
     setPhase(PHASES.RESULT);
   }
 
@@ -400,6 +484,10 @@ export function renderMpWarfront(ctx) {
           h('span.text-4xl', {}, ['⚔']),
           h('h2.text-xl.font-bold.text-white', {}, ['Waiting for an opponent…']),
           h('p.text-sm.text-muted', {}, [`Ante: ${formatCredits(game.ante)} cr · Pot: ${pot} cr`]),
+          h('span.text-xs.px-3.py-1.rounded-full', {
+            style: { background: 'rgba(34,225,255,0.12)', color: '#22e1ff',
+                     border: '1px solid rgba(34,225,255,0.3)', fontWeight: '600' },
+          }, [collectionLabel(game.room_collection ?? 'fantasy')]),
           h('div.flex.items-center.gap-2.mt-2', {}, [
             h('div.w-2.h-2.rounded-full.bg-accent-cyan.animate-pulse', {}, []),
             h('span.text-xs.text-muted', {}, ['Share this page URL to invite a friend']),
@@ -433,23 +521,44 @@ export function renderMpWarfront(ctx) {
           pvpStatusPill(game, mySeat),
         ]),
 
-        // Collection tabs
-        h('div.grid.grid-cols-2.gap-2', {}, [
-          h('button.wf-col-btn', {
-            class: myCollection === 'fantasy' ? 'wf-col-btn active fantasy' : 'wf-col-btn fantasy',
-            onClick: () => !committed && selectCollection('fantasy'),
-            disabled: committed,
-          }, ['⚔ Fantasy']),
-          h('button.wf-col-btn', {
-            class: myCollection === 'animals' ? 'wf-col-btn active animals' : 'wf-col-btn animals',
-            onClick: () => !committed && selectCollection('animals'),
-            disabled: committed,
-          }, ['🐾 Animals']),
-        ]),
-
-        h('p.text-xs.text-white/40.text-center', {}, [
-          '12 units in rotation · draft budget: 10g · max 6 slots',
-        ]),
+        // Collection selector — full tabs in mixed rooms, locked badge otherwise
+        (() => {
+          const roomCol = game?.room_collection ?? 'fantasy';
+          if (roomCol === 'mixed') {
+            return h('div', {}, [
+              h('div.grid.grid-cols-2.gap-2', {}, [
+                h('button.wf-col-btn', {
+                  class: myCollection === 'fantasy' ? 'wf-col-btn active fantasy' : 'wf-col-btn fantasy',
+                  onclick: () => !committed && selectCollection('fantasy'),
+                  disabled: committed,
+                }, ['⚔ Fantasy']),
+                h('button.wf-col-btn', {
+                  class: myCollection === 'animals' ? 'wf-col-btn active animals' : 'wf-col-btn animals',
+                  onclick: () => !committed && selectCollection('animals'),
+                  disabled: committed,
+                }, ['🐾 Animals']),
+              ]),
+              h('p.text-xs.text-white/40.text-center.mt-1', {}, [
+                'Mixed room · pick your side · 12 units in rotation · 10g budget · max 6 slots',
+              ]),
+            ]);
+          }
+          // Single-collection room: show a locked badge + hint
+          const colIcon  = roomCol === 'animals' ? '🐾' : '⚔';
+          const colName  = roomCol === 'animals' ? 'Animals' : 'Fantasy';
+          return h('div.flex.flex-col.gap-1', {}, [
+            h('div.flex.items-center.gap-2', {}, [
+              h('span.text-xs.px-3.py-1.rounded-full.font-bold', {
+                style: { background: 'rgba(34,225,255,0.12)', color: '#22e1ff',
+                         border: '1px solid rgba(34,225,255,0.3)' },
+              }, [`${colIcon} ${colName} room`]),
+              h('span.text-xs.text-white/40', {}, ['Collection locked by room creator']),
+            ]),
+            h('p.text-xs.text-white/40', {}, [
+              '12 units in rotation · draft budget: 10g · max 6 slots',
+            ]),
+          ]);
+        })(),
 
         // Unit grid
         renderWarfrontUnitGrid({
@@ -490,9 +599,7 @@ export function renderMpWarfront(ctx) {
 
       const myPicks   = mySeat === 0 ? (game.x_picks ?? []) : (game.o_picks ?? []);
       const oppPicks  = mySeat === 0 ? (game.o_picks ?? []) : (game.x_picks ?? []);
-      const myCol     = mySeat === 0 ? game.x_collection : game.o_collection;
 
-      // Adapt result shape expected by renderWarfrontBattleStage.
       const battleResult = {
         enemyArmy:        oppPicks,
         enemyDifficulty:  'PvP',
@@ -512,8 +619,8 @@ export function renderMpWarfront(ctx) {
             picks:       myPicks,
             result:      battleResult,
             getUnitById: (id) => getUnitById(id),
-            onComplete:  handleBattleEnd,
-            onSurrender: handleBattleEnd,
+            onComplete:  (result) => handleBattleEnd(result),
+            onSurrender: () => handleSurrender(),
           });
           battleCleanup = el._cleanup ?? null;
           return el;
@@ -527,17 +634,22 @@ export function renderMpWarfront(ctx) {
     if (phase === PHASES.RESULT) {
       syncHud();
 
-      // Determine from server result (NOT from animation HP).
-      const iWon = game.winner === mySeat;
-      const isDraw = game.winner === -1;
+      // Determine from server result (set by wf_pvp_resolve / wf_pvp_surrender).
+      const iWon       = game.winner === mySeat;
+      const isDraw     = game.winner === -1;
+      const surrendered = game.result_reason === 'surrender';
       const myHp  = mySeat === 0 ? (game.x_base_hp ?? 0) : (game.o_base_hp ?? 0);
       const oppHp = mySeat === 0 ? (game.o_base_hp ?? 0) : (game.x_base_hp ?? 0);
       const payout = iWon ? (game.ante ?? 0) * 2 : 0;
 
-      const cardClass = isDraw ? 'loss' : iWon ? 'win' : 'loss';
+      const cardClass = isDraw ? 'draw' : iWon ? 'win' : 'loss';
       const emoji     = isDraw ? '🤝' : iWon ? '🏆' : '💀';
-      const label     = isDraw ? 'Draw'    : iWon ? 'Victory' : 'Defeat';
-      const subLabel  = isDraw ? 'Ante refunded' : iWon ? `${opponentName}'s base destroyed` : 'Your base has fallen';
+      const label     = isDraw ? 'Draw' : iWon ? 'Victory' : 'Defeat';
+      const subLabel  = isDraw
+        ? 'Both armies fought to a standstill · Ante refunded'
+        : iWon
+          ? (surrendered ? `${opponentName} surrendered` : `${opponentName}'s base destroyed`)
+          : (surrendered ? 'You surrendered' : 'Your base has fallen');
 
       return appShell(h('div.flex.flex-col.gap-4.p-4', {}, [
         h('div.flex.items-center.justify-between', {}, [
@@ -556,12 +668,19 @@ export function renderMpWarfront(ctx) {
           h('span.wf-result-title', {}, [label]),
           h('p.wf-result-sub', {}, [subLabel]),
 
-          // PvP badge instead of difficulty chip
-          h('span', {
-            class: 'wf-diff-chip',
-            style: { background: 'rgba(176,107,255,0.2)', border: '1px solid rgba(176,107,255,0.6)',
-                     color: '#c87dff' },
-          }, ['PvP']),
+          // PvP badge + collection
+          h('div.flex.gap-2.justify-center', {}, [
+            h('span', {
+              class: 'wf-diff-chip',
+              style: { background: 'rgba(176,107,255,0.2)', border: '1px solid rgba(176,107,255,0.6)',
+                       color: '#c87dff' },
+            }, ['PvP']),
+            h('span', {
+              class: 'wf-diff-chip',
+              style: { background: 'rgba(34,225,255,0.12)', border: '1px solid rgba(34,225,255,0.3)',
+                       color: '#22e1ff' },
+            }, [collectionLabel(game.room_collection ?? 'fantasy')]),
+          ]),
 
           // HP scoreboard
           h('div.wf-scoreboard', {}, [
@@ -576,13 +695,19 @@ export function renderMpWarfront(ctx) {
             ]),
           ]),
 
-          // Payout banner (win only)
-          iWon
+          // Payout / refund banner
+          isDraw
             ? h('div.wf-payout-banner', {}, [
-                h('span.wf-payout-amount', {}, [`+${formatCredits(payout)} cr`]),
-                h('span.wf-payout-mult', {}, ['Winner takes all · PvP']),
+                h('span.wf-payout-amount', { style: { color: '#e8d44d' } },
+                  [`+${formatCredits(game.ante ?? 0)} cr`]),
+                h('span.wf-payout-mult', {}, ['Ante refunded · Draw']),
               ])
-            : null,
+            : iWon
+              ? h('div.wf-payout-banner', {}, [
+                  h('span.wf-payout-amount', {}, [`+${formatCredits(payout)} cr`]),
+                  h('span.wf-payout-mult', {}, ['Winner takes all · PvP']),
+                ])
+              : null,
         ]),
 
         // Actions
@@ -598,7 +723,7 @@ export function renderMpWarfront(ctx) {
     return appShell(h('div.p-4', {}, ['Unknown phase']));
   }
 
-  redraw();
+  renderNow();
   return root;
 }
 

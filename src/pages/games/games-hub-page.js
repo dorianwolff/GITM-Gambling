@@ -15,7 +15,7 @@
 import { h, mount } from '../../utils/dom.js';
 import { appShell } from '../../ui/layout/app-shell.js';
 import { ROUTES } from '../../config/constants.js';
-import { getActiveGames, GAME_ID_TO_ROUTE } from '../../services/game-rotation.js';
+import { getActiveGames, GAME_ID_TO_ROUTE, getExtraSlots } from '../../services/game-rotation.js';
 import { spinner } from '../../ui/components/spinner.js';
 import { isAdmin } from '../../state/user-store.js';
 
@@ -224,7 +224,7 @@ export function renderGamesHub(ctx) {
 }
 
 function formatRemaining(endsAt) {
-  const ms = Math.max(0, endsAt.getTime() - Date.now());
+  const ms = Math.max(0, endsAt.getTime() - Date.now() - getExtraSlots() * 3_600_000);
   const totalMin = Math.round(ms / 60_000);
   if (totalMin >= 60) {
     const h_ = Math.floor(totalMin / 60);

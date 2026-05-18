@@ -18,7 +18,10 @@ import {
   adminGetRotation,
   adminAdvanceRotation,
   adminResetRotationOffset,
+  adminGetWarfrontOverrides,
+  adminSaveWarfrontOverrides,
 } from '../services/admin-service.js';
+import { WARFRONT_FANTASY_UNITS, WARFRONT_ANIMAL_UNITS } from '../games/warfront/warfront-api.js';
 
 const GAME_DISPLAY_NAMES = {
   blackjack: 'Blackjack', candy: 'Candy Crush', cases: 'Cases',
@@ -42,6 +45,12 @@ export function renderAdmin() {
   let rotation = { games: [], extraSlots: 0 };
   let rotationBusy = false;
 
+  // Warfront override state
+  let wfTab = 'fantasy';
+  let wfBusy = false;
+  let wfPoolOverride = { fantasy: null, animals: null };
+  let wfStatOverrides = { fantasy: {}, animals: {} };
+
   const root = h('div.max-w-7xl.mx-auto.w-full.flex.flex-col.gap-5', {}, []);
   const redraw = () => mount(root, view());
 
@@ -52,14 +61,17 @@ export function renderAdmin() {
     error = null;
     redraw();
     try {
-      const [nextUsers, nextCollectibles, nextRotation] = await Promise.all([
+      const [nextUsers, nextCollectibles, nextRotation, nextWfOvr] = await Promise.all([
         fetchAdminUsers(),
         fetchAdminCollectibles(),
         adminGetRotation().catch(() => ({ games: [], extraSlots: 0 })),
+        adminGetWarfrontOverrides().catch(() => ({ fantasyPool: null, animalPool: null, fantasyStats: {}, animalStats: {} })),
       ]);
       users = nextUsers;
       collectibles = nextCollectibles.filter((item) => COLLECTIBLE_CATEGORIES.has(item.category));
       rotation = nextRotation;
+      wfPoolOverride = { fantasy: nextWfOvr.fantasyPool, animals: nextWfOvr.animalPool };
+      wfStatOverrides = { fantasy: { ...(nextWfOvr.fantasyStats || {}) }, animals: { ...(nextWfOvr.animalStats || {}) } };
       loading = false;
       if (!selectedUserId && users.length) {
         selectedUserId = (users.find((u) => !u.is_admin && !u.is_banned)
@@ -102,6 +114,40 @@ export function renderAdmin() {
       toastError(e.message);
     } finally {
       rotationBusy = false; redraw();
+    }
+  }
+
+  async function doSaveWarfrontOverrides() {
+    if (wfBusy) return;
+    wfBusy = true; redraw();
+    try {
+      await adminSaveWarfrontOverrides({
+        fantasyPool:  wfPoolOverride.fantasy,
+        animalPool:   wfPoolOverride.animals,
+        fantasyStats: wfStatOverrides.fantasy || {},
+        animalStats:  wfStatOverrides.animals || {},
+      });
+      toastSuccess('Warfront overrides saved');
+    } catch (e) {
+      toastError(e.message ?? String(e));
+    } finally {
+      wfBusy = false; redraw();
+    }
+  }
+
+  async function doResetWarfrontOverrides() {
+    if (wfBusy) return;
+    if (!window.confirm('Clear ALL warfront overrides (pool + stats) for both collections? Players will return to automatic rotation.')) return;
+    wfBusy = true; redraw();
+    try {
+      await adminSaveWarfrontOverrides({ fantasyPool: null, animalPool: null, fantasyStats: {}, animalStats: {} });
+      wfPoolOverride = { fantasy: null, animals: null };
+      wfStatOverrides = { fantasy: {}, animals: {} };
+      toastSuccess('All warfront overrides cleared');
+    } catch (e) {
+      toastError(e.message ?? String(e));
+    } finally {
+      wfBusy = false; redraw();
     }
   }
 
@@ -286,6 +332,9 @@ export function renderAdmin() {
 
         // ── Rotation controls ──────────────────────────────────────────────
         rotationPanel(),
+
+        // ── Warfront admin ─────────────────────────────────────────────────
+        warfrontPanel(),
 
         h('div.grid.grid-cols-1.lg:grid-cols-2.gap-4', {}, [
           h('section.glass.neon-border.p-5.flex.flex-col.gap-4', {}, [
@@ -496,12 +545,206 @@ export function renderAdmin() {
     ]);
   }
 
+  function wfStatCell(unit, field, overrideVal, min, max, isFloat = false) {
+    const defaultVal = unit[field];
+    const value = overrideVal ?? defaultVal;
+    const isModified = overrideVal !== undefined && overrideVal !== defaultVal;
+    return h('td.py-1.px-1.text-center', {}, [
+      h('input', {
+        type: 'number',
+        min: String(min), max: String(max),
+        step: isFloat ? '0.1' : '1',
+        value: String(value),
+        style: {
+          width: '60px', padding: '3px 5px', textAlign: 'center', fontFamily: 'monospace', fontSize: '12px',
+          background: isModified ? 'rgba(255,217,107,0.18)' : 'rgba(255,255,255,0.05)',
+          border: `1px solid ${isModified ? 'rgba(255,217,107,0.55)' : 'rgba(255,255,255,0.14)'}`,
+          borderRadius: '5px', color: isModified ? '#ffd96b' : 'rgba(255,255,255,0.7)',
+        },
+        oninput: (e) => {
+          const v = isFloat ? Number.parseFloat(e.target.value) : Number.parseInt(e.target.value, 10);
+          if (!wfStatOverrides[wfTab]) wfStatOverrides[wfTab] = {};
+          if (!wfStatOverrides[wfTab][unit.id]) wfStatOverrides[wfTab][unit.id] = {};
+          if (Number.isFinite(v) && v >= min) wfStatOverrides[wfTab][unit.id][field] = v;
+        },
+      }),
+    ]);
+  }
+
+  function warfrontPanel() {
+    const units = wfTab === 'fantasy' ? WARFRONT_FANTASY_UNITS : WARFRONT_ANIMAL_UNITS;
+    const pool  = wfPoolOverride[wfTab];
+    const stats = wfStatOverrides[wfTab] || {};
+    const hasStatOverrides = Object.keys(stats).length > 0;
+    const hasBothOverrides = (wfPoolOverride.fantasy !== null || wfPoolOverride.animals !== null || hasStatOverrides);
+
+    return h('section.glass.neon-border.p-5.flex.flex-col.gap-5', {
+      style: { borderColor: hasBothOverrides ? 'rgba(255,140,40,0.4)' : 'rgba(34,225,255,0.2)' },
+    }, [
+      // ── Header ──────────────────────────────────────────────────────────
+      h('div.flex.items-start.justify-between.gap-3.flex-wrap', {}, [
+        h('div', {}, [
+          h('h2.text-xl.font-semibold.heading-grad', {}, ['⚔ Warfront Controls']),
+          h('p.text-xs.text-muted', {}, ['Override the active unit pool and base stats for every player.']),
+        ]),
+        hasBothOverrides
+          ? h('span.text-[10px].uppercase.tracking-widest.px-2.py-0.5.rounded', {
+              style: { background: 'rgba(255,140,40,0.15)', color: '#ff8c28', border: '1px solid rgba(255,140,40,0.4)' },
+            }, ['Overrides active'])
+          : h('span.text-[10px].uppercase.tracking-widest.text-muted', {}, ['No overrides']),
+      ]),
+
+      // ── Collection tabs ──────────────────────────────────────────────────
+      h('div.flex.gap-2', {}, [
+        h('button', {
+          class: 'h-8 px-4 rounded-lg text-sm font-semibold transition-colors border ' +
+            (wfTab === 'fantasy'
+              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+              : 'bg-transparent text-white/50 border-white/10 hover:border-white/25 hover:text-white/75'),
+          onclick: () => { wfTab = 'fantasy'; redraw(); },
+        }, ['✨ Fantasy']),
+        h('button', {
+          class: 'h-8 px-4 rounded-lg text-sm font-semibold transition-colors border ' +
+            (wfTab === 'animals'
+              ? 'bg-lime-500/20 text-lime-300 border-lime-500/40'
+              : 'bg-transparent text-white/50 border-white/10 hover:border-white/25 hover:text-white/75'),
+          onclick: () => { wfTab = 'animals'; redraw(); },
+        }, ['🐾 Animals']),
+      ]),
+
+      // ── Unit pool ────────────────────────────────────────────────────────
+      h('div.flex.flex-col.gap-3', {}, [
+        h('div.flex.items-center.justify-between.gap-2.flex-wrap', {}, [
+          h('div.flex.items-center.gap-2', {}, [
+            h('span.text-xs.uppercase.tracking-widest.text-muted', {}, ['Active pool']),
+            pool === null
+              ? h('span.text-[10px].px-2.py-0.5.rounded', {
+                  style: { background: 'rgba(34,225,255,0.1)', color: '#22e1ff', border: '1px solid rgba(34,225,255,0.3)' },
+                }, ['Auto rotation'])
+              : h('span.text-[10px].px-2.py-0.5.rounded', {
+                  style: { background: 'rgba(255,217,107,0.15)', color: '#ffd96b', border: '1px solid rgba(255,217,107,0.4)' },
+                }, [`Manual · ${pool.length} unit${pool.length !== 1 ? 's' : ''}`]),
+          ]),
+          pool !== null
+            ? h('button.btn-ghost.h-7.px-3.text-xs', {
+                onclick: () => { wfPoolOverride = { ...wfPoolOverride, [wfTab]: null }; redraw(); },
+              }, ['↺ Reset to auto'])
+            : h('button.btn-ghost.h-7.px-3.text-xs', {
+                onclick: () => {
+                  wfPoolOverride = { ...wfPoolOverride, [wfTab]: units.map((u) => u.id) };
+                  redraw();
+                },
+              }, ['Customize pool']),
+        ]),
+        h('div.flex.flex-wrap.gap-1.5', {}, units.map((u) => {
+          const active = pool === null || pool.includes(u.id);
+          return h('button', {
+            style: {
+              display: 'flex', alignItems: 'center', gap: '5px',
+              height: '30px', padding: '0 10px', borderRadius: '7px',
+              fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+              transition: 'all .15s',
+              border: active ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(255,255,255,0.07)',
+              background: active ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.02)',
+              color: active ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.25)',
+              textDecoration: active ? 'none' : 'line-through',
+            },
+            onclick: () => {
+              if (pool === null) {
+                wfPoolOverride = { ...wfPoolOverride, [wfTab]: units.map((u2) => u2.id).filter((id) => id !== u.id) };
+              } else {
+                const next = pool.includes(u.id) ? pool.filter((id) => id !== u.id) : [...pool, u.id];
+                wfPoolOverride = { ...wfPoolOverride, [wfTab]: next };
+              }
+              redraw();
+            },
+          }, [
+            h('span', {}, [u.icon]),
+            h('span', {}, [u.name]),
+            active && pool !== null ? h('span', { style: { color: '#4dff9a', marginLeft: '2px' } }, ['✓']) : null,
+          ]);
+        })),
+        pool !== null
+          ? h('p.text-[11px].text-muted.italic', {}, ['Click a unit to toggle it in or out of the pool. Changes take effect on save.'])
+          : h('p.text-[11px].text-muted.italic', {}, ['Click "Customize pool" to manually pick which units are available.']),
+      ]),
+
+      // ── Stat overrides ───────────────────────────────────────────────────
+      h('div.flex.flex-col.gap-2', {}, [
+        h('div.flex.items-center.justify-between.gap-2', {}, [
+          h('span.text-xs.uppercase.tracking-widest.text-muted', {}, ['Stat overrides']),
+          hasStatOverrides
+            ? h('button.btn-ghost.h-7.px-3.text-xs', {
+                onclick: () => { wfStatOverrides = { ...wfStatOverrides, [wfTab]: {} }; redraw(); },
+              }, [`↺ Clear ${wfTab} stats`])
+            : h('span.text-[11px].text-muted.italic', {}, ['No overrides — showing defaults']),
+        ]),
+        h('div.rounded-xl.border.border-white/[0.08].overflow-x-auto', {}, [
+          h('table.w-full', { style: { borderCollapse: 'collapse', fontSize: '12px', minWidth: '480px' } }, [
+            h('thead', {}, [
+              h('tr', { style: { borderBottom: '1px solid rgba(255,255,255,0.08)' } }, [
+                h('th', { style: { textAlign: 'left', padding: '8px 12px', color: 'rgba(160,185,230,0.6)', fontWeight: '400', fontSize: '10px', letterSpacing: '0.05em', textTransform: 'uppercase' } }, ['Unit']),
+                ...['HP', 'DMG', 'SPD', 'ATK/s', 'Cost'].map((lbl) =>
+                  h('th', { style: { textAlign: 'center', padding: '8px 4px', color: 'rgba(160,185,230,0.6)', fontWeight: '400', fontSize: '10px', letterSpacing: '0.05em', textTransform: 'uppercase' } }, [lbl])
+                ),
+              ]),
+            ]),
+            h('tbody', {}, units.map((u, i) => {
+              const uStats = stats[u.id] || {};
+              const modified = Object.keys(uStats).length > 0;
+              return h('tr', {
+                style: {
+                  background: i % 2 === 0 ? 'rgba(255,255,255,0.018)' : 'transparent',
+                  borderLeft: modified ? '2px solid rgba(255,217,107,0.45)' : '2px solid transparent',
+                },
+              }, [
+                h('td', { style: { padding: '4px 12px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' } }, [
+                  h('span', { style: { fontSize: '14px' } }, [u.icon]),
+                  h('span', { style: { color: 'rgba(255,255,255,0.75)' } }, [u.name]),
+                  h('span', { style: { fontSize: '10px', color: 'rgba(160,160,160,0.6)', marginLeft: '2px' } }, [`${u.cost}g`]),
+                  modified ? h('span', { style: { fontSize: '9px', color: '#ffd96b', marginLeft: '4px' } }, ['✦']) : null,
+                ]),
+                wfStatCell(u, 'hp',      uStats.hp,      1,   9999),
+                wfStatCell(u, 'dmg',     uStats.dmg,     0,   999),
+                wfStatCell(u, 'spd',     uStats.spd,     1,   999),
+                wfStatCell(u, 'atkRate', uStats.atkRate,  0.1, 99, true),
+                wfStatCell(u, 'cost',    uStats.cost,    1,   10),
+              ]);
+            })),
+          ]),
+        ]),
+        h('p.text-[11px].text-muted.italic', {}, [
+          'Highlighted cells (amber) have been changed from defaults. Edit any field and hit Save.',
+        ]),
+      ]),
+
+      // ── Actions ──────────────────────────────────────────────────────────
+      h('div.flex.flex-wrap.items-center.justify-end.gap-2', {}, [
+        wfBusy ? h('span.text-xs.text-muted', {}, ['Saving…']) : null,
+        h('button.btn-ghost.h-10.px-4', {
+          onclick: doResetWarfrontOverrides, disabled: wfBusy,
+        }, ['Reset all overrides']),
+        h('button', {
+          class: 'h-10 px-5 rounded-lg text-sm font-semibold transition-colors border ' +
+            (wfBusy
+              ? 'bg-white/5 text-white/30 border-white/10 cursor-not-allowed'
+              : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/30'),
+          onclick: doSaveWarfrontOverrides,
+          disabled: wfBusy,
+        }, ['💾 Save overrides']),
+      ]),
+    ]);
+  }
+
   function rotationPanel() {
     const now = Date.now();
     const hasOffset = rotation.extraSlots > 0;
 
     function minsRemaining(endsAt) {
-      const ms = new Date(endsAt).getTime() - now;
+      // Subtract the extra_slots offset so each card shows its position within
+      // the 6-slot window (0–1h for the freshest, up to 5–6h for the oldest),
+      // regardless of how far the admin has advanced the rotation.
+      const ms = new Date(endsAt).getTime() - now - rotation.extraSlots * 3_600_000;
       if (ms <= 0) return '0m';
       const mins = Math.floor(ms / 60000);
       if (mins < 60) return `${mins}m`;

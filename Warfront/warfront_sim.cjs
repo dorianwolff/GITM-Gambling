@@ -102,7 +102,7 @@ const ANIMAL_DEFS = [
   { id:'giraffe',      cost:4, hp:106, dmg:20, spd:46,  atkRate:1.4, aoeR:0,  lane:'ground', melee:false, ranged:true,  rusher:false, canHitFlying:true,  prioritiseAir:true,  engageR:200, baseEngR:200, aoeShield:0, regenPerSec:0, healRange:0,  reflectPct:0,    slowDur:0,   airMult:1, aoeResist:1,   chain:0, voidCycle:0, voidDur:0, isSelf:false,isPx:false,isAss:false,isShaman:false,isNecro:false,isWarlord:false,isFootman:false,isArcher:false,isBrute:false,isCav:false,isVoid:false,isGoblin:false, collection:'animals' },
   { id:'tiger',        cost:4, hp:102, dmg:24, spd:72,  atkRate:0.8, aoeR:0,  lane:'ground', melee:true,  ranged:false, rusher:false, canHitFlying:false, prioritiseAir:false, engageR:36,  baseEngR:36,  aoeShield:0, regenPerSec:0, healRange:0,  reflectPct:0,    slowDur:0,   airMult:1, aoeResist:1,   chain:0, voidCycle:0, voidDur:0, isSelf:false,isPx:false,isAss:false,isShaman:false,isNecro:false,isWarlord:false,isFootman:false,isArcher:false,isBrute:false,isCav:false,isVoid:false,isGoblin:false, tigerRoar:true, roarCooldown:8, roarSilenceDur:3, collection:'animals' },
   { id:'gorilla',      cost:4, hp:161, dmg:28, spd:65,  atkRate:1.3, aoeR:0,  lane:'ground', melee:true,  ranged:false, rusher:false, canHitFlying:false, prioritiseAir:false, engageR:36,  baseEngR:36,  aoeShield:0, regenPerSec:0, healRange:0,  reflectPct:0,    slowDur:0,   airMult:1, aoeResist:1,   chain:0, voidCycle:0, voidDur:0, isSelf:false,isPx:false,isAss:false,isShaman:false,isNecro:false,isWarlord:false,isFootman:false,isArcher:false,isBrute:false,isCav:false,isVoid:false,isGoblin:false, gorillaRage:true, collection:'animals' },
-  { id:'shark',        cost:5, hp:108, dmg:31, spd:68,  atkRate:1.2, aoeR:0,  lane:'air',    melee:true,  ranged:false, rusher:false, canHitFlying:true,  prioritiseAir:false, engageR:36,  baseEngR:36,  aoeShield:0, regenPerSec:0, healRange:0,  reflectPct:0,    slowDur:0,   airMult:1, aoeResist:1,   chain:0, voidCycle:0, voidDur:0, isSelf:false,isPx:false,isAss:false,isShaman:false,isNecro:false,isWarlord:false,isFootman:false,isArcher:false,isBrute:false,isCav:false,isVoid:false,isGoblin:false, sharkPrey:true, collection:'animals' },
+  { id:'shark',        cost:5, hp:105, dmg:30, spd:68,  atkRate:1.2, aoeR:0,  lane:'air',    melee:true,  ranged:false, rusher:false, canHitFlying:true,  prioritiseAir:false, engageR:36,  baseEngR:36,  aoeShield:0, regenPerSec:0, healRange:0,  reflectPct:0,    slowDur:0,   airMult:1, aoeResist:1,   chain:0, voidCycle:0, voidDur:0, isSelf:false,isPx:false,isAss:false,isShaman:false,isNecro:false,isWarlord:false,isFootman:false,isArcher:false,isBrute:false,isCav:false,isVoid:false,isGoblin:false, sharkPrey:true, collection:'animals' },
   { id:'elephant',     cost:5, hp:254, dmg:24, spd:37,  atkRate:1.8, aoeR:50, lane:'ground', melee:true,  ranged:false, rusher:false, canHitFlying:false, prioritiseAir:false, engageR:36,  baseEngR:36,  aoeShield:0, regenPerSec:0, healRange:0,  reflectPct:0,    slowDur:0,   airMult:1, aoeResist:1,   chain:0, voidCycle:0, voidDur:0, isSelf:false,isPx:false,isAss:false,isShaman:false,isNecro:false,isWarlord:false,isFootman:false,isArcher:false,isBrute:false,isCav:false,isVoid:false,isGoblin:false, trumpetCooldown:8, trumpetRadius:90, stunDur:1.5, collection:'animals' },
   { id:'whale',        cost:6, hp:314, dmg:20, spd:25,  atkRate:2.1, aoeR:50, lane:'air',    melee:false, ranged:true,  rusher:false, canHitFlying:true,  prioritiseAir:false, engageR:160, baseEngR:160, aoeShield:0, regenPerSec:0, healRange:0,  reflectPct:0,    slowDur:0,   airMult:1, aoeResist:1,   chain:0, voidCycle:0, voidDur:0, isSelf:false,isPx:false,isAss:false,isShaman:false,isNecro:false,isWarlord:false,isFootman:false,isArcher:false,isBrute:false,isCav:false,isVoid:false,isGoblin:false, tidalWave:true, waveRadius:140, waveCooldown:7, waveDmg:28, waveForward:true, collection:'animals' },
 ];
@@ -285,7 +285,15 @@ function runBattleFast(pIds, eIds) {
         }
         if(cnt>0){
           cx/=cnt;
-          if(Math.abs(S[b+X]-cx)>S[b+ENGAGE]){ S[b+X]+=dir*S[b+SPD]*DT; }
+          // Explode immediately if any enemy is already within AoE radius
+          const rad=S[b+AOE_RADIUS];
+          let anyInRange=false;
+          for(let j=0;j<maxN;j++){
+            const jf=j*NFLAGS,jb=j*FSTATE;
+            if(!F[jf+F_ALIVE]||F[jf+F_ENEMY]===isEnemy) continue;
+            if(Math.abs(S[jb+X]-S[b+X])<=rad){anyInRange=true;break;}
+          }
+          if(!anyInRange&&Math.abs(S[b+X]-cx)>S[b+ENGAGE]){ S[b+X]+=dir*S[b+SPD]*DT; }
           else{
             const rad=S[b+AOE_RADIUS];
             for(let j=0;j<maxN;j++){
@@ -519,6 +527,8 @@ function runBattleFast(pIds, eIds) {
     const jf=j*NFLAGS, jb=j*FSTATE;
     if(!F[jf+F_ALIVE]) return;
     if(S[jb+VOID_ACTIVE]) return;
+    // Flying vulnerability: assassin takes 2× from flying attackers
+    if(F[jf+F_ASSASSIN]&&attackerIdx>=0&&F[attackerIdx*NFLAGS+F_AIR]) rawDmg*=2;
     const dmg=Math.max(1,Math.round(rawDmg));
     S[jb+HP]-=dmg;
     // Mirror reflect
@@ -584,6 +594,7 @@ function runBattleAnimal(pIds,eIds){
     if(!tgt.alive)return 0;
     // Squirrel dodge (30% chance)
     if(tgt.dodgeChance&&Math.random()<tgt.dodgeChance) return 0;
+    if(tgt.flyingVulnMult&&att.lane==='air') raw*=tgt.flyingVulnMult;
     if(tgt.shellBlock) raw*=(1-tgt.shellBlock);
     if(tgt.reflectPct<0) raw*=(1+tgt.reflectPct); // tortoise negative reflectPct = shellBlock
     if(att.eagleDive&&!att._eagleDived){att._eagleDived=true;raw*=2;}
@@ -700,7 +711,8 @@ function runBattleAnimal(pIds,eIds){
           if(inLane.length){
             // Rush toward centroid of enemies
             const cx=inLane.reduce((s,t)=>s+t.x,0)/inLane.length;
-            if(Math.abs(f.x-cx)>f.baseEngR){ f.x+=Math.sign(cx-f.x)*f.spd*DT; }
+            const anyInRange=inLane.some(t=>Math.abs(t.x-f.x)<=f.aoeR);
+            if(!anyInRange&&Math.abs(f.x-cx)>f.baseEngR){ f.x+=Math.sign(cx-f.x)*f.spd*DT; }
             else {
               // EXPLODE: AoE hit centred on self, hitting all enemies within aoeR
               inLane.filter(t=>Math.abs(t.x-f.x)<=f.aoeR).forEach(t=>{

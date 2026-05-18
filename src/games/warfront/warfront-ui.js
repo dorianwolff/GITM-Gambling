@@ -133,6 +133,8 @@ export function injectWarfrontStylesOnce() {
     .siege-bomb{position:absolute;pointer-events:none;z-index:28;font-size:14px;animation:bomb-arc .45s cubic-bezier(.33,0,.66,1) forwards}
     .boom-ring{position:absolute;border-radius:50%;border:6px solid rgba(255,180,40,1);background:rgba(255,80,0,.25);pointer-events:none;z-index:27;animation:boom-ring .5s ease-out forwards}
     .goblin-boom{position:absolute;border-radius:50%;pointer-events:none;z-index:27;width:120px;height:120px;animation:goblin-boom .7s ease-out forwards}
+    .goblin-warn-zone{position:absolute;border-radius:50%;pointer-events:none;z-index:15;border:3px dashed rgba(255,220,40,.9);background:rgba(255,180,0,.1);transform:translate(-50%,-50%);animation:goblin-warn-pulse .45s ease-in-out infinite alternate}
+    .goblin-warn-zone.enemy{border-color:rgba(255,80,40,.9);background:rgba(255,60,0,.08)}
     .frost-slow-ring{position:absolute;border-radius:50%;border:3px solid rgba(140,220,255,1);width:50px;height:50px;pointer-events:none;z-index:26;animation:frost-slow .6s ease-out forwards}
     .dodge-text{position:absolute;font-family:'Cinzel',serif;font-size:11px;font-weight:700;color:#ffd700;text-shadow:0 0 6px #000;pointer-events:none;z-index:30;animation:dodge-pop .6s ease-out forwards}
     .dodge-flash{animation:dodge-flash-anim .28s ease-out}
@@ -200,6 +202,7 @@ export function injectWarfrontStylesOnce() {
     @keyframes bomb-arc{0%{transform:translate(0,0) scale(1);opacity:1}50%{transform:translate(var(--bx),calc(var(--by) - 40px)) scale(1.2);opacity:1}100%{transform:translate(calc(var(--bx)*2),0) scale(.5);opacity:0}}
     @keyframes boom-ring{0%{transform:translate(-50%,-50%) scale(.1);opacity:1;border-width:6px}60%{transform:translate(-50%,-50%) scale(1.2);opacity:.8;border-width:3px}100%{transform:translate(-50%,-50%) scale(1.8);opacity:0;border-width:1px}}
     @keyframes goblin-boom{0%{transform:translate(-50%,-50%) scale(.2);opacity:1;background:rgba(255,200,40,.9)}30%{transform:translate(-50%,-50%) scale(1.5);opacity:.9;background:rgba(255,120,20,.8)}70%{transform:translate(-50%,-50%) scale(1.8);opacity:.5;background:rgba(100,100,100,.4)}100%{transform:translate(-50%,-50%) scale(2.5);opacity:0;background:rgba(80,80,80,.1)}}
+    @keyframes goblin-warn-pulse{0%{opacity:.3;box-shadow:0 0 0 rgba(255,180,0,0)}100%{opacity:1;box-shadow:0 0 22px 4px rgba(255,200,0,.45)}}
     @keyframes frost-slow{0%{transform:translate(-50%,-50%) scale(.3);opacity:1;border-color:rgba(140,220,255,1)}100%{transform:translate(-50%,-50%) scale(1.4);opacity:0;border-color:rgba(200,240,255,.2)}}
     @keyframes dodge-pop{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-20px) scale(1.5)}}
     @keyframes dodge-flash-anim{0%,100%{opacity:1}50%{opacity:.2;transform:translateX(6px)}}
@@ -271,12 +274,15 @@ export function injectWarfrontStylesOnce() {
     .wf-result.loss{background:linear-gradient(160deg,#0f0305 0%,#170407 45%,#1a060a 100%);border:1px solid rgba(255,60,80,.5);box-shadow:0 0 40px rgba(255,60,80,.12),inset 0 0 50px rgba(255,60,80,.04)}.wf-result.loss::before,.wf-result.loss::after{border-color:rgba(255,60,80,.5)}
     .wf-result.surrender{background:linear-gradient(160deg,#07090e 0%,#0a0d18 100%);border:1px solid rgba(140,150,200,.32)}.wf-result.surrender::before,.wf-result.surrender::after{border-color:rgba(140,150,200,.3)}
     .wf-result.resolving{background:linear-gradient(160deg,#06080e 0%,#090c18 100%);border:1px solid rgba(80,140,255,.3)}.wf-result.resolving::before,.wf-result.resolving::after{border-color:rgba(80,140,255,.3)}
+    .wf-result.draw{background:linear-gradient(160deg,#080a04 0%,#0f1208 100%);border:1px solid rgba(220,200,60,.45);box-shadow:0 0 40px rgba(220,200,60,.10),inset 0 0 50px rgba(220,200,60,.03)}.wf-result.draw::before,.wf-result.draw::after{border-color:rgba(220,200,60,.45)}
     .wf-result-emoji{font-size:54px;line-height:1.1;display:block;margin-bottom:8px;animation:wf-emoji-pop .4s cubic-bezier(.25,.46,.45,.94)}
     .wf-result.win .wf-result-emoji{filter:drop-shadow(0 0 22px rgba(80,255,160,.65))}
     .wf-result.loss .wf-result-emoji{filter:drop-shadow(0 0 18px rgba(255,60,80,.55))}
+    .wf-result.draw .wf-result-emoji{filter:drop-shadow(0 0 18px rgba(220,200,60,.6))}
     .wf-result-title{font-family:'Cinzel',serif;font-size:26px;font-weight:700;letter-spacing:4px;display:block;margin-bottom:6px;text-transform:uppercase}
     .wf-result.win .wf-result-title{color:#7fffb0;text-shadow:0 0 28px rgba(80,255,160,.55)}
     .wf-result.loss .wf-result-title{color:#ff5060;text-shadow:0 0 22px rgba(255,60,80,.5)}
+    .wf-result.draw .wf-result-title{color:#e8d44d;text-shadow:0 0 22px rgba(220,200,60,.5)}
     .wf-result.surrender .wf-result-title{color:rgba(180,190,220,.7);letter-spacing:3px}
     .wf-result.resolving .wf-result-title{color:rgba(120,160,230,.7);letter-spacing:3px}
     .wf-result-sub{font-size:11px;letter-spacing:1.5px;color:rgba(160,185,230,.35);margin-bottom:20px;text-transform:uppercase}
@@ -554,6 +560,7 @@ export function renderWarfrontBattleStage({ picks, result, getUnitById, onComple
 
   // ── STATE ──────────────────────────────────────────────────────────────────
   let finished = false, rafId = 0, lastTs = null, accumSec = 0, battleElapsed = 0;
+  const pendingExplosions = [];
   let scaleTimer = 0;
   let playerBaseHP = 100, enemyBaseHP = 100;
   let logLines = [];
@@ -850,6 +857,7 @@ export function renderWarfrontBattleStage({ picks, result, getUnitById, onComple
     if(!target.alive) return 0;
     if(target._voidActive) return 0;
     if(attacker.id==='archer'&&target.lane==='air') rawDmg*=(attacker.airDmgMult||attacker.airMult||1);
+    if(target.flyingVulnMult&&attacker.lane==='air') rawDmg*=target.flyingVulnMult;
     if(attacker.lumberjackAxe&&attacker._lumberjackBonus>0) rawDmg+=attacker._lumberjackBonus;
     if(target._angelDmgReduce>0) rawDmg=Math.max(1,rawDmg*(1-target._angelDmgReduce));
     const warlordUp=fighters.some(f=>f.alive&&!f.isEnemy&&f.id==='warlord');
@@ -965,6 +973,31 @@ export function renderWarfrontBattleStage({ picks, result, getUnitById, onComple
   // ── logicTick — all game mechanics each fixed step ────────────────────────
   function logicTick(dt){
     const alive=fighters.filter(f=>f.alive);
+
+    // Pending goblin explosions — detonate after 1s delay
+    for(let i=pendingExplosions.length-1;i>=0;i--){
+      const pe=pendingExplosions[i];
+      pe.timer-=dt;
+      if(pe.timer<=0){
+        if(pe.warn&&pe.warn.parentNode) pe.warn.parentNode.removeChild(pe.warn);
+        const pz=getZone(pe.lane);
+        const gboom=document.createElement('div'); gboom.className='goblin-boom';
+        gboom.style.left=Math.round(pe.x+14)+'px'; gboom.style.top=Math.round(pe.y+14)+'px';
+        gboom.style.width=(pe.radius*2)+'px'; gboom.style.height=(pe.radius*2)+'px';
+        pz.appendChild(gboom); setTimeout(()=>gboom.remove(),720);
+        flashAoE(pe.x,pe.y,pe.radius,pz,'explode-ring',pe.isEnemy);
+        addLog((pe.isEnemy?'Enemy ':'')+'💥 BOOM! Goblin blast for '+Math.round(pe.dmg)+' AoE!','aoe');
+        const victims=alive.filter(t=>t.isEnemy!==pe.isEnemy&&t.lane===pe.lane&&Math.hypot(t.x-pe.x,t.y-pe.y)<=pe.radius);
+        victims.forEach(t=>dealDmg(pe.attacker,t,pe.dmg*(0.85+Math.random()*.3)));
+        if(!victims.length){
+          const d=Math.round(pe.dmg*0.7);
+          if(pe.isEnemy) playerBaseHP=Math.max(0,playerBaseHP-d);
+          else enemyBaseHP=Math.max(0,enemyBaseHP-d);
+          updateBaseUI();
+        }
+        pendingExplosions.splice(i,1);
+      }
+    }
 
     // Angel buff timers (tick even if angel dies)
     fighters.forEach(a=>{
@@ -1486,8 +1519,10 @@ export function renderWarfrontBattleStage({ picks, result, getUnitById, onComple
         const targets=alive.filter(o=>o.isEnemy!==f.isEnemy&&o.alive&&o.lane===f.lane);
         let explodeNow=false;
         if(targets.length){
+          const gbRad2=f.aoe?f.aoe.radius:54;
+          const anyInRange=targets.some(t=>Math.hypot(t.x-f.x,t.y-f.y)<=gbRad2);
           const cx=targets.reduce((s,o)=>s+o.x,0)/targets.length;
-          if(Math.abs(f.x-cx)>f.engageRange) f.x+=dir*f.spd*dt;
+          if(!anyInRange&&Math.abs(f.x-cx)>f.engageRange) f.x+=dir*f.spd*dt;
           else explodeNow=true;
         } else {
           if(Math.abs(f.x-oppBaseX)>f.baseEngageRange) f.x+=dir*f.spd*dt;
@@ -1495,21 +1530,15 @@ export function renderWarfrontBattleStage({ picks, result, getUnitById, onComple
         }
         if(explodeNow){
           const gbRad=f.aoe?f.aoe.radius:54;
-          const gboom=document.createElement('div'); gboom.className='goblin-boom';
-          gboom.style.left=Math.round(f.x+14)+'px'; gboom.style.top=Math.round(f.y+14)+'px';
-          gboom.style.width=(gbRad*2)+'px'; gboom.style.height=(gbRad*2)+'px';
-          zone.appendChild(gboom); setTimeout(()=>gboom.remove(),720);
-          flashAoE(f.x,f.y,gbRad,zone,'explode-ring',f.isEnemy);
-          addLog((f.isEnemy?'Enemy ':'')+'💥 Bomb Goblin EXPLODES for '+f.dmg+' AoE!','aoe');
-          targets.filter(t=>Math.hypot(t.x-f.x,t.y-f.y)<=(f.aoe?f.aoe.radius:54)).forEach(t=>{
-            dealDmg(f,t,f.dmg*(0.85+Math.random()*.3));
-          });
-          if(!targets.length){
-            const d=Math.round(f.dmg*0.7);
-            if(f.isEnemy) playerBaseHP=Math.max(0,playerBaseHP-d);
-            else enemyBaseHP=Math.max(0,enemyBaseHP-d);
-            updateBaseUI();
-          }
+          const ex=f.x, ey=f.y;
+          // Warn zone — pulsing yellow danger circle lingers for 1s before boom
+          const warn=document.createElement('div');
+          warn.className='goblin-warn-zone'+(f.isEnemy?' enemy':'');
+          warn.style.left=Math.round(ex+14)+'px'; warn.style.top=Math.round(ey+14)+'px';
+          warn.style.width=(gbRad*2)+'px'; warn.style.height=(gbRad*2)+'px';
+          zone.appendChild(warn);
+          addLog((f.isEnemy?'Enemy ':'')+'💥 Bomb Goblin primed — detonates in 1s!','aoe');
+          pendingExplosions.push({attacker:f,x:ex,y:ey,radius:gbRad,dmg:f.dmg,isEnemy:f.isEnemy,lane:f.lane,warn,timer:1.0});
           kill(f); return;
         }
         f.x=Math.max(62,Math.min(zW-62,f.x)); return;
@@ -2006,6 +2035,8 @@ export function renderWarfrontBattleStage({ picks, result, getUnitById, onComple
     cancelAnimationFrame(rafId); rafId=null;
     window.removeEventListener('resize',resizeHandler);
     fighters.forEach(f=>{if(f.el&&f.el.parentNode)f.el.parentNode.removeChild(f.el);});
+    pendingExplosions.forEach(pe=>{if(pe.warn&&pe.warn.parentNode)pe.warn.parentNode.removeChild(pe.warn);});
+    pendingExplosions.length=0;
     if(extra?.surrendered){
       if(typeof onSurrender==='function') onSurrender({playerBaseHp:playerBaseHP,enemyBaseHp:enemyBaseHP});
       return;
@@ -2051,6 +2082,8 @@ export function renderWarfrontBattleStage({ picks, result, getUnitById, onComple
     window.removeEventListener('resize',resizeHandler);
     if(_scaleRo){ _scaleRo.disconnect(); _scaleRo=null; }
     fighters.forEach(f=>{if(f.el)f.el.remove();});
+    pendingExplosions.forEach(pe=>{if(pe.warn)pe.warn.remove();});
+    pendingExplosions.length=0;
   };
   return container;
 }

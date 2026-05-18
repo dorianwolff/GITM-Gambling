@@ -8,8 +8,11 @@ export const WF_PVP_ANTE_CHOICES = [10, 25, 50, 100, 250, 500];
 export const WF_PVP_DRAFT_BUDGET = 10;
 
 /** Create a new PvP room. Returns the game row. */
-export async function pvpCreate(ante) {
-  const { data, error } = await supabase.rpc('wf_pvp_create', { p_ante: ante });
+export async function pvpCreate(ante, collection = 'fantasy') {
+  const { data, error } = await supabase.rpc('wf_pvp_create', {
+    p_ante:       ante,
+    p_collection: collection,
+  });
   if (error) throw error;
   return Array.isArray(data) ? data[0] : data;
 }
@@ -31,6 +34,30 @@ export async function pvpCommit(gameId, picks, collection) {
     p_game_id:    gameId,
     p_picks:      picks,
     p_collection: collection,
+  });
+  if (error) throw error;
+  return Array.isArray(data) ? data[0] : data;
+}
+
+/**
+ * Report animation result to the server.
+ * First caller sets the winner (HP comparison); subsequent calls are no-ops.
+ * Draw (both HP > 0 or both 0) refunds each player their ante.
+ */
+export async function pvpResolve(gameId, playerBaseHp, enemyBaseHp) {
+  const { data, error } = await supabase.rpc('wf_pvp_resolve', {
+    p_game_id:    gameId,
+    p_player_hp:  playerBaseHp,
+    p_opp_hp:     enemyBaseHp,
+  });
+  if (error) throw error;
+  return Array.isArray(data) ? data[0] : data;
+}
+
+/** Surrender during animation — calling player loses immediately. */
+export async function pvpSurrender(gameId) {
+  const { data, error } = await supabase.rpc('wf_pvp_surrender', {
+    p_game_id: gameId,
   });
   if (error) throw error;
   return Array.isArray(data) ? data[0] : data;

@@ -503,6 +503,14 @@ body{font-family:'Crimson Pro',serif;background:#1a1410;color:var(--parchment);m
 .goblin-boom{position:absolute;border-radius:50%;pointer-events:none;z-index:27;
   width:120px;height:120px;
   animation:goblin-boom .7s ease-out forwards;}
+.goblin-warn-zone{position:absolute;border-radius:50%;pointer-events:none;z-index:15;
+  border:3px dashed rgba(255,220,40,.9);background:rgba(255,180,0,.1);
+  transform:translate(-50%,-50%);animation:goblin-warn-pulse .45s ease-in-out infinite alternate;}
+.goblin-warn-zone.enemy{border-color:rgba(255,80,40,.9);background:rgba(255,60,0,.08);}
+@keyframes goblin-warn-pulse{
+  0%  {opacity:.3;box-shadow:0 0 0 rgba(255,180,0,0);}
+  100%{opacity:1;box-shadow:0 0 22px 4px rgba(255,200,0,.45);}
+}
 /* FrostWitch — ice crystal slow ring */
 @keyframes frost-slow{
   0%  {transform:translate(-50%,-50%) scale(.3);opacity:1;border-color:rgba(140,220,255,1);}
@@ -1136,9 +1144,9 @@ const UNITS = [
     hp:53,dmg:24,spd:68,atkRate:1.4,aoe:null,
     lane:'ground',attackType:'melee',targeting:'fighter',
     canHitFlying:false,prioritiseAir:false,engageRange:36,baseEngageRange:36,
-    isAssassin:true,
+    isAssassin:true,flyingVulnMult:2,
     collection:'fantasy',tags:['ground','melee','special'],
-    tip:'Hops 85px toward enemy backline every 0.8s. Burst damage on arrival. Fragile.',
+    tip:'Hops 85px toward enemy backline every 0.8s. Burst damage on arrival. Takes 2× damage from flying units.',
   },
   {
     id:'shaman',name:'Shaman',icon:'✦',cost:2,
@@ -1338,6 +1346,7 @@ const selectedFormation={ySpread:1.0,meleeExtraX:0,rangedExtraX:0};
 let enemyDiff=null; // set when entering formation phase
 
 let fighters=[],logLines=[],rafId=null;
+let pendingExplosions=[];
 let playerBaseHP=100,enemyBaseHP=100;
 let lastTs=null,accumSec=0,battleElapsed=0;
 const BATTLE_LIMIT=40,LOGIC_HZ=30,LOGIC_DT=1/LOGIC_HZ;
@@ -1659,6 +1668,7 @@ function dealDmg(attacker,target,rawDmg){
   if(!target.alive)return 0;
   if(target._voidActive)return 0; // intangible
   if(attacker.id==='archer'&&target.lane==='air')rawDmg*=(attacker.airDmgMult||1);
+  if(target.flyingVulnMult&&attacker.lane==='air')rawDmg*=target.flyingVulnMult;
   // Lumberjack bonus damage per enemy alive
   if(attacker.lumberjackAxe&&attacker._lumberjackBonus>0) rawDmg+=attacker._lumberjackBonus;
   // Angel -30% dmg taken reduction
@@ -1810,6 +1820,31 @@ function logicTick(dt){
   const gzW=680, szW=680;
   const alive=fighters.filter(f=>f.alive);
   const pAlive=alive.filter(f=>!f.isEnemy);
+
+  // Pending goblin explosions — detonate after 1s delay
+  for(let i=pendingExplosions.length-1;i>=0;i--){
+    const pe=pendingExplosions[i];
+    pe.timer-=dt;
+    if(pe.timer<=0){
+      if(pe.warn&&pe.warn.parentNode)pe.warn.parentNode.removeChild(pe.warn);
+      const pz=document.getElementById(pe.lane==='air'?'sky-zone':'ground-zone');
+      const gboom=document.createElement('div'); gboom.className='goblin-boom';
+      gboom.style.left=Math.round(pe.x+14)+'px'; gboom.style.top=Math.round(pe.y+14)+'px';
+      gboom.style.width=(pe.radius*2)+'px'; gboom.style.height=(pe.radius*2)+'px';
+      pz.appendChild(gboom); setTimeout(()=>gboom.remove(),720);
+      flashAoE(pe.x,pe.y,pe.radius,pz,'explode-ring',pe.isEnemy);
+      addLog((pe.isEnemy?'Enemy ':'')+'💥 BOOM! Goblin blast for '+Math.round(pe.dmg)+' AoE!','aoe');
+      const victims=alive.filter(t=>t.isEnemy!==pe.isEnemy&&t.lane===pe.lane&&Math.hypot(t.x-pe.x,t.y-pe.y)<=pe.radius);
+      victims.forEach(t=>dealDmg(pe.attacker,t,pe.dmg*(0.85+Math.random()*.3)));
+      if(!victims.length){
+        const d=Math.round(pe.dmg*0.7);
+        if(pe.isEnemy)playerBaseHP=Math.max(0,playerBaseHP-d);
+        else enemyBaseHP=Math.max(0,enemyBaseHP-d);
+        updateBaseUI();
+      }
+      pendingExplosions.splice(i,1);
+    }
+  }
 
   // Slow timers
   // ── ANGEL BUFF TIMER: tick for every alive fighter so buffs expire even if angel dies ──
@@ -2438,8 +2473,10 @@ function logicTick(dt){
       const targets=alive.filter(o=>o.isEnemy!==f.isEnemy&&o.alive&&o.lane===f.lane);
       let explodeNow=false, explodeX=f.x, explodeY=f.y;
       if(targets.length){
+        const gbRad2=f.aoe?f.aoe.radius:54;
+        const anyInRange=targets.some(t=>Math.hypot(t.x-f.x,t.y-f.y)<=gbRad2);
         const cx=targets.reduce((s,o)=>s+o.x,0)/targets.length;
-        if(Math.abs(f.x-cx)>f.engageRange){
+        if(!anyInRange&&Math.abs(f.x-cx)>f.engageRange){
           f.x+=dir*f.spd*dt;
         } else { explodeNow=true; explodeX=cx; }
       } else {
@@ -2448,24 +2485,15 @@ function logicTick(dt){
         } else { explodeNow=true; explodeX=oppBaseX; }
       }
       if(explodeNow){
-        // Bigger mushroom boom
         const gbRad=f.aoe?f.aoe.radius:54;
-        const gboom=document.createElement('div'); gboom.className='goblin-boom';
-        gboom.style.left=Math.round(f.x+14)+'px'; gboom.style.top=Math.round(f.y+14)+'px';
-        gboom.style.width=(gbRad*2)+'px'; gboom.style.height=(gbRad*2)+'px'; // match actual AoE radius
-        zone.appendChild(gboom); setTimeout(()=>gboom.remove(),720);
-        flashAoE(f.x,f.y,gbRad,zone,'explode-ring',f.isEnemy);
-        addLog((f.isEnemy?'Enemy ':'')+'💥 Bomb Goblin EXPLODES for '+f.dmg+' AoE!','aoe');
-        targets.filter(t=>Math.hypot(t.x-f.x,t.y-f.y)<=f.aoe.radius).forEach(t=>{
-          const resist=t.aoeResist||1.0;
-          dealDmg(f,t,f.dmg*(0.85+Math.random()*.3)*(1-Math.hypot(t.x-f.x,t.y-f.y)/f.aoe.radius*0.3)*resist);
-        });
-        if(!targets.length){
-          const d=Math.round(f.dmg*0.7);
-          if(f.isEnemy)playerBaseHP=Math.max(0,playerBaseHP-d);
-          else enemyBaseHP=Math.max(0,enemyBaseHP-d);
-          updateBaseUI();
-        }
+        const ex=f.x, ey=f.y;
+        const warn=document.createElement('div');
+        warn.className='goblin-warn-zone'+(f.isEnemy?' enemy':'');
+        warn.style.left=Math.round(ex+14)+'px'; warn.style.top=Math.round(ey+14)+'px';
+        warn.style.width=(gbRad*2)+'px'; warn.style.height=(gbRad*2)+'px';
+        zone.appendChild(warn);
+        addLog((f.isEnemy?'Enemy ':'')+'💥 Bomb Goblin primed — detonates in 1s!','aoe');
+        pendingExplosions.push({attacker:f,x:ex,y:ey,radius:gbRad,dmg:f.dmg,isEnemy:f.isEnemy,lane:f.lane,warn,timer:1.0});
         kill(f); return;
       }
       f.x=Math.max(62,Math.min(zW-62,f.x)); return;
@@ -3076,6 +3104,7 @@ function startBattle(){
   if(typeof startEnv==='function') startEnv(); // start day/night cycle
   playerBaseHP=100; enemyBaseHP=100;
   logLines=[]; document.getElementById('log').innerHTML='';
+  pendingExplosions.forEach(pe=>{if(pe.warn&&pe.warn.parentNode)pe.warn.parentNode.removeChild(pe.warn);}); pendingExplosions.length=0;
   fighters=[];
   // Count player's starting units for genie power scaling
   const _playerStartCount=Object.values(qty).reduce((s,n)=>s+(n||0),0); lastTs=null; accumSec=0; battleElapsed=0;
@@ -3114,6 +3143,7 @@ function startBattle(){
 function endBattle(){
   if(rafId){cancelAnimationFrame(rafId);rafId=null;}
   fighters.forEach(f=>{if(f.el&&f.el.parentNode)f.el.parentNode.removeChild(f.el);}); fighters=[];
+  pendingExplosions.forEach(pe=>{if(pe.warn&&pe.warn.parentNode)pe.warn.parentNode.removeChild(pe.warn);}); pendingExplosions.length=0;
   showPhase('ph-result');
   const php=Math.max(0,Math.round(playerBaseHP)),ehp=Math.max(0,Math.round(enemyBaseHP));
   const win=php>0&&(ehp<=0||php>ehp); // strict: must have more HP than enemy
@@ -3373,7 +3403,7 @@ const ANIMAL_UNITS = [
   },
   {
     id:'shark',name:'Shark',icon:'🦈',cost:5,
-    hp:108,dmg:31,spd:68,atkRate:1.2,aoe:null,
+    hp:105,dmg:30,spd:68,atkRate:1.2,aoe:null,
     lane:'air',attackType:'melee',targeting:'fighter',
     canHitFlying:true,prioritiseAir:false,engageRange:36,baseEngageRange:36,
     sharkPrey:true,

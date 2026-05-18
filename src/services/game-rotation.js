@@ -36,8 +36,17 @@ export const ROUTE_TO_GAME_ID = Object.freeze(
 
 const CACHE_TTL_MS = 60_000; // refresh at most once a minute
 
-let cache = null;          // { fetchedAt, expiresEarliest, rows }
+let cache = null;          // { fetchedAt, expiresEarliest, rows, extraSlots }
 let inflight = null;
+
+/**
+ * Returns the extra_slots offset currently stored in rotation_config.
+ * Non-zero only when an admin has force-advanced the rotation.
+ * The value is populated as a side-effect of getActiveGames().
+ */
+export function getExtraSlots() {
+  return cache?.extraSlots ?? 0;
+}
 
 export async function getActiveGames({ force = false } = {}) {
   const now = Date.now();
@@ -48,15 +57,21 @@ export async function getActiveGames({ force = false } = {}) {
 
   inflight = (async () => {
     try {
-      const { data, error } = await supabase.rpc('get_active_games');
-      if (error) throw error;
-      const rows = (data ?? []).map((r) => ({
-        gameId:   r.game_id,
+      // Fetch game rows and the admin rotation offset in parallel.
+      const [gameResult, cfgResult] = await Promise.all([
+        supabase.rpc('get_active_games'),
+        supabase.from('rotation_config').select('extra_slots').single(),
+      ]);
+      if (gameResult.error) throw gameResult.error;
+
+      const extraSlots = cfgResult.data?.extra_slots ?? 0;
+      const rows = (gameResult.data ?? []).map((r) => ({
+        gameId:    r.game_id,
         startedAt: new Date(r.started_at),
         endsAt:    new Date(r.ends_at),
       }));
       const earliest = rows.reduce((a, r) => Math.min(a, r.endsAt.getTime()), Infinity);
-      cache = { fetchedAt: now, expiresEarliest: earliest, rows };
+      cache = { fetchedAt: now, expiresEarliest: earliest, rows, extraSlots };
       return rows;
     } catch (e) {
       logger.warn('rotation fetch failed', e);

@@ -108,3 +108,26 @@ export async function adminResetRotationOffset() {
   const rows = data ?? [];
   return rows.map((r) => ({ gameId: r.game_id, endsAt: r.ends_at, startedAt: r.started_at }));
 }
+
+// ── Warfront overrides ────────────────────────────────────────────────────────
+
+export async function adminGetWarfrontOverrides() {
+  const { data, error } = await supabase.rpc('get_warfront_overrides');
+  if (error) throw error;
+  return {
+    fantasyPool:  data?.fantasy_pool  ?? null,
+    animalPool:   data?.animal_pool   ?? null,
+    fantasyStats: data?.fantasy_stats ?? {},
+    animalStats:  data?.animal_stats  ?? {},
+  };
+}
+
+export async function adminSaveWarfrontOverrides({ fantasyPool, animalPool, fantasyStats, animalStats }) {
+  const { error } = await supabase.rpc('admin_set_warfront_overrides', {
+    p_fantasy_pool:  fantasyPool  ?? null,
+    p_animal_pool:   animalPool   ?? null,
+    p_fantasy_stats: fantasyStats ?? {},
+    p_animal_stats:  animalStats  ?? {},
+  });
+  if (error) throw error;
+}
