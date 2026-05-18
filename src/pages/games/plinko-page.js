@@ -224,6 +224,9 @@ export function renderPlinko() {
       }
 
       const batchId = start?.batchId ?? nextBatchId++;
+      // paths: boolean[][] from server — one L/R sequence per ball.
+      // null if server didn't provide them (fallback to random).
+      const serverPaths = Array.isArray(start?.paths) ? start.paths : null;
       const batch = {
         id: batchId,
         batchId,
@@ -243,11 +246,12 @@ export function renderPlinko() {
 
       if (typeof start?.newBalance === 'number') patchProfile({ credits: start.newBalance });
 
-      // Spawn balls staggered. Each ball is animated locally and the
-      // landing bin is computed from its final resting position.
+      // Spawn balls staggered. Each ball follows the server-provided L/R path
+      // so the animation outcome matches the server's predetermined result exactly.
       const startedAt = performance.now();
       for (let i = 0; i < count; i++) {
-        spawnBall({ batchId: batch.id, amount, rows, risk }, startedAt + i * BALL_STAGGER, batch.id);
+        const ballPath = serverPaths ? serverPaths[i] : null;
+        spawnBall({ batchId: batch.id, amount, rows, risk }, startedAt + i * BALL_STAGGER, batch.id, ballPath);
       }
       busy = false;
       ensureRafRunning();
@@ -264,7 +268,7 @@ export function renderPlinko() {
   setTimeout(refresh, 0);
 
   // ------------------- Sim helpers -------------------
-  function spawnBall(result, atTime, batchId) {
+  function spawnBall(result, atTime, batchId, serverPath = null) {
     const { pegs, padX, padTop } = getPegs(sim.cssW, sim.cssH, rows);
     const top = pegs.find((p) => p.row === 0) ?? { x: sim.cssW / 2 };
     sim.balls.push({
@@ -277,6 +281,7 @@ export function renderPlinko() {
       rows: result.rows,
       risk: result.risk,
       hue: '#7be1ff',
+      serverPath,   // boolean[] from server, or null (fallback to Math.random)
       trail: [],
       bornAt: atTime,
       live: true,
@@ -364,10 +369,13 @@ export function renderPlinko() {
             b.vx -= (1 + RESTITUTION) * vDotN * nx;
             b.vy -= (1 + RESTITUTION) * vDotN * ny;
 
-            // Turn the reflection into a visible plinko bounce. Each peg row
-            // is a fresh random walk step so the landing distribution matches
-            // the endpoint box rates instead of collapsing toward center.
-            const side = Math.random() < 0.5 ? -1 : 1;
+            // Turn the reflection into a visible plinko bounce.
+            // Use the server-provided L/R decision for this row when available,
+            // so the animation exactly follows the server's predetermined outcome.
+            const wentRight = b.serverPath
+              ? (b.serverPath[b.pegRow] === true)
+              : Math.random() < 0.5;
+            const side = wentRight ? 1 : -1;
             const speed = Math.max(130, Math.hypot(b.vx, b.vy));
             const lateralKick = Math.max(120, pegGapX * 1.18 + speed * 0.12);
             const downwardKick = Math.max(72, Math.min(150, speed * 0.18 + 14));
@@ -395,10 +403,12 @@ export function renderPlinko() {
 
       // Settle when below the bin row.
       if (b.y >= binY || b.y >= sim.cssH - BALL_RADIUS - 2 || b.y > sim.cssH + 24) {
-        // Snap to the nearest landing bin based on where the physics left
-        // the ball so the reward is determined by the final landing spot.
-        const rawBin = Math.floor((b.x - padX) / binW);
-        const landedBin = Math.max(0, Math.min(rows, rawBin));
+        // Determine the landed bin: if server provided a path, count the
+        // "went right" steps — that equals the bin index by definition.
+        // Otherwise fall back to position-based calculation.
+        const landedBin = b.serverPath
+          ? Math.max(0, Math.min(rows, b.serverPath.filter(Boolean).length))
+          : Math.max(0, Math.min(rows, Math.floor((b.x - padX) / binW)));
         const targetX = padX + landedBin * binW + binW / 2;
         const multiplier = getPlinkoMults(rows, risk)[landedBin];
         const payout = Math.floor(b.bet * multiplier);

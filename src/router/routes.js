@@ -33,6 +33,7 @@ import { renderMines } from '../pages/games/mines-page.js';
 import { renderCandy } from '../pages/games/candy-page.js';
 import { renderLobby } from '../pages/games/lobby-page.js';
 import { renderMpTtt } from '../pages/games/mp-ttt-page.js';
+import { renderMpWarfrontLobby, renderMpWarfront } from '../pages/games/mp-warfront-page.js';
 import { renderPublicProfile } from '../pages/public-profile-page.js';
 import { renderMarket } from '../pages/market-page.js';
 
@@ -62,7 +63,9 @@ export const routes = [
   { path: ROUTES.PLINKO,    render: requireActiveGame('plinko',    renderPlinko) },
   { path: ROUTES.PINBALL,   render: requireActiveGame('pinball',   renderPinball) },
   { path: ROUTES.LOTTERY,   render: requireActiveGame('lottery',   renderLottery) },
-  { path: ROUTES.WARFRONT,  render: requireActiveGame('warfront',  renderWarfront) },
+  { path: ROUTES.WARFRONT,     render: requireActiveGame('warfront',  renderWarfront) },
+  { path: ROUTES.WF_PVP,      render: requireActiveGame('warfront',  renderMpWarfrontLobby) },
+  { path: ROUTES.WF_PVP_GAME, render: requireActiveGame('warfront',  renderMpWarfront) },
   { path: ROUTES.EMOJI_HUNT, render: requireAuth(renderEmojiHunt) },
   { path: ROUTES.LOBBY,     render: requireAuth(renderLobby) },
   { path: ROUTES.MP_GAME,   render: requireAuth(renderMpTtt) },

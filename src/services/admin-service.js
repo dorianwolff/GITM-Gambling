@@ -76,3 +76,35 @@ export async function adminResetAllProgress() {
   const { error } = await supabase.rpc('admin_reset_all_progress');
   if (error) throw error;
 }
+
+// ── Rotation controls ──────────────────────────────────────────────────────
+
+/** Returns current active rotation rows plus the extra_slots offset. */
+export async function adminGetRotation() {
+  const { data, error } = await supabase.rpc('admin_get_rotation');
+  if (error) throw error;
+  const rows = data ?? [];
+  return {
+    games:       rows.map((r) => ({ gameId: r.game_id, endsAt: r.ends_at, startedAt: r.started_at })),
+    extraSlots:  rows[0]?.extra_slots ?? 0,
+  };
+}
+
+/**
+ * Advance the rotation by `steps` slots (default 1) for all users.
+ * Returns the updated rotation rows.
+ */
+export async function adminAdvanceRotation(steps = 1) {
+  const { data, error } = await supabase.rpc('admin_advance_rotation', { p_steps: steps });
+  if (error) throw error;
+  const rows = data ?? [];
+  return rows.map((r) => ({ gameId: r.game_id, endsAt: r.ends_at, startedAt: r.started_at }));
+}
+
+/** Reset extra_slots to 0 (wall-clock rotation). Returns the updated rotation. */
+export async function adminResetRotationOffset() {
+  const { data, error } = await supabase.rpc('admin_reset_rotation_offset');
+  if (error) throw error;
+  const rows = data ?? [];
+  return rows.map((r) => ({ gameId: r.game_id, endsAt: r.ends_at, startedAt: r.started_at }));
+}

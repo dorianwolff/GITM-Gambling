@@ -99,6 +99,8 @@ export function renderMines(ctx) {
           multBp: 0,
           potentialPayout: 0,
         };
+        // Reveal tile immediately so the 💣 shows at the same time as the flash.
+        redraw();
         flashLoss({ label: '💥 BUSTED' });
         toastError(`Bust — lost ${formatCredits(bet)} cr`);
       } else {
@@ -108,6 +110,8 @@ export function renderMines(ctx) {
           multBp: r.multBp,
           potentialPayout: r.potentialPayout,
         };
+        // Reveal tile immediately so the 💎 shows at the same time as the flash.
+        redraw();
         // Tier the feedback by current multiplier so early reveals feel
         // mild but a 10x+ stack really pops.
         const m = r.currentMulti;

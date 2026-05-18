@@ -140,12 +140,17 @@ export function createNavbar() {
       h(
         'a.block.px-3.py-2.text-sm.rounded-lg.hover:bg-white/[0.06]',
         { href: ROUTES.PROFILE, 'data-link': '' },
-        ['Profile']
+        ['🎒 Profile']
+      ),
+      h(
+        'a.block.px-3.py-2.text-sm.rounded-lg.hover:bg-white/[0.06]',
+        { href: ROUTES.PROFILE + '?tab=achievements', 'data-link': '' },
+        ['🏆 Achievements']
       ),
       h(
         'a.block.px-3.py-2.text-sm.rounded-lg.hover:bg-white/[0.06]',
         { href: ROUTES.HISTORY, 'data-link': '' },
-        ['History']
+        ['📋 History']
       ),
       h('div.h-px.bg-white/10.my-1', {}, []),
       h(

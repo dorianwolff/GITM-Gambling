@@ -15,7 +15,18 @@ import {
   adminSetBan,
   adminGrantCollectible,
   adminResetAllProgress,
+  adminGetRotation,
+  adminAdvanceRotation,
+  adminResetRotationOffset,
 } from '../services/admin-service.js';
+
+const GAME_DISPLAY_NAMES = {
+  blackjack: 'Blackjack', candy: 'Candy Crush', cases: 'Cases',
+  coinflip: 'Coin Flip', crash: 'Crash', dice: 'Dice',
+  gacha: 'Gacha', mines: 'Miner', plinko: 'Plinko',
+  roulette: 'Roulette', warfront: 'Warfront', pinball: 'Pinball',
+  lottery: 'Lottery',
+};
 
 const COLLECTIBLE_CATEGORIES = new Set(['effect', 'frame', 'title', 'badge', 'trophy']);
 
@@ -27,6 +38,10 @@ export function renderAdmin() {
   let userSearch = '';
   let selectedUserId = '';
 
+  // Rotation state
+  let rotation = { games: [], extraSlots: 0 };
+  let rotationBusy = false;
+
   const root = h('div.max-w-7xl.mx-auto.w-full.flex.flex-col.gap-5', {}, []);
   const redraw = () => mount(root, view());
 
@@ -37,12 +52,14 @@ export function renderAdmin() {
     error = null;
     redraw();
     try {
-      const [nextUsers, nextCollectibles] = await Promise.all([
+      const [nextUsers, nextCollectibles, nextRotation] = await Promise.all([
         fetchAdminUsers(),
         fetchAdminCollectibles(),
+        adminGetRotation().catch(() => ({ games: [], extraSlots: 0 })),
       ]);
       users = nextUsers;
       collectibles = nextCollectibles.filter((item) => COLLECTIBLE_CATEGORIES.has(item.category));
+      rotation = nextRotation;
       loading = false;
       if (!selectedUserId && users.length) {
         selectedUserId = (users.find((u) => !u.is_admin && !u.is_banned)
@@ -57,6 +74,34 @@ export function renderAdmin() {
       loading = false;
       error = e?.message ?? String(e);
       redraw();
+    }
+  }
+
+  async function doAdvanceRotation() {
+    if (rotationBusy) return;
+    rotationBusy = true; redraw();
+    try {
+      const games = await adminAdvanceRotation(1);
+      rotation = { games, extraSlots: rotation.extraSlots + 1 };
+      toastSuccess(`Rotation advanced by 1 slot (total offset: +${rotation.extraSlots})`);
+    } catch (e) {
+      toastError(e.message);
+    } finally {
+      rotationBusy = false; redraw();
+    }
+  }
+
+  async function doResetRotationOffset() {
+    if (rotationBusy) return;
+    rotationBusy = true; redraw();
+    try {
+      const games = await adminResetRotationOffset();
+      rotation = { games, extraSlots: 0 };
+      toastSuccess('Rotation offset reset to wall-clock time');
+    } catch (e) {
+      toastError(e.message);
+    } finally {
+      rotationBusy = false; redraw();
     }
   }
 
@@ -238,6 +283,9 @@ export function renderAdmin() {
           summaryCard('Banned users', String(banned.length), 'text-accent-rose'),
           summaryCard('Collectibles', String(totalCollectibles), 'text-accent-amber'),
         ]),
+
+        // ── Rotation controls ──────────────────────────────────────────────
+        rotationPanel(),
 
         h('div.grid.grid-cols-1.lg:grid-cols-2.gap-4', {}, [
           h('section.glass.neon-border.p-5.flex.flex-col.gap-4', {}, [
@@ -445,6 +493,81 @@ export function renderAdmin() {
       h('label.text-xs.text-muted.uppercase.tracking-widest', {}, [label]),
       input,
       hint ? h('div.text-[11px].text-muted', {}, [hint]) : null,
+    ]);
+  }
+
+  function rotationPanel() {
+    const now = Date.now();
+    const hasOffset = rotation.extraSlots > 0;
+
+    function minsRemaining(endsAt) {
+      const ms = new Date(endsAt).getTime() - now;
+      if (ms <= 0) return '0m';
+      const mins = Math.floor(ms / 60000);
+      if (mins < 60) return `${mins}m`;
+      return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+    }
+
+    return h('section.glass.neon-border.p-5.flex.flex-col.gap-4', {
+      style: { borderColor: hasOffset ? 'rgba(255,217,107,0.4)' : 'rgba(34,225,255,0.2)' },
+    }, [
+      h('div.flex.items-center.justify-between.gap-3.flex-wrap', {}, [
+        h('div', {}, [
+          h('h2.text-xl.font-semibold.heading-grad', {}, ['Game Rotation']),
+          h('p.text-xs.text-muted', {}, [
+            'Force-advance the 6-game rotation for all users. One slot = 1 hour of wall-clock time.',
+          ]),
+        ]),
+        hasOffset
+          ? h('span.text-[10px].uppercase.tracking-widest.px-2.py-0.5.rounded', {
+              style: { background: 'rgba(255,217,107,0.15)', color: '#ffd96b',
+                       border: '1px solid rgba(255,217,107,0.4)' },
+            }, [`+${rotation.extraSlots} slot${rotation.extraSlots !== 1 ? 's' : ''} offset`])
+          : h('span.text-[10px].uppercase.tracking-widest.text-muted', {}, ['Wall-clock time']),
+      ]),
+
+      // Active games grid
+      rotation.games.length > 0
+        ? h('div.grid.grid-cols-2.sm:grid-cols-3.lg:grid-cols-6.gap-2', {},
+            rotation.games.map((g) => {
+              const name = GAME_DISPLAY_NAMES[g.gameId] ?? g.gameId;
+              const remaining = minsRemaining(g.endsAt);
+              return h('div.rounded-xl.p-3.flex.flex-col.items-center.gap-1.text-center', {
+                style: {
+                  background: 'rgba(34,225,255,0.05)',
+                  border: '1px solid rgba(34,225,255,0.2)',
+                },
+              }, [
+                h('span.text-sm.font-semibold.text-white', {}, [name]),
+                h('span.text-[10px].text-muted.font-mono', {}, [`⏱ ${remaining}`]),
+              ]);
+            })
+          )
+        : h('p.text-sm.text-muted', {}, ['Loading rotation…']),
+
+      // Note about active sessions
+      h('p.text-[11px].text-muted.italic', {}, [
+        '⚡ Active sessions are not interrupted: players mid-game finish and collect winnings naturally. ' +
+        'The new rotation takes effect for new page loads only.',
+      ]),
+
+      // Action buttons
+      h('div.flex.flex-wrap.gap-2', {}, [
+        h('button', {
+          class: 'h-10 px-4 rounded-lg text-sm font-semibold transition-colors ' +
+                 (rotationBusy
+                   ? 'bg-white/5 text-white/40 cursor-not-allowed'
+                   : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'),
+          onclick: doAdvanceRotation,
+          disabled: rotationBusy,
+        }, [rotationBusy ? 'Working…' : '⏩ Advance by 1 slot']),
+        hasOffset
+          ? h('button.btn-ghost.h-10.px-4', {
+              onclick: doResetRotationOffset,
+              disabled: rotationBusy,
+            }, ['↺ Reset to wall-clock'])
+          : null,
+      ]),
     ]);
   }
 

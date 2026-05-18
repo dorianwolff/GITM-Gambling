@@ -50,7 +50,7 @@ const forest = buildMap('enchanted_forest', {
   gravity: 1.0,
   drag: 0.997,
   scoreMultiplier: 1.0,
-  pegs: pegGrid({ rows: 3, cols: 4, top: 0.18, bottom: 0.42, left: 0.18, right: 0.82, r: 0.008 }),
+  pegs: pegGrid({ rows: 1, cols: 3, top: 0.22, bottom: 0.22, left: 0.24, right: 0.76, r: 0.008 }),
   bumpers: [
     { x: 0.50, y: 0.24, r: 0.040, pts: 75, power: 1.10, color: '#f87171', emoji: '🍄', label: 'Giant Mushroom' },
     { x: 0.38, y: 0.38, r: 0.030, pts: 50, power: 1.08, color: '#4ade80', emoji: '🌿', label: 'Fern Bounce' },
@@ -81,7 +81,7 @@ const galaxy = buildMap('galaxy_drift', {
   gravity: 0.92,
   drag: 0.998,
   scoreMultiplier: 1.05,
-  pegs: pegGrid({ rows: 3, cols: 4, top: 0.16, bottom: 0.40, left: 0.16, right: 0.84, r: 0.007 }),
+  pegs: pegGrid({ rows: 1, cols: 3, top: 0.18, bottom: 0.18, left: 0.24, right: 0.76, r: 0.007 }),
   bumpers: [
     { x: 0.50, y: 0.22, r: 0.042, pts: 60, power: 1.12, color: '#6366f1', emoji: '🕳️', label: 'Black Hole' },
     { x: 0.35, y: 0.36, r: 0.030, pts: 50, power: 1.08, color: '#818cf8', emoji: '🪐', label: 'Saturn Ring' },
@@ -112,7 +112,7 @@ const deepsea = buildMap('deep_sea', {
   gravity: 0.95,
   drag: 0.996,
   scoreMultiplier: 0.95,
-  pegs: pegGrid({ rows: 3, cols: 4, top: 0.16, bottom: 0.40, left: 0.15, right: 0.85, r: 0.008 }),
+  pegs: pegGrid({ rows: 1, cols: 2, top: 0.19, bottom: 0.19, left: 0.30, right: 0.70, r: 0.008 }),
   bumpers: [
     { x: 0.50, y: 0.24, r: 0.040, pts: 65, power: 1.10, color: '#ef4444', emoji: '🦈', label: 'Shark Jaw' },
     { x: 0.36, y: 0.40, r: 0.028, pts: 50, power: 1.08, color: '#22d3ee', emoji: '🐙', label: 'Octopus' },
@@ -143,7 +143,7 @@ const volcano = buildMap('inferno_volcano', {
   gravity: 1.06,
   drag: 0.995,
   scoreMultiplier: 1.08,
-  pegs: pegGrid({ rows: 3, cols: 4, top: 0.18, bottom: 0.42, left: 0.16, right: 0.84, r: 0.009 }),
+  pegs: pegGrid({ rows: 1, cols: 2, top: 0.22, bottom: 0.22, left: 0.32, right: 0.68, r: 0.009 }),
   bumpers: [
     { x: 0.50, y: 0.22, r: 0.042, pts: 70, power: 1.14, color: '#ef4444', emoji: '🌋', label: 'Crater Core' },
     { x: 0.36, y: 0.38, r: 0.030, pts: 50, power: 1.10, color: '#f97316', emoji: '🔥', label: 'Lava Pool' },
@@ -174,7 +174,7 @@ const cyber = buildMap('cyber_circuit', {
   gravity: 1.0,
   drag: 0.996,
   scoreMultiplier: 1.0,
-  pegs: pegGrid({ rows: 3, cols: 5, top: 0.14, bottom: 0.38, left: 0.14, right: 0.86, r: 0.007 }),
+  pegs: pegGrid({ rows: 1, cols: 3, top: 0.17, bottom: 0.17, left: 0.24, right: 0.76, r: 0.007 }),
   bumpers: [
     { x: 0.50, y: 0.22, r: 0.040, pts: 60, power: 1.12, color: '#ff2bd6', emoji: '🔮', label: 'Glitch Core' },
     { x: 0.34, y: 0.36, r: 0.028, pts: 50, power: 1.08, color: '#22e1ff', emoji: '⚡', label: 'Volt Node' },

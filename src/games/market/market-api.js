@@ -41,14 +41,28 @@ export async function listAllItems() {
   return data ?? [];
 }
 
+/** Returns shop items + any timed-shop items whose time window is currently open. */
 export async function listShopItems() {
   const { data, error } = await supabase
     .from('market_items')
     .select('*')
-    .eq('source', 'shop')
+    .in('source', ['shop', 'timed_shop'])
     .order('shop_price', { ascending: true });
   if (error) throw error;
-  return data ?? [];
+  const all = data ?? [];
+  // Filter timed_shop items by current UTC time on the client.
+  // Server also enforces the window on purchase — this is just for display.
+  const now = new Date();
+  const h = now.getUTCHours();
+  const m = now.getUTCMinutes();
+  return all.filter((item) => {
+    if (item.source !== 'timed_shop') return true;
+    const cond = item.time_condition;
+    if (!cond) return true;
+    if (cond === 'midnight') return h === 23 || h === 0;
+    if (cond === '11:11') return (h === 11 || h === 23) && m >= 9 && m <= 13;
+    return false;
+  });
 }
 
 export async function listMyInventory(userId) {

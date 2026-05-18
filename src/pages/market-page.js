@@ -77,9 +77,27 @@ export function renderMarket(ctx) {
   });
   ctx.onCleanup(offMarket);
 
-  // Auctions need a ticking clock for the countdowns.
+  // Ticking clock — drives auction countdowns AND timed-shop countdowns.
   state.auctions.tick = setInterval(() => {
     if (tab === 'auctions' || tab === 'bids' || tab === 'listings') redraw();
+
+    if (tab === 'shop') {
+      // If any loaded timed item has just fallen outside its window, reload the
+      // shop so it disappears from the list automatically.
+      const utcNow  = new Date();
+      const utcH    = utcNow.getUTCHours();
+      const utcM    = utcNow.getUTCMinutes();
+      const expired = state.shop.items.some((i) => {
+        if (i.source !== 'timed_shop') return false;
+        if (i.time_condition === 'midnight')
+          return !(utcH === 23 || utcH === 0);
+        if (i.time_condition === '11:11')
+          return !((utcH === 11 || utcH === 23) && utcM >= 9 && utcM <= 13);
+        return false;
+      });
+      if (expired) loadShop();   // removes expired item + triggers redraw
+      else redraw();             // just tick the countdown text
+    }
   }, 1000);
   ctx.onCleanup(() => clearInterval(state.auctions.tick));
 
@@ -359,6 +377,79 @@ function filterBar(rarity, category, onRarity, onCategory) {
 }
 
 // ----------------------------------------------------------------------------
+// Timed-shop countdown helpers
+// ----------------------------------------------------------------------------
+
+/**
+ * Format a duration in whole seconds to a human-readable string.
+ *   3661 → "1h 1m"   |   125 → "2m 5s"   |   42 → "42s"
+ */
+function fmtSec(totalS) {
+  totalS = Math.max(0, Math.round(totalS));
+  if (totalS >= 3600) {
+    const h = Math.floor(totalS / 3600);
+    const m = Math.floor((totalS % 3600) / 60);
+    return `${h}h ${m}m`;
+  }
+  if (totalS >= 60) {
+    const m = Math.floor(totalS / 60);
+    const s = totalS % 60;
+    return `${m}m ${s}s`;
+  }
+  return `${totalS}s`;
+}
+
+/**
+ * Given a time_condition string, return { active: bool, label: string } where
+ * label is either "🌙 Leaves in Xh Xm" (during window) or
+ * "🌙 Available in Xh Xm" (outside window).
+ *
+ * Windows (all UTC):
+ *   'midnight' → 23:00 – 01:00  (2-hour window)
+ *   '11:11'   → 11:09 – 11:14 and 23:09 – 23:14  (5-min windows, twice daily)
+ */
+function timedShopStatus(cond) {
+  const now  = new Date();
+  const utcH = now.getUTCHours();
+  const utcM = now.getUTCMinutes();
+  const utcS = now.getUTCSeconds();
+
+  if (cond === 'midnight') {
+    const active = utcH === 23 || utcH === 0;
+    if (active) {
+      // Window runs from 23:00:00 to 01:00:00 (2 hours total).
+      const secsLeft = utcH === 23
+        ? 7200 - (utcM * 60 + utcS)   // elapsed since 23:00
+        : 3600 - (utcM * 60 + utcS);  // elapsed since 00:00
+      return { active: true, label: `🌙 Leaves in ${fmtSec(secsLeft)}` };
+    }
+    // Next window starts at 23:00:00 today (utcH is 1-22 here).
+    const secsLeft = (23 - utcH) * 3600 - utcM * 60 - utcS;
+    return { active: false, label: `🌙 Available in ${fmtSec(secsLeft)}` };
+  }
+
+  if (cond === '11:11') {
+    const inWindow = (utcH === 11 || utcH === 23) && utcM >= 9 && utcM <= 13;
+    if (inWindow) {
+      // Window ends at :14:00 of the current hour.
+      const secsLeft = 14 * 60 - (utcM * 60 + utcS);
+      return { active: true, label: `🕐 Leaves in ${fmtSec(secsLeft)}` };
+    }
+    // Find the nearest upcoming window start (11:09 or 23:09).
+    const cur = utcH * 3600 + utcM * 60 + utcS;
+    const w1  = 11 * 3600 + 9 * 60;  // 11:09:00
+    const w2  = 23 * 3600 + 9 * 60;  // 23:09:00
+    const secsLeft = cur < w1 ? w1 - cur
+                   : cur < w2 ? w2 - cur
+                   : 24 * 3600 - cur + w1;  // wraps to next day's 11:09
+    return { active: false, label: `🕐 Available in ${fmtSec(secsLeft)}` };
+  }
+
+  // Unknown condition — treat as always active with no label.
+  return { active: true, label: '' };
+}
+
+// ----------------------------------------------------------------------------
 // SHOP
 // ----------------------------------------------------------------------------
 function shopTab(s, rarity, category, onBuy) {
@@ -393,9 +484,20 @@ function shopCard(item, onBuy) {
           : h('span.text-5xl', {}, [item.metadata?.emoji ?? categoryEmoji(item.category)]),
       ]),
       h('div.text-sm.font-semibold.leading-tight.text-center.line-clamp-2', {}, [item.name]),
-      item.description
-        ? h('div.text-[10px].text-muted.text-center.leading-tight.line-clamp-2', {}, [item.description])
-        : null,
+      item.source === 'timed_shop'
+        ? (() => {
+            const ts = timedShopStatus(item.time_condition);
+            return h('div.text-[9px].text-center.font-bold.px-1.5.py-0.5.rounded.mx-auto', {
+              style: {
+                background: ts.active ? 'rgba(255,160,40,0.15)' : 'rgba(120,120,140,0.12)',
+                color:      ts.active ? '#ffaa30'               : '#8a8f99',
+                border:     ts.active ? '1px solid rgba(255,160,40,0.35)' : '1px solid rgba(120,120,140,0.30)',
+              },
+            }, [ts.label]);
+          })()
+        : (item.description
+            ? h('div.text-[10px].text-muted.text-center.leading-tight.line-clamp-2', {}, [item.description])
+            : null),
       h('button.btn-primary.h-10.mt-auto.text-sm', {
         onclick: () => onBuy(item),
         disabled: !canAfford,

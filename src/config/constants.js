@@ -58,6 +58,8 @@ export const ROUTES = Object.freeze({
   PINBALL: '/games/pinball',
   LOTTERY: '/games/lottery',
   WARFRONT: '/games/warfront',
+  WF_PVP: '/games/warfront-pvp',
+  WF_PVP_GAME: '/games/warfront-pvp/:id',
   EMOJI_HUNT: '/games/emoji-hunt',
   CASE: '/games/cases',
   GACHA: '/games/gacha',

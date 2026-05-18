@@ -35,11 +35,26 @@ import {
 } from '../games/collectibles/collectibles.js';
 import { getProfileEffectScene } from '../games/collectibles/profile-effects/effect-scenes.js';
 import { logger } from '../lib/logger.js';
+import { listMyAchievements, claimAchievement } from '../services/achievement-service.js';
+
+// ─── Rarity ordering helper ────────────────────────────────────────────────
+const RARITY_RANK = { common: 0, uncommon: 1, rare: 2, epic: 3, legendary: 4, jackpot: 5, ultra: 6 };
 
 export function renderProfile() {
   let inventory = [];
   let invLoading = true;
   let invError = null;
+
+  // ─── Achievements state ────────────────────────────────────────────────
+  let achievements = [];
+  let achieveLoading = false;
+  let achieveLoaded = false;
+  let achieveError = null;
+
+  // ─── Tab state ─────────────────────────────────────────────────────────
+  // Check URL ?tab=achievements to open directly from navbar link
+  const _urlTab = new URLSearchParams(window.location.search).get('tab');
+  let activeTab = _urlTab === 'achievements' ? 'achievements' : 'collection';
 
   const root = h('div.max-w-3xl.mx-auto.w-full.flex.flex-col.gap-5', {}, []);
   const redraw = () => mount(root, view());
@@ -58,6 +73,40 @@ export function renderProfile() {
     }
   }
   loadInventory();
+
+  async function loadAchievements() {
+    if (achieveLoading) return;
+    achieveLoading = true;
+    try {
+      achievements = await listMyAchievements();
+      achieveError = null;
+    } catch (e) {
+      logger.warn('profile: achievements fetch failed', e);
+      achieveError = e.message ?? String(e);
+    } finally {
+      achieveLoading = false;
+      achieveLoaded = true;
+      redraw();
+    }
+  }
+  // Load achievements eagerly so the notification dot works on first render
+  loadAchievements();
+
+  async function doClaim(code) {
+    try {
+      await claimAchievement(code);
+      toastSuccess('Achievement claimed!');
+      await loadAchievements(); // refresh progress
+    } catch (e) {
+      toastError(e.message ?? 'Could not claim achievement');
+    }
+  }
+
+  function switchTab(tab) {
+    activeTab = tab;
+    if (tab === 'achievements' && !achieveLoaded) loadAchievements();
+    redraw();
+  }
 
   // Keep in sync with profile mutations (credits, display_name, etc.)
   const unsub = userStore.subscribe(() => redraw());
@@ -235,8 +284,29 @@ export function renderProfile() {
           ]),
         ]),
 
-        // Collection
-        h('div.flex.flex-col.gap-3', {
+        // ─── Tab bar ───────────────────────────────────────────────────────
+        (() => {
+          const hasClaimable = achievements.some((a) => a.can_claim);
+          const tabBtn = (id, label, icon) => {
+            const isCurrent = activeTab === id;
+            const showDot = id === 'achievements' && hasClaimable;
+            return h(
+              `button.relative.px-4.py-2.text-sm.font-medium.rounded-lg.transition-colors${isCurrent ? '.bg-white/[0.08].text-white' : '.text-muted.hover:text-white'}`,
+              { onclick: () => switchTab(id) },
+              [
+                icon + ' ' + label,
+                showDot ? h('span.absolute.-top-1.-right-1.w-2.5.h-2.5.rounded-full.bg-accent-rose', {}, []) : null,
+              ]
+            );
+          };
+          return h('div.flex.gap-1.p-1.bg-white/[0.03].border.border-white/[0.06].rounded-xl', {}, [
+            tabBtn('collection',   'Collection',   '🎒'),
+            tabBtn('achievements', 'Achievements', '🏆'),
+          ]);
+        })(),
+
+        // ─── Collection tab ────────────────────────────────────────────────
+        activeTab === 'collection' && h('div.flex.flex-col.gap-3', {
           style: effectScene?.sectionStyle ?? {},
         }, [
           h('div.flex.items-end.justify-between.gap-3.flex-wrap', {}, [
@@ -264,12 +334,115 @@ export function renderProfile() {
                   ])
                 : inventoryByCategory(inventory, doEquip, doList),
         ]),
+
+        // ─── Achievements tab ──────────────────────────────────────────────
+        activeTab === 'achievements' && h('div.flex.flex-col.gap-3', {}, [
+          h('div.flex.items-end.justify-between.gap-3.flex-wrap', {}, [
+            h('div', {}, [
+              h('h2.text-xl.font-semibold.heading-grad', {}, ['Achievements']),
+              h('p.text-xs.text-muted', {}, ['Complete challenges to earn credits and exclusive items.']),
+            ]),
+          ]),
+          achieveLoading && !achieveLoaded
+            ? h('div.flex.items-center.gap-3.text-muted.py-10.justify-center', {}, [spinner(), 'Loading…'])
+            : achieveError
+              ? h('div.glass.neon-border.p-6.text-center.text-accent-rose', {}, [achieveError])
+              : achievementList(achievements, doClaim),
+        ]),
       ]),
     ]);
   }
 
   redraw();
   return appShell(root);
+}
+
+// ─── Achievement list renderer ────────────────────────────────────────────────
+function achievementList(achievements, onClaim) {
+  if (!achievements.length) {
+    return h('div.glass.neon-border.p-10.text-center', {}, [
+      h('p.text-sm.text-muted', {}, ['No achievements available yet.']),
+    ]);
+  }
+
+  // Sort: claimable first, then by sort_order
+  const sorted = [...achievements].sort((a, b) => {
+    if (a.can_claim !== b.can_claim) return a.can_claim ? -1 : 1;
+    return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+  });
+
+  const CATEGORY_COLORS = {
+    general:   '#22e1ff',
+    warfront:  '#c06000',
+    gacha:     '#b06bff',
+    cases:     '#e0a020',
+    pvp:       '#ff2bd6',
+    pinball:   '#3ddc7e',
+    dice:      '#ff9030',
+    blackjack: '#ffd96b',
+    coinflip:  '#22e1ff',
+    roulette:  '#ff6d8a',
+  };
+
+  return h('div.flex.flex-col.gap-2', {}, sorted.map((ach) => {
+    const progress = Math.min(1, Number(ach.current_value ?? 0) / Number(ach.target_value ?? 1));
+    const catColor = CATEGORY_COLORS[ach.category] ?? '#22e1ff';
+    const pct = Math.round(progress * 100);
+
+    return h('div.glass.neon-border.p-4.flex.flex-col.gap-2', {
+      style: ach.can_claim ? { border: '1px solid rgba(255,43,160,0.45)', boxShadow: '0 0 12px rgba(255,43,160,0.12)' }
+        : ach.is_claimed ? { opacity: '0.55' } : {},
+    }, [
+      h('div.flex.items-start.justify-between.gap-3', {}, [
+        h('div.flex.flex-col.gap-0.5.min-w-0', {}, [
+          h('div.flex.items-center.gap-2', {}, [
+            h('span.text-[9px].font-bold.uppercase.tracking-widest.px-1.5.py-0.5.rounded', {
+              style: { background: `${catColor}22`, color: catColor, border: `1px solid ${catColor}44` },
+            }, [ach.category]),
+            h('span.text-sm.font-semibold.text-white', {}, [ach.name]),
+            ach.is_claimed ? h('span.text-[10px].text-accent-lime', {}, ['✓ Claimed']) : null,
+            ach.can_claim ? h('span.text-[10px].text-accent-rose.font-bold.animate-pulse', {}, ['● READY']) : null,
+          ]),
+          h('p.text-xs.text-muted', {}, [ach.description]),
+          ach.reward_credits > 0 || ach.reward_item_slug
+            ? h('div.flex.gap-2.flex-wrap.mt-1', {}, [
+                ach.reward_credits > 0
+                  ? h('span.text-[10px].px-1.5.py-0.5.rounded.font-mono', {
+                      style: { background: 'rgba(200,168,76,0.15)', color: '#c9a84c', border: '1px solid rgba(200,168,76,0.3)' },
+                    }, [`+${formatCredits(ach.reward_credits)} cr`])
+                  : null,
+                ach.reward_item_slug
+                  ? h('span.text-[10px].px-1.5.py-0.5.rounded', {
+                      style: { background: 'rgba(176,107,255,0.15)', color: '#b06bff', border: '1px solid rgba(176,107,255,0.3)' },
+                    }, [`🎁 ${ach.reward_item_slug}`])
+                  : null,
+              ])
+            : null,
+        ]),
+        ach.can_claim
+          ? h('button.btn-primary.h-9.px-4.text-xs.shrink-0', {
+              onclick: () => onClaim(ach.code),
+            }, ['Claim'])
+          : null,
+      ]),
+      // Progress bar
+      !ach.is_claimed && h('div.flex.items-center.gap-2', {}, [
+        h('div.flex-1.h-1.5.rounded-full.overflow-hidden', {
+          style: { background: 'rgba(255,255,255,0.07)' },
+        }, [
+          h('div.h-full.rounded-full.transition-all', {
+            style: {
+              width: `${pct}%`,
+              background: ach.can_claim ? 'linear-gradient(90deg,#ff2bd6,#ff8080)' : catColor,
+            },
+          }, []),
+        ]),
+        h('span.text-[10px].text-muted.font-mono.shrink-0', {}, [
+          `${ach.current_value ?? 0} / ${ach.target_value ?? 1}`,
+        ]),
+      ]),
+    ]);
+  }));
 }
 
 function stat(label, value, color = 'text-white') {
@@ -316,18 +489,28 @@ function inventoryByCategory(inventory, onEquip, onList) {
   return h('div.flex.flex-col.gap-3', {},
     CATEGORIES
       .filter((c) => byCat[c]?.length)
-      .map((cat) =>
-        h('div.glass.neon-border.p-4.flex.flex-col.gap-3', {}, [
+      .map((cat) => {
+        const equippedCount = (byCat[cat] ?? []).filter((r) => r.equipped).length;
+        const badgeSlotLabel = cat === 'badge'
+          ? h('span.text-[10px]', {
+              style: {
+                color: equippedCount >= 3 ? '#ff6d8a'
+                     : equippedCount > 0  ? '#3ddc7e'
+                     : '#8a8f99',
+              },
+            }, [`${equippedCount}/3 equipped`])
+          : h('span.text-[10px].text-muted', {}, [`${byCat[cat].length} unique`]);
+        return h('div.glass.neon-border.p-4.flex.flex-col.gap-3', {}, [
           h('div.flex.items-center.justify-between', {}, [
             h('h3.text-sm.uppercase.tracking-widest.text-muted', {}, [CATEGORY_LABEL[cat]]),
-            h('span.text-[10px].text-muted', {}, [`${byCat[cat].length} unique`]),
+            badgeSlotLabel,
           ]),
           h(
             'div.grid.grid-cols-2.sm:grid-cols-3.md:grid-cols-4.gap-2',
             {},
             byCat[cat].map((row) => itemTile(row, onEquip, onList))),
-        ])
-      )
+        ]);
+      })
   );
 }
 

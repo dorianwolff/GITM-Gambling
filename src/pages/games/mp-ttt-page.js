@@ -23,11 +23,45 @@ import { confirmModal } from '../../ui/components/modal.js';
 import { formatCredits, initials, shortName } from '../../utils/format.js';
 import { logger } from '../../lib/logger.js';
 
+// ── Chaos cell animations ────────────────────────────────────────────────────
+// Injected once per page-load; keyframes for each chaos effect type.
+(function injectChaosStyles() {
+  if (document.getElementById('chaos-ttt-styles')) return;
+  const s = document.createElement('style');
+  s.id = 'chaos-ttt-styles';
+  s.textContent = `
+    @keyframes chaos-remove {
+      0%   { transform: scale(1);    opacity: 1; filter: brightness(1); }
+      25%  { transform: scale(1.35); opacity: 1; filter: brightness(3) saturate(2); }
+      65%  { transform: scale(0.1);  opacity: 0; filter: brightness(4); }
+      100% { transform: scale(1);    opacity: 1; filter: brightness(1); }
+    }
+    @keyframes chaos-swap {
+      0%   { transform: scale(1)    rotate(0deg);   filter: brightness(1); }
+      20%  { transform: scale(1.25) rotate(12deg);  filter: brightness(2) hue-rotate(90deg); }
+      50%  { transform: scale(0.8)  rotate(-12deg); filter: brightness(2) hue-rotate(180deg); }
+      80%  { transform: scale(1.15) rotate(6deg);   filter: brightness(1.5); }
+      100% { transform: scale(1)    rotate(0deg);   filter: brightness(1); }
+    }
+    @keyframes chaos-block {
+      0%,100% { box-shadow: inset 0 0 20px rgba(255,43,214,0.45), 0 0 14px rgba(255,43,214,0.35); }
+      40%     { box-shadow: inset 0 0 50px rgba(255,43,214,0.9),  0 0 40px rgba(255,43,214,0.8); }
+    }
+    .chaos-remove { animation: chaos-remove 0.75s cubic-bezier(0.4,0,0.2,1) forwards; }
+    .chaos-swap   { animation: chaos-swap   0.7s  cubic-bezier(0.4,0,0.2,1) forwards; }
+    .chaos-block  { animation: chaos-block  0.9s  ease-in-out; }
+  `;
+  document.head.appendChild(s);
+})();
+
 export function renderMpTtt(ctx) {
   const gameId = ctx.params.id;
   let game = null;
   let loading = true;
   let busy = false;
+  // Map<cellIndex, 'remove'|'swap'|'block'> — cleared after animation duration.
+  let chaosAnimCells = new Map();
+  let lastChaosKey = '';   // tracks the last event we already animated
 
   const root = h('div.flex.flex-col.gap-4', {}, []);
   const redraw = () => mount(root, view());
@@ -49,6 +83,32 @@ export function renderMpTtt(ctx) {
         announceOutcome(game, userStore.get().user?.id);
       }
       loading = false;
+
+      // Detect a new chaos event and schedule per-cell animations.
+      if (game?.game_type === 'ttt_chaos' && game.status === 'active') {
+        const ev = game.state?.event;
+        if (ev && ev.type && ev.type !== 'nothing') {
+          const key = JSON.stringify(ev);
+          if (key !== lastChaosKey) {
+            lastChaosKey = key;
+            const next = new Map();
+            if (ev.type === 'block' && ev.cell != null)
+              next.set(ev.cell, 'block');
+            if ((ev.type === 'remove_own' || ev.type === 'remove_opp') && ev.cell != null)
+              next.set(ev.cell, 'remove');
+            if (ev.type === 'swap') {
+              if (ev.own != null) next.set(ev.own, 'swap');
+              if (ev.opp != null) next.set(ev.opp, 'swap');
+            }
+            if (next.size > 0) {
+              chaosAnimCells = next;
+              // Clear animations after the longest keyframe finishes (900 ms).
+              setTimeout(() => { chaosAnimCells = new Map(); redraw(); }, 950);
+            }
+          }
+        }
+      }
+
       redraw();
     } catch (e) {
       logger.warn('mp load failed', e);
@@ -165,7 +225,7 @@ export function renderMpTtt(ctx) {
         : null,
 
       // Board
-      boardView(board, locked, faded, canMove, doMove, game.game_type),
+      boardView(board, locked, faded, canMove, doMove, game.game_type, chaosAnimCells),
 
       // Variant-specific stats
       variantStatsView(game, board),
@@ -266,7 +326,7 @@ function playerPanel(p, mark, isActive, isWinner) {
   ]);
 }
 
-function boardView(board, locked, faded, canMove, onCell, variant) {
+function boardView(board, locked, faded, canMove, onCell, variant, animCells = new Map()) {
   return h('div.glass.neon-border.p-6.flex.justify-center', {}, [
     h(
       'div.grid.grid-cols-3.gap-2',
@@ -276,12 +336,12 @@ function boardView(board, locked, faded, canMove, onCell, variant) {
           aspectRatio: '1 / 1',
         },
       },
-      Array.from({ length: 9 }, (_, i) => cellView(i, board[i] ?? 0, locked === i, faded === i, canMove, onCell, variant))
+      Array.from({ length: 9 }, (_, i) => cellView(i, board[i] ?? 0, locked === i, faded === i, canMove, onCell, variant, animCells.get(i) ?? null))
     ),
   ]);
 }
 
-function cellView(i, value, isLocked, wasFaded, canMove, onCell, variant) {
+function cellView(i, value, isLocked, wasFaded, canMove, onCell, variant, chaosAnim = null) {
   const empty = value === 0;
   const playable = empty && !isLocked && canMove;
   const label = value === 1 ? 'X' : value === 2 ? 'O' : '';
@@ -291,8 +351,11 @@ function cellView(i, value, isLocked, wasFaded, canMove, onCell, variant) {
     ? 'repeating-linear-gradient(45deg, rgba(255,43,214,0.22) 0 10px, rgba(20,4,16,0.6) 10px 20px)'
     : 'linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))';
 
+  // Animation class drives keyframes; the wrapper handles box-shadow anim for 'block'.
+  const animClass = chaosAnim ? `chaos-${chaosAnim}` : '';
+
   return h(
-    'button.relative.rounded-xl.flex.items-center.justify-center.transition-transform.overflow-hidden',
+    `button.relative.rounded-xl.flex.items-center.justify-center.overflow-hidden${animClass ? '.' + animClass : ''}`,
     {
       onclick: playable ? () => onCell(i) : undefined,
       disabled: !playable,

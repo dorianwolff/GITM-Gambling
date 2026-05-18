@@ -25,6 +25,7 @@ import {
   comboPopupFor,
   pinballMapByKey,
 } from '../../games/pinball/pinball-maps.js';
+import { createPinballSpecials } from '../../games/pinball/pinball-specials.js';
 
 /* ═══════════════════════════════════════════════════════════════════════════
    PHYSICS CONSTANTS
@@ -37,6 +38,7 @@ const MAX_VEL      = 2.2;
 const RESTITUTION  = 0.62;
 const WALL_REST    = 0.40;
 const TRAIL_LEN    = 12;
+const PHYS_SUBSTEPS = 4;
 
 const COMBO_WINDOW = 1200;
 const RESPAWN_MS   = 600;
@@ -52,8 +54,8 @@ const LAUNCH_MAX   = 1.20;
 // drain gap between tips at rest roughly the same (~0.09).
 const FLIP_LEN     = 0.16;
 const FLIP_THICK   = 0.015;
-const FLIP_REST_A  = -0.30;
-const FLIP_HIT_A   = 0.55;
+const FLIP_REST_A  = -0.20;
+const FLIP_HIT_A   = 0.65;
 const FLIP_SPEED   = 18;
 const FLIP_Y       = 0.90;
 const FLIP_LX      = 0.30;
@@ -157,6 +159,7 @@ export function renderPinball(ctx) {
   let ballsLeft = 0;
   let activeBalls = [];
   let ballSeq = 0;
+  let specialScript = null;
 
   let flipLAngle = FLIP_REST_A;
   let flipRAngle = FLIP_REST_A;
@@ -178,12 +181,39 @@ export function renderPinball(ctx) {
   let ctx2d = null;
   let resizeObs = null;
   const popTimers = new Set();
+  let trembleUntil = 0;
+  let tremblePower = 0;
+  let trembleDuration = 0;
 
   /* ── COORDINATE TRANSFORMS ── */
   // Playfield normalized → canvas pixels
   function toX(nx) { return pfX + nx * pfW; }
   function toY(ny) { return pfY + ny * pfH; }
   function toR(nr) { return nr * pfW; }
+  function ballRadius(b) { return BALL_R * (b.radiusScale ?? 1); }
+
+  function triggerTremble(power = 1, duration = 180) {
+    const now = performance.now();
+    trembleUntil = Math.max(trembleUntil, now + duration);
+    tremblePower = Math.max(tremblePower, power);
+    trembleDuration = Math.max(trembleDuration, duration);
+  }
+
+  function getTrembleOffset(now) {
+    const remaining = trembleUntil - now;
+    if (remaining <= 0 || trembleDuration <= 0) {
+      trembleUntil = 0;
+      tremblePower = 0;
+      trembleDuration = 0;
+      return { x: 0, y: 0 };
+    }
+    const fade = remaining / trembleDuration;
+    const amp = tremblePower * fade;
+    return {
+      x: Math.sin(now * 0.07) * amp,
+      y: Math.cos(now * 0.053) * amp * 0.7,
+    };
+  }
 
   /* ── CANVAS SIZING ── */
   function resize() {
@@ -205,20 +235,80 @@ export function renderPinball(ctx) {
   }
 
   /* ── BALL FACTORY ── */
-  function makeBall() {
+  function makeBall(opts = {}) {
+    const x = opts.x ?? SPAWN_X;
+    const y = opts.y ?? SPAWN_Y;
     return {
       id: ++ballSeq,
-      x: SPAWN_X,
-      y: SPAWN_Y,
-      vx: 0, vy: 0,
+      x,
+      y,
+      vx: opts.vx ?? 0,
+      vy: opts.vy ?? 0,
       alive: true,
-      staged: true,
+      staged: opts.staged ?? true,
       trail: [],
       stuckTime: 0,
-      lastX: 0, lastY: 0,
+      lastX: x, lastY: y,
       cooldowns: new Map(),
       age: 0,
+      radiusScale: opts.radiusScale ?? 1,
+      scoreBoostUntil: 0,
+      scoreBoostMult: 1,
+      speedBoostUntil: 0,
+      speedBoostMult: 1,
+      sizeUntil: 0,
+      glowColor: opts.glowColor ?? null,
+      splitGroupId: opts.splitGroupId ?? null,
+      splitAnchorX: opts.splitAnchorX ?? null,
+      splitAnchorY: opts.splitAnchorY ?? null,
+      regroupUntil: opts.regroupUntil ?? 0,
+      mergeCooldownUntil: opts.mergeCooldownUntil ?? 0,
+      _meteorFragments: opts._meteorFragments ?? null,
+      sizeGrowFrom: opts.sizeGrowFrom ?? null,
+      sizeGrowTo: opts.sizeGrowTo ?? null,
+      sizeGrowStartAt: opts.sizeGrowStartAt ?? 0,
+      sizeGrowUntil: opts.sizeGrowUntil ?? 0,
     };
+  }
+
+  function spawnBallAt(opts = {}) {
+    const consumeReserve = opts.consumeReserve !== false;
+    if (consumeReserve) {
+      if (ballsLeft <= 0) { maybeFinish(); return null; }
+      ballsLeft--;
+    }
+    const b = makeBall(opts);
+    activeBalls.push(b);
+    if (opts.staged !== false) {
+      charging = false;
+      chargeVal = 0;
+      chargeStart = 0;
+    }
+    return b;
+  }
+
+  function addReserveBall(count = 1) {
+    ballsLeft += count;
+    ballsTotal += count;
+  }
+
+  function applyBallEffect(ball, effect, now = performance.now()) {
+    if (!ball || !ball.alive) return;
+    if (typeof effect.radiusScale === 'number') {
+      ball.radiusScale = effect.radiusScale;
+      ball.sizeUntil = effect.duration ? now + effect.duration : 0;
+    }
+    if (typeof effect.pointsMultiplier === 'number') {
+      ball.scoreBoostMult = effect.pointsMultiplier;
+      ball.scoreBoostUntil = now + (effect.duration ?? 0);
+    }
+    if (typeof effect.speedMultiplier === 'number') {
+      ball.speedBoostMult = effect.speedMultiplier;
+      ball.speedBoostUntil = now + (effect.duration ?? 0);
+      ball.vx *= effect.speedMultiplier;
+      ball.vy *= effect.speedMultiplier;
+    }
+    if (effect.color) ball.glowColor = effect.color;
   }
 
   /* ── GAME FLOW ── */
@@ -232,18 +322,29 @@ export function renderPinball(ctx) {
     flipLTarget = FLIP_REST_A; flipRTarget = FLIP_REST_A;
     leftHeld = false; rightHeld = false;
     lastTs = 0;
+    trembleUntil = 0;
+    tremblePower = 0;
+    trembleDuration = 0;
   }
 
   function spawnBall() {
-    if (ballsLeft <= 0) { maybeFinish(); return; }
-    ballsLeft--;
-    const b = makeBall();
-    activeBalls.push(b);
-    charging = false; chargeVal = 0; chargeStart = 0;
+    spawnBallAt({ staged: true });
   }
 
   function drainBall(b) {
     b.alive = false;
+    if (b._meteorFragments != null) {
+      showPop('☄', '#ff944d', b.x, b.y, 0.7);
+      const stillAlive = activeBalls.filter(ab => ab.alive && !ab.staged);
+      if (stillAlive.length === 0) {
+        if (ballsLeft > 0) {
+          setTimeout(() => { if (roundRunning && !roundSettling) spawnBall(); }, RESPAWN_MS);
+        } else {
+          maybeFinish();
+        }
+      }
+      return;
+    }
     drainCount++;
     showPop('DRAIN', '#ff6b8a', b.x, b.y, 1.1);
     flashLossMajor({ label: 'BALL LOST' });
@@ -268,6 +369,8 @@ export function renderPinball(ctx) {
       const result = await startPinballRound(amount, ballChoice);
       round = result;
       currentMap = pinballMapByKey(result.mapKey);
+      specialScript = createPinballSpecials(result.mapKey);
+      specialScript.reset();
       mode = 'playing';
       roundOutcome = null;
       resetGameState();
@@ -341,19 +444,22 @@ export function renderPinball(ctx) {
     comboMax = Math.max(comboMax, combo);
     lastHitAt = now;
 
-    const mult = (currentMap.scoreMultiplier ?? 1) * (1 + Math.min(combo - 1, 12) * 0.10);
+    const boostMult = b?.scoreBoostUntil > now ? (b.scoreBoostMult ?? 1) : 1;
+    const mult = (currentMap.scoreMultiplier ?? 1) * boostMult * (1 + Math.min(combo - 1, 12) * 0.10);
     const gained = Math.max(1, Math.round(pts * mult));
     score += gained;
 
     if (kind === 'bumper') bumperHits++;
     if (kind === 'target') targetHits++;
 
+    triggerTremble(0.75 + Math.min(gained / 1500, 0.9), 150 + Math.min(combo * 12, 140));
+
     const pop = comboPopupFor(combo);
     if (pop) {
-      showPop(pop.text, pop.color, b.x, b.y - 0.03, 1 + combo * 0.05);
+      showPop(`${pop.text} +${gained}`, pop.color, b.x, b.y - 0.03, 1.08 + combo * 0.07);
       if (combo >= 8) flashStreakText(pop.text, pop.color);
     } else {
-      showPop(`+${gained}`, color, b.x, b.y - 0.02, 0.9);
+      showPop(`+${gained}`, color, b.x, b.y - 0.02, 1.0);
     }
   }
 
@@ -363,10 +469,12 @@ export function renderPinball(ctx) {
         left: `${clamp(nx / 1.1 * 100, 5, 95)}%`,
         top: `${clamp(ny * 100, 5, 95)}%`,
         color,
-        textShadow: `0 0 12px ${color}, 0 0 30px rgba(0,0,0,0.8)`,
-        transform: 'translate(-50%,-50%) scale(0.8)',
+        textShadow: `0 0 14px ${color}, 0 0 38px rgba(0,0,0,0.88)`,
+        transform: 'translate(-50%,-50%) scale(0.82)',
         opacity: '1',
-        fontSize: `${Math.round(11 + scale * 6)}px`,
+        fontSize: `${Math.round(13 + scale * 8)}px`,
+        lineHeight: '1',
+        letterSpacing: '0.08em',
         whiteSpace: 'nowrap',
         transition: 'all 800ms ease-out',
         zIndex: '10',
@@ -374,7 +482,7 @@ export function renderPinball(ctx) {
     }, [text]);
     popLayer.appendChild(el);
     requestAnimationFrame(() => {
-      el.style.transform = `translate(-50%,-50%) translateY(-${20 + scale * 8}px) scale(1.1)`;
+      el.style.transform = `translate(-50%,-50%) translateY(-${24 + scale * 10}px) scale(1.16)`;
       el.style.opacity = '0';
     });
     const t = setTimeout(() => { popTimers.delete(t); el.remove(); }, 850);
@@ -409,47 +517,84 @@ export function renderPinball(ctx) {
 
       b.age += dt;
 
-      // Gravity
-      b.vy += grav * dt;
+      // Physics sub-steps reduce tunnelling through fast wall/gutter hits.
+      const subDt = dt / PHYS_SUBSTEPS;
+      for (let ps = 0; ps < PHYS_SUBSTEPS; ps++) {
+        const t0 = ps / PHYS_SUBSTEPS;
+        const t1 = (ps + 1) / PHYS_SUBSTEPS;
+        const subFlipL  = prevFlipLAngle + (flipLAngle - prevFlipLAngle) * t1;
+        const subPrevL   = prevFlipLAngle + (flipLAngle - prevFlipLAngle) * t0;
+        const subFlipR   = prevFlipRAngle + (flipRAngle - prevFlipRAngle) * t1;
+        const subPrevR   = prevFlipRAngle + (flipRAngle - prevFlipRAngle) * t0;
 
-      // Drag
-      b.vx *= Math.pow(drag, dt * 60);
-      b.vy *= Math.pow(drag, dt * 60);
+        b.vy += grav * subDt;
+        b.vx *= Math.pow(drag, subDt * 60);
+        b.vy *= Math.pow(drag, subDt * 60);
 
-      // Speed cap
-      const spd = Math.hypot(b.vx, b.vy);
-      if (spd > MAX_VEL) { b.vx *= MAX_VEL / spd; b.vy *= MAX_VEL / spd; }
+        const spd = Math.hypot(b.vx, b.vy);
+        if (spd > MAX_VEL) { b.vx *= MAX_VEL / spd; b.vy *= MAX_VEL / spd; }
 
-      // Move
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
+        b.x += b.vx * subDt;
+        b.y += b.vy * subDt;
+
+        wallBounce(b);
+        pegCollisions(b, now);
+        bumperCollisions(b, now);
+        targetCollisions(b, now);
+        slingshotCollisions(b, now);
+        flipperCollision(b, 'left', subFlipL, subPrevL, subDt);
+        flipperCollision(b, 'right', subFlipR, subPrevR, subDt);
+        checkDrain(b);
+        if (!b.alive) break;
+      }
+
+      if (!b.alive) continue;
+
+      if (b.sizeGrowUntil && b.sizeGrowFrom != null && b.sizeGrowTo != null) {
+        const total = Math.max(1, b.sizeGrowUntil - b.sizeGrowStartAt);
+        const t = clamp((now - b.sizeGrowStartAt) / total, 0, 1);
+        const eased = t * t * (3 - 2 * t);
+        b.radiusScale = b.sizeGrowFrom + (b.sizeGrowTo - b.sizeGrowFrom) * eased;
+        if (t >= 1) {
+          b.radiusScale = b.sizeGrowTo;
+          b.sizeGrowFrom = null;
+          b.sizeGrowTo = null;
+          b.sizeGrowStartAt = 0;
+          b.sizeGrowUntil = 0;
+        }
+      } else if (b.sizeUntil && now >= b.sizeUntil) {
+        b.radiusScale = 1;
+        b.sizeUntil = 0;
+      }
+
+      if (b.speedBoostUntil && now >= b.speedBoostUntil) {
+        b.speedBoostUntil = 0;
+        b.speedBoostMult = 1;
+      }
 
       // Trail
       b.trail.push({ x: b.x, y: b.y });
       if (b.trail.length > TRAIL_LEN) b.trail.shift();
 
-      // Collision checks
-      wallBounce(b);
-      pegCollisions(b, now);
-      bumperCollisions(b, now);
-      targetCollisions(b, now);
-      slingshotCollisions(b, now);
-      // Sub-stepped flipper collision — the tip sweeps a large arc per
-      // frame (up to 0.039).  Without sub-steps it jumps past the ball.
-      // 4 substeps → tip moves ~0.01 per step, safely inside the 0.028
-      // collision radius.
-      for (let fs = 0; fs < 4; fs++) {
-        const t0 = fs / 4, t1 = (fs + 1) / 4;
-        const sL  = prevFlipLAngle + (flipLAngle - prevFlipLAngle) * t1;
-        const spL = prevFlipLAngle + (flipLAngle - prevFlipLAngle) * t0;
-        const sR  = prevFlipRAngle + (flipRAngle - prevFlipRAngle) * t1;
-        const spR = prevFlipRAngle + (flipRAngle - prevFlipRAngle) * t0;
-        flipperCollision(b, 'left',  sL, spL, dt / 4, now);
-        flipperCollision(b, 'right', sR, spR, dt / 4, now);
-      }
-      checkDrain(b);
       antiStuck(b, dt);
     }
+
+    if (specialScript) {
+      specialScript.step({
+        dt,
+        now,
+        map: currentMap,
+        balls: activeBalls,
+        spawnBallAt,
+        addReserveBall,
+        registerHit,
+        showPop,
+        applyBallEffect,
+        ballRadius,
+      });
+    }
+
+    resolveBallBallCollisions(now);
 
     activeBalls = activeBalls.filter(b => b.alive);
     if (roundRunning && activeBalls.length === 0 && ballsLeft <= 0 && !roundSettling) {
@@ -480,7 +625,7 @@ export function renderPinball(ctx) {
   }
 
   function wallBounce(b) {
-    const r = BALL_R;
+    const r = ballRadius(b);
 
     // Top wall
     if (b.y < PF_TOP + r) { b.y = PF_TOP + r; b.vy = Math.abs(b.vy) * WALL_REST; }
@@ -519,7 +664,7 @@ export function renderPinball(ctx) {
       const key = `peg:${p.x}:${p.y}`;
       if (b.cooldowns.has(key) && now - b.cooldowns.get(key) < 120) continue;
       const d = dist(b.x, b.y, p.x, p.y);
-      const minD = BALL_R + (p.r ?? 0.008);
+      const minD = ballRadius(b) + (p.r ?? 0.008);
       if (d >= minD || d < 0.001) continue;
       const nx = (b.x - p.x) / d, ny = (b.y - p.y) / d;
       b.x = p.x + nx * minD;
@@ -537,7 +682,7 @@ export function renderPinball(ctx) {
       const key = `bmp:${bmp.label}`;
       if (b.cooldowns.has(key) && now - b.cooldowns.get(key) < 200) continue;
       const d = dist(b.x, b.y, bmp.x, bmp.y);
-      const minD = BALL_R + (bmp.r ?? 0.04);
+      const minD = ballRadius(b) + (bmp.r ?? 0.04);
       if (d >= minD || d < 0.001) continue;
       const nx = (b.x - bmp.x) / d, ny = (b.y - bmp.y) / d;
       b.x = bmp.x + nx * minD;
@@ -557,7 +702,7 @@ export function renderPinball(ctx) {
       if (b.cooldowns.has(key) && now - b.cooldowns.get(key) < 250) continue;
       const tr = t.r ?? 0.028;
       const d = dist(b.x, b.y, t.x, t.y);
-      const minD = BALL_R + tr;
+      const minD = ballRadius(b) + tr;
       if (d >= minD || d < 0.001) continue;
       const nx = (b.x - t.x) / d, ny = (b.y - t.y) / d;
       b.x = t.x + nx * minD;
@@ -577,7 +722,7 @@ export function renderPinball(ctx) {
       if (b.cooldowns.has(key) && now - b.cooldowns.get(key) < 180) continue;
       const sr = s.r ?? 0.04;
       const d = dist(b.x, b.y, s.x, s.y);
-      const minD = BALL_R + sr;
+      const minD = ballRadius(b) + sr;
       if (d >= minD || d < 0.001) continue;
       // Push ball out
       const nx = (b.x - s.x) / d, ny = (b.y - s.y) / d;
@@ -588,6 +733,70 @@ export function renderPinball(ctx) {
       b.vy += ny * pow - 0.10;
       b.cooldowns.set(key, now);
       registerHit(b, 40, s.label, s.color ?? currentMap.accent, 'slingshot');
+    }
+  }
+
+  function resolveBallBallCollisions(now) {
+    for (let i = 0; i < activeBalls.length; i++) {
+      const a = activeBalls[i];
+      if (!a.alive || a.staged) continue;
+      for (let j = i + 1; j < activeBalls.length; j++) {
+        const b = activeBalls[j];
+        if (!b.alive || b.staged) continue;
+
+        const ar = ballRadius(a);
+        const br = ballRadius(b);
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const d = Math.hypot(dx, dy);
+        const minD = ar + br;
+        if (d >= minD || d < 0.0001) continue;
+
+        const nx = dx / d;
+        const ny = dy / d;
+        const overlap = minD - d;
+
+        if (a.splitGroupId && a.splitGroupId === b.splitGroupId) {
+          const pull = overlap * 0.12;
+          a.vx += nx * pull * 0.45;
+          a.vy += ny * pull * 0.45;
+          b.vx -= nx * pull * 0.45;
+          b.vy -= ny * pull * 0.45;
+          if (!a._meteorFragments) {
+            a.vx += (a.splitAnchorX - a.x) * 0.18 * 0.001;
+            a.vy += (a.splitAnchorY - a.y) * 0.18 * 0.001;
+            b.vx += (b.splitAnchorX - b.x) * 0.18 * 0.001;
+            b.vy += (b.splitAnchorY - b.y) * 0.18 * 0.001;
+          }
+          continue;
+        }
+
+        const massA = ar * ar;
+        const massB = br * br;
+        const massSum = massA + massB || 1;
+        const aShare = massB / massSum;
+        const bShare = massA / massSum;
+
+        a.x -= nx * overlap * aShare;
+        a.y -= ny * overlap * aShare;
+        b.x += nx * overlap * bShare;
+        b.y += ny * overlap * bShare;
+
+        const relVn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+        if (relVn >= 0) continue;
+
+        const restitution = 0.82;
+        const impulse = -(1 + restitution) * relVn;
+        a.vx -= impulse * nx * aShare;
+        a.vy -= impulse * ny * aShare;
+        b.vx += impulse * nx * bShare;
+        b.vy += impulse * ny * bShare;
+
+        if (a.speedBoostUntil > now || b.speedBoostUntil > now) {
+          a.glowColor = a.glowColor || currentMap.accent2 || currentMap.accent;
+          b.glowColor = b.glowColor || currentMap.accent2 || currentMap.accent;
+        }
+      }
     }
   }
 
@@ -607,7 +816,7 @@ export function renderPinball(ctx) {
   const FLIP_N = 9; // circles per flipper (pivot … tip inclusive)
   const FLIP_REST = 0.35;
 
-  function flipperCollision(b, side, angle, prevAngle, dt, now) {
+  function flipperCollision(b, side, angle, prevAngle, dt) {
     // No cooldown — the relVn >= 0 (separating) check already prevents
     // double-hits.  Resting contact needs to fire every frame so the ball
     // stays on top of the flipper and responds when the player swings.
@@ -621,8 +830,7 @@ export function renderPinball(ctx) {
     // Walk the circle chain; keep track of the deepest overlapping circle
     // whose "moving-toward" check passes.
     let bestOverlap = 0;
-    let hitNx = 0, hitNy = 0, hitFvx = 0, hitFvy = 0;
-    let hitCx = 0, hitCy = 0, hitMinD = 0, hitRelVn = 0;
+    let hitNx = 0, hitNy = 0, hitCx = 0, hitCy = 0, hitMinD = 0, hitRelVn = 0;
 
     for (let i = 0; i < FLIP_N; i++) {
       const t = i / (FLIP_N - 1); // 0 = pivot, 1 = tip
@@ -633,7 +841,7 @@ export function renderPinball(ctx) {
       const cy = pivotY - Math.sin(angle) * len;
 
       // Uniform radius — matches the visual round-cap lineWidth
-      const minD = BALL_R + FLIP_THICK;
+      const minD = ballRadius(b) + FLIP_THICK;
 
       const d = dist(b.x, b.y, cx, cy);
       const overlap = minD - d;
@@ -657,7 +865,6 @@ export function renderPinball(ctx) {
       if (overlap > bestOverlap) {
         bestOverlap = overlap;
         hitNx = nx; hitNy = ny;
-        hitFvx = fvx; hitFvy = fvy;
         hitCx = cx; hitCy = cy;
         hitMinD = minD; hitRelVn = relVn;
       }
@@ -689,17 +896,18 @@ export function renderPinball(ctx) {
     const moved = dist(b.x, b.y, b.lastX || b.x, b.lastY || b.y);
     const spd = Math.hypot(b.vx, b.vy);
     b.lastX = b.x; b.lastY = b.y;
+    const cornerBoost = (b.x < 0.14 || b.x > 0.86) ? 2 : 1;
     if (spd < 0.04 || moved < 0.0005) b.stuckTime += dt * 1000;
     else b.stuckTime = 0;
 
     if (b.stuckTime > STUCK_HARD) {
-      b.vx += rand(-0.10, 0.10);
-      b.vy -= 0.18 + Math.random() * 0.06;
+      b.vx += rand(-0.10, 0.10) * cornerBoost;
+      b.vy -= (0.18 + Math.random() * 0.06) * cornerBoost;
       b.stuckTime = 0;
       showPop('UNSTUCK!', '#c084fc', b.x, b.y, 1.0);
     } else if (b.stuckTime > STUCK_NUDGE) {
-      b.vx += rand(-0.05, 0.05);
-      b.vy -= 0.10;
+      b.vx += rand(-0.05, 0.05) * cornerBoost;
+      b.vy -= 0.10 * cornerBoost;
       b.stuckTime = 0;
       showPop('NUDGE', '#818cf8', b.x, b.y, 0.8);
     }
@@ -707,7 +915,8 @@ export function renderPinball(ctx) {
     // If ball is truly stuck near bottom and barely moving, give a small sideways nudge
     // but do NOT push upward — let gravity handle it naturally.
     if (spd < 0.02 && b.y > 0.7 && !b.staged) {
-      b.vx += rand(-0.03, 0.03);
+      b.vx += rand(-0.03, 0.03) * cornerBoost;
+      b.vy -= 0.02 * cornerBoost;
     }
   }
 
@@ -743,6 +952,12 @@ export function renderPinball(ctx) {
     const map = currentMap;
     c.clearRect(0, 0, cW, cH);
 
+    const now = performance.now();
+    const tremble = getTrembleOffset(now);
+
+    c.save();
+    c.translate(tremble.x, tremble.y);
+
     drawBg(c, map);
     drawPlayfield(c, map);
     drawPegs(c, map);
@@ -752,7 +967,18 @@ export function renderPinball(ctx) {
     drawFlippers(c, map);
     drawLauncher(c, map);
     drawBalls(c, map);
+    if (specialScript) {
+      specialScript.draw(c, {
+        now,
+        map,
+        balls: activeBalls,
+        toX,
+        toY,
+        toR,
+      });
+    }
     drawHUD(c, map);
+    c.restore();
   }
 
   function drawBg(c, map) {
@@ -1002,7 +1228,8 @@ export function renderPinball(ctx) {
     const staged = activeBalls.some(b => b.alive && b.staged);
     if (!staged && !charging) return;
     const sx = toX(SPAWN_X), sy = toY(SPAWN_Y);
-    const r = toR(BALL_R);
+    const stagedBall = activeBalls.find(b => b.alive && b.staged);
+    const r = toR(ballRadius(stagedBall ?? { radiusScale: 1 }));
     const chg = charging ? clamp((performance.now() - chargeStart) / MAX_CHARGE, 0, 1) : 0;
     const pulse = 0.8 + Math.sin(performance.now() * 0.006) * 0.2;
 
@@ -1040,10 +1267,11 @@ export function renderPinball(ctx) {
   }
 
   function drawBalls(c, map) {
+    const now = performance.now();
     for (const b of activeBalls) {
       if (!b.alive) continue;
       const bx = toX(b.x), by = toY(b.y);
-      const r = toR(BALL_R);
+      const r = toR(ballRadius(b));
 
       c.save();
       // Trail
@@ -1051,7 +1279,7 @@ export function renderPinball(ctx) {
         for (let i = 0; i < b.trail.length - 1; i++) {
           const t = b.trail[i];
           const alpha = 0.05 + (i / b.trail.length) * 0.15;
-          c.fillStyle = hex2rgba(map.accent2 || map.accent, alpha);
+          c.fillStyle = hex2rgba(b.glowColor || map.accent2 || map.accent, alpha);
           c.beginPath();
           c.arc(toX(t.x), toY(t.y), r * (0.4 + i / b.trail.length * 0.4), 0, Math.PI * 2);
           c.fill();
@@ -1059,18 +1287,34 @@ export function renderPinball(ctx) {
       }
 
       // Ball glow
-      c.shadowColor = map.accent;
-      c.shadowBlur = b.staged ? 30 : 20;
+      c.shadowColor = b.glowColor || map.accent;
+      c.shadowBlur = b.staged ? 30 : (b.speedBoostUntil > now ? 30 : 20);
 
       // Ball body
       const g = c.createRadialGradient(bx - r * 0.3, by - r * 0.3, r * 0.1, bx, by, r);
       g.addColorStop(0, '#ffffff');
-      g.addColorStop(0.4, hex2rgba(map.accent2 || map.accent, 0.95));
-      g.addColorStop(1, hex2rgba(map.accent, 0.3));
+      g.addColorStop(0.4, hex2rgba(b.glowColor || map.accent2 || map.accent, 0.95));
+      g.addColorStop(1, hex2rgba(b.glowColor || map.accent, 0.3));
       c.fillStyle = g;
       c.beginPath();
       c.arc(bx, by, r, 0, Math.PI * 2);
       c.fill();
+
+      if (b.speedBoostUntil > now) {
+        c.strokeStyle = hex2rgba(b.glowColor || map.accent2 || map.accent, 0.75);
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(bx, by, r * 1.25, 0, Math.PI * 2);
+        c.stroke();
+      }
+
+      if (b.radiusScale > 1.05) {
+        c.strokeStyle = hex2rgba('#ffffff', 0.5);
+        c.lineWidth = 2;
+        c.beginPath();
+        c.arc(bx, by, r * 1.15, 0, Math.PI * 2);
+        c.stroke();
+      }
 
       // Specular highlight
       c.fillStyle = 'rgba(255,255,255,0.5)';

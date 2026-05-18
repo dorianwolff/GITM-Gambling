@@ -14,21 +14,24 @@ export const PLINKO_RISKS = ['low', 'medium', 'high'];
  *   10 rows : low 97.0% / med 97.0% / high 97.0%
  *   12 rows : low 97.0% / med 97.0% / high 97.0%
  */
+// Multipliers match the plinko_mult DB table (v27).
+// Tuned for ~93% RTP via binomial distribution — verified:
+//   sum(C(n,k) * mult[k]) / 2^n ≈ 0.93 for every row×risk combination.
 export const PLINKO_MULTS = Object.freeze({
   8: {
-    low:    [5.49, 2.06, 1.08, 0.98, 0.49, 0.98, 1.08, 2.06, 5.49],
-    medium: [12.75, 2.94, 1.28, 0.69, 0.39, 0.69, 1.28, 2.94, 12.75],
-    high:   [28.39, 3.92, 1.47, 0.29, 0.2, 0.29, 1.47, 3.92, 28.39],
+    low:    [5.25, 1.97, 1.03, 0.94, 0.47, 0.94, 1.03, 1.97, 5.25],
+    medium: [12.25, 2.82, 1.23, 0.66, 0.37, 0.66, 1.23, 2.82, 12.25],
+    high:   [27.3, 3.76, 1.41, 0.28, 0.19, 0.28, 1.41, 3.76, 27.3],
   },
   10: {
-    low:    [8.72, 2.94, 1.37, 1.08, 0.98, 0.49, 0.98, 1.08, 1.37, 2.94, 8.72],
-    medium: [21.58, 4.9, 1.96, 1.37, 0.59, 0.39, 0.59, 1.37, 1.96, 4.9, 21.58],
-    high:   [74.84, 9.85, 3.94, 0.49, 0.3, 0.2, 0.3, 0.49, 3.94, 9.85, 74.84],
+    low:    [8.34, 2.81, 1.31, 1.03, 0.94, 0.47, 0.94, 1.03, 1.31, 2.81, 8.34],
+    medium: [20.7, 4.71, 1.88, 1.31, 0.57, 0.37, 0.57, 1.31, 1.88, 4.71, 20.7],
+    high:   [71.6, 9.43, 3.77, 0.47, 0.29, 0.19, 0.29, 0.47, 3.77, 9.43, 71.6],
   },
   12: {
-    low:    [10.02, 3.01, 1.6, 1.2, 1.1, 1.0, 0.5, 1.0, 1.1, 1.2, 1.6, 3.01, 10.02],
-    medium: [33.14, 11.05, 4.02, 2.01, 1.0, 0.6, 0.3, 0.6, 1.0, 2.01, 4.02, 11.05, 33.14],
-    high:   [168.09, 23.73, 8.01, 1.98, 0.49, 0.3, 0.2, 0.3, 0.49, 1.98, 8.01, 23.73, 168.09],
+    low:    [9.62, 2.89, 1.54, 1.15, 1.06, 0.96, 0.48, 0.96, 1.06, 1.15, 1.54, 2.89, 9.62],
+    medium: [31.85, 10.62, 3.86, 1.93, 0.96, 0.58, 0.29, 0.58, 0.96, 1.93, 3.86, 10.62, 31.85],
+    high:   [160.9, 22.71, 7.67, 1.90, 0.47, 0.29, 0.19, 0.29, 0.47, 1.90, 7.67, 22.71, 160.9],
   },
 });
 
@@ -93,8 +96,11 @@ export async function playPlinkoBatch(bet, rows, risk, count) {
   if (error) throw error;
   const row = Array.isArray(data) ? data[0] : data;
   return {
-    batchId: row?.batch_id,
+    batchId:    row?.batch_id,
     newBalance: row?.new_balance,
+    // paths: boolean[][] — one L/R sequence per ball, from server RNG.
+    // The client animation follows these exactly so what you see = what you get.
+    paths: row?.paths ?? null,
   };
 }
 
